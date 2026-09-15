@@ -1,0 +1,6 @@
+#ifndef ROBOT_CALIBRATION_KINEMATICS_2D_H
+#define ROBOT_CALIBRATION_KINEMATICS_2D_H
+
+#include "common/robot_types.h"
+
+#endif /* ROBOT_CALIBRATION_KINEMATICS_2D_H */

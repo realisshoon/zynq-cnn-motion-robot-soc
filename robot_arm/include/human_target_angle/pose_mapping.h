@@ -1,0 +1,6 @@
+#ifndef HUMAN_TARGET_ANGLE_POSE_MAPPING_H
+#define HUMAN_TARGET_ANGLE_POSE_MAPPING_H
+
+#include "common/robot_types.h"
+
+#endif /* HUMAN_TARGET_ANGLE_POSE_MAPPING_H */
