@@ -1,0 +1,191 @@
+CNN_3D Hand Interaction Platform의 depthwise_conv_pe 모듈을 CNN-v4.0 계약에 맞게 구현하라.
+담당: 한승훈. 대상 Zybo Z7-20 / XC7Z020. 언어는 Verilog-2001 .v만 허용한다.
+SystemVerilog의 logic, always_ff, always_comb, typedef, enum, interface, package 등 문법은 금지한다.
+아래 내용으로 RTL과 self-checking Verilog-2001 테스트벤치를 작성하라. 다른 Notion 페이지를 읽어야만 알 수 있는 계약을 가정하지 마라.
+신호명·방향·폭·필드 위치·산술·DSP/BRAM 숫자를 바꾸거나 포트를 추가하지 마라.
+데이터/가중치 및 실제 checkpoint 검증에는 원본 파일이 필요하다. 제공되지 않은 자료나 검증 결과를 만들어내지 마라.
+
+[역할과 설계 배경]
+`line_buffer`의 256bit 탭 스트림에서 32개 채널을 각각 독립적으로 누산한다. 입력 순서는 한 출력 pixel의 batch0 tap0..8, batch1 tap0..8 순서이며 채널끼리 합산하지 않는다.
+
+가중치 주소는 `batch*9+tap`이고 응답 word는 32byte다. 입력 탭과 같은 batch/tap의 가중치를 짝지어 MAC에 넣는다. 응답을 확보한 뒤 입력을 받거나 두 경로를 각각 1-slot skid buffer로 결합할 수 있다. 다른 태그를 결합하면 fault다. 같은 batch/tap 가중치는 다른 출력 pixel에서도 재사용한다.
+
+activation은 0..127을 signed9로 zero extend하고 signed8 weight와 곱한다. tap0에서는 signed24 accumulator에 product를 대입하고 tap1..8에서는 더한다. 마지막 탭이 반영된 뒤 bias를 더한다. 32개 MAC에 32 DSP를 사용하고, requant DSP 1개를 32lane이 시간 공유하여 총 33 DSP를 사용한다.
+
+파라미터 주소는 `batch*32+lane`이며 bias_accum과 M은 가중치 모듈이 공급한다. 모든 결과를 256bit에 모은 뒤 PW에 넘긴다. 미사용 lane은 data=0이며 param read를 생략할 수 있어도 32lane 일정은 유지한다. batch_last는 마지막 유효 채널 batch만 표시한다.
+
+[공용 파라미터 전체: 현재 cnn_common_params.vh]
+`ifndef CNN_V4_PARAMS
+`define CNN_V4_PARAMS
+`define CNN_W_IN 32
+`define CNN_W_OUT 4
+`define CNN_ACCUM_WIDTH 24
+`define CNN_REQUANT_IN_WIDTH 25
+`define CNN_M_WIDTH 18
+`define CNN_SHIFT 16
+`define CNN_OPS 29
+`define CNN_STAGES 16
+`define CNN_VERSION 32'h00040000
+`endif
+
+[공용 설계 규칙: 필요한 계약 전문]
+## 적용 기준 CNN-v4.0
+이 페이지와 generated/interface.json, manifest.json 은 같은 버전이다. RTL 은 Verilog-2001(.v), 검증은 Python 정수 reference 를 사용한다. 클럭은 100MHz, reset 은 동기 active-low rst_n 이다. 자원 배정은 합성 전 예산이며 전체 SoC 합성과 timing 결과로 승인한다.
+입력은 1280×720 RGB888 을 256×256 으로 전처리한다. body 는 0..127 을 INT8 로 저장하고 weight 는 signed INT8, heatmap 은 signed INT8, offset 은 signed INT16 이다. 출력채널별 M 은 0..131071 이다. bias_accum=RNE(bias_int8*bias_M/65536)을 PC pack 단계에서 계산하며 signed24 범위를 검사한다. body 누산기는 signed24, conv0 의 doubled 누산기는 signed25 다. 재양자화는 signed25 × signed18 → signed43 전체 곱을 보존한 뒤 RNE ties-to-even 을 적용한다. body/heat/offset 의 saturation 범위는 각각 [0,127], [-128,127], [-32768,32767]이다. Verilog part-select 와 concat 의 signedness 는 명시적으로 변환한다.
+RNE 구현식은 q=p>>>N, r=p-(q<<N), h=1<<(N-1), result=q+((r>h)||((r==h)&&(q&1)))이다. N=0 이면 p 를 그대로 사용한다. 음수에서도 q 는 floor 방향이고 r 은 0..2^N-1 이다. 곱의 하위 비트를 먼저 버리거나 양수용 반올림 상수를 더하지 않는다.
+valid 는 ready 와 무관하게 assert 할 수 있어야 한다. valid && !ready 동안 data/mask/tag/last 를 유지한다. counter 는 accept 또는 MAC issue 에서만 증가한다. cfg 는 idle 에서 수락하고 완료까지 래치한다. done 은 모듈별 최종 transfer 수락 후 1cycle pulse 이며 top 이 기억한다. 오류는 sticky fault 로 남기고 새 작업을 차단한다. PS 가 DMA 를 reset 한 뒤 core SOFT_RESET 한다. 데이터 RAM 전체를 reset 하지 않는다.
+TAG64: col[7:0], row[15:8], batch[19:16], group[26:20], tap[30:27], batch_last[31], pixel_last[32], op_id[37:33], frame_end[38], group_last[39], reserved[63:40]=0. row/col 은 생산자가 내보내는 tensor 의 좌표다. line 입력은 입력 좌표, line 출력은 convolution 출력 좌표다. pixel_last 는 현재 pixel 의 마지막 beat, frame_end 는 현재 operation 의 최종 pixel 최종 beat 에만 1 이다. group_last 는 마지막 출력 group 이다. 미사용 tag 필드는 0 이며 lane0 은 최하위 byte/bit 다.
+입출력 tensor 는 HWC, row→col→channel 순서다. cfg_desc256 의 [255:149]는 0 이다. mux 선택은 top 이 cfg 전에 고정하고 선택되지 않은 입력의 ready 는 0 이다. conv0 는 dilation=1, pad=1, stride=2 로 고정한다. DW 는 dilation 1/2 와 stride 1/2 를 지원한다. 제공 manifest 의 d1 은 구현 baseline 이며 원본 체크포인트 확인값이 아니다. export_geometry.py 로 실제 모델의 geometry 를 확인해야 한다.
+
+reset rst_n은 4cycle 이상 assert한다. 위 고정 폭의 raw port에서 signed 연산은 내부에서 명시적으로 변환한다.
+모듈에 없는 공용 신호를 추가하지 않는다. color 관찰 tap_accept 및 results_valid처럼 ready가 없는 포트에는 임의로 ready를 만들지 않는다.
+
+[cfg_desc256 전체 필드: 비트 배치/의미/이 모듈의 역할]
+필드	bits	의미	이 모듈의 역할
+op_id	4:0	operation 번호 0..28	입출력 tap/result의 operation 태그
+kind	6:5	연산 종류: 0=conv0, 1=DW, 2=PW	DW 독립 채널 MAC 설정
+mode	8:7	출력 mode: 0=body, 1=heatmap, 2=offset	body 재양자화 결과 문맥
+hin	17:9	입력 tensor 높이	이 모듈 본문에 직접 사용하는 동작 없음; 소유 모듈에서 처리
+win	26:18	입력 tensor 너비	이 모듈 본문에 직접 사용하는 동작 없음; 소유 모듈에서 처리
+hout	35:27	출력 tensor 높이	최종 출력 pixel 확인 문맥
+wout	44:36	출력 tensor 너비	최종 출력 pixel 확인 문맥
+cin	53:45	입력 채널 수	채널 batch 수와 tail lane
+cout	62:54	출력 채널 수	이 모듈 본문에 직접 사용하는 동작 없음; 소유 모듈에서 처리
+stride	64:63	convolution stride	이 모듈 본문에 직접 사용하는 동작 없음; 소유 모듈에서 처리
+dilation	66:65	convolution dilation	이 모듈 본문에 직접 사용하는 동작 없음; 소유 모듈에서 처리
+pad	68:67	convolution padding	이 모듈 본문에 직접 사용하는 동작 없음; 소유 모듈에서 처리
+shift	74:69	재양자화 right shift	공유 requant 경로의 right shift
+weight_offset	106:75	packed weights 시작 byte offset	이 모듈 본문에 직접 사용하는 동작 없음; 소유 모듈에서 처리
+param_offset	124:107	operation payload 내 param 시작 byte offset	이 모듈 본문에 직접 사용하는 동작 없음; 소유 모듈에서 처리
+dma_bytes	144:125	정렬을 포함한 operation DMA byte 수	이 모듈 본문에 직접 사용하는 동작 없음; 소유 모듈에서 처리
+stage_id	148:145	stage 번호 0..15	이 모듈 본문에 직접 사용하는 동작 없음; 소유 모듈에서 처리
+reserved	255:149	항상 0	재정의 금지
+kind/mode의 값은 위 표의 정의를 사용한다. 미사용 descriptor 필드가 있다고 해당 값을 임의로 재해석하거나 포트를 제거하지 않는다.
+
+[공용 자원 예산: 구조 배정이며 합성/실기 검증값 아님]
+항목	DSP	RAMB36	근거
+PW MAC+requant	132	52	weight RAM48+param4 포함
+DW MAC+requant	33	5	DW weights4+params1
+conv0 MAC+requant	28	6	W4+params1+line1
+DW line ring	0	12	256bit×1280depth
+FIFO/보조	0	8	FM read/write,IMAGE,skid 여유
+CNN 설계합계	193	83	합성예측 아닌 구조별배정
+CNN hard cap	196	90	초과시구현수정
+외부 IP 예산	16	40	카메라/HDMI/VDMA/AXIDMA3/기타
+총 물리한계	220	140	XC7Z020;BRAM은RAMB36환산
+자원 표의 weight/param RAM은 weight_bram_swap_fsm 소유분을 PE에 귀속하여 표시한 값이므로 합산 때 중복 계상하지 않는다.
+
+[포트 전체: 순서와 기술 정의 유지]
+신호명	방향	비트폭	연결 대상	의미	타이밍	Reset
+clk	in	1	cnn_accelerator_top	100MHz 단일 CNN 클럭 모든 상태와 stream handshake는 이 클럭의 상승 에지에서 처리한다.	상승 에지	-
+rst_n	in	1	cnn_accelerator_top	동기 active-low reset; 4cycle 이상 assert, 데이터 RAM 전체 clear 금지 낮은 값이 상승 에지에서 샘플되면 제어·유효 상태를 초기화한다.	clk 동기	-
+cfg_valid	in	1	top_level_fsm	새 operation 설정 새 설정 payload가 유효함을 표시하고 ready와 함께 수락될 때까지 설정을 유지한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+cfg_ready	out	1	top_level_fsm	idle 일 때만 1 idle 상태에서 설정을 받을 수 있음을 표시하며 valid와 동시에 1일 때만 수락한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+cfg_desc	in	256	top_level_fsm	공용 descriptor; 수락 후 완료까지 고정 대응하는 설정 handshake에서 256bit를 래치하고 해당 작업이 끝날 때까지 유지한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+done	out	1	top_level_fsm	마지막 출력 accept 후 다음 cycle 1cycle pulse 이 완료 이벤트는 수신 제어기가 기억하며 구체적인 mode별 완료 조건은 타이밍 요구사항을 따른다.	마지막 출력 accept 기준	0
+fault	out	1	top_level_fsm	protocol/range/count 위반 sticky; reset 으로 clear 위반을 발견하면 상태를 유지하여 새 작업을 차단하고 reset으로 해제한다.	오류 검출 다음 cycle	0
+s_tap_data	in	256	line_buffer	32×UINT8 spatial tap 해당 유효 신호와 같은 cycle에 전달하며 명세의 byte 순서·부호·lane 배치를 보존한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+s_tap_valid	in	1	line_buffer	payload 유효; ready 와 무관하게 assert 가능 대응 payload가 유효함을 표시한다. 수신 ready를 기다리는 동안 payload를 바꾸지 않는다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+s_tap_ready	out	1	line_buffer	수신 여유 대응 valid와 동시에 1인 상승 에지에서만 payload를 수락한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+s_tap_mask	in	32	line_buffer	lane 별 유효. bit0=lane0. 미사용 data=0 현재 beat의 실제 채널만 처리하며 mask가 0인 lane을 누산하거나 저장하지 않는다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+s_tap_tag	in	64	line_buffer	공용 TAG64; 데이터와 같은 cycle 에 이동 현재 payload의 좌표·batch/group·종료 정보를 같은 handshake로 전달한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+m_pixel_data	out	256	pointwise_conv_pe	32×UINT8 DW result 해당 유효 신호와 같은 cycle에 전달하며 명세의 byte 순서·부호·lane 배치를 보존한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+m_pixel_valid	out	1	pointwise_conv_pe	payload 유효; ready 와 무관하게 assert 가능 대응 payload가 유효함을 표시한다. 수신 ready를 기다리는 동안 payload를 바꾸지 않는다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+m_pixel_ready	in	1	pointwise_conv_pe	수신 여유 대응 valid와 동시에 1인 상승 에지에서만 payload를 수락한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+m_pixel_mask	out	32	pointwise_conv_pe	lane 별 유효. bit0=lane0. 미사용 data=0 현재 beat의 실제 채널만 처리하며 mask가 0인 lane을 누산하거나 저장하지 않는다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+m_pixel_tag	out	64	pointwise_conv_pe	공용 TAG64; 데이터와 같은 cycle 에 이동 현재 payload의 좌표·batch/group·종료 정보를 같은 handshake로 전달한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_w_req_valid	out	1	weight_bram_swap_fsm	읽기요청 대응 payload가 유효함을 표시한다. 수신 ready를 기다리는 동안 payload를 바꾸지 않는다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_w_req_ready	in	1	weight_bram_swap_fsm	요청수락 대응 valid와 동시에 1인 상승 에지에서만 payload를 수락한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_w_req_addr	out	7	weight_bram_swap_fsm	record index 현재 batch와 tap으로 batch*9+tap 주소를 지정한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_w_rsp_valid	in	1	weight_bram_swap_fsm	1cycle 후 response 대응 payload가 유효함을 표시한다. 수신 ready를 기다리는 동안 payload를 바꾸지 않는다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_w_rsp_ready	out	1	weight_bram_swap_fsm	response 수락 대응 valid와 동시에 1인 상승 에지에서만 payload를 수락한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_w_rsp_data	in	256	weight_bram_swap_fsm	weight 또는 param 동일 batch/tap에 대응하는 32채널 weight를 전달한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_p_req_valid	out	1	weight_bram_swap_fsm	읽기요청 대응 payload가 유효함을 표시한다. 수신 ready를 기다리는 동안 payload를 바꾸지 않는다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_p_req_ready	in	1	weight_bram_swap_fsm	요청수락 대응 valid와 동시에 1인 상승 에지에서만 payload를 수락한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_p_req_addr	out	9	weight_bram_swap_fsm	record index 현재 batch와 lane으로 batch*32+lane 주소를 지정한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_p_rsp_valid	in	1	weight_bram_swap_fsm	1cycle 후 response 대응 payload가 유효함을 표시한다. 수신 ready를 기다리는 동안 payload를 바꾸지 않는다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_p_rsp_ready	out	1	weight_bram_swap_fsm	response 수락 대응 valid와 동시에 1인 상승 에지에서만 payload를 수락한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+dw_p_rsp_data	in	64	weight_bram_swap_fsm	weight 또는 param 요청한 채널의 LE64 bias_accum/M을 공유 requant 경로에 전달한다.	valid && ready 에서 수락; stall 동안 payload 유지	0
+
+[모듈 세부 계약 전문: 기존 CNN-v4.0 기술 조건 보존]
+## 역할과 순서
+line_buffer tap256 스트림을 받아 32 채널 독립 MAC 을 수행한다. input order 는 한 output pixel 의 batch0 tap0..8, batch1 tap0..8 순이다. 채널 간 합산하지 않는다. 매 tap 입력과 weight response 를 한 쌍으로 수락한다.
+weight address=batch*9+tap, word32bytes. 래치한 batch 와 tap 에 대해 w_req 를 보내고 응답 준비 후 입력 tap 을 수락하거나 두 개를 각각 1-slot skid buffer 로 결합한다. 다른 태그와 결합하면 fault. weight 는 output pixel 이 바뀌어도 같은 batch/tap 을 재사용한다.
+## 상태와 산술
+IDLE→TAPS→DRAIN_MAC→QUANT32→EMIT→NEXT. signed9 activation(0..127 zero extend)×signed8 weight, DSP32 개. tap0 에서 accumulator=product, tap1..8 에서 add. accumulator signed24. 최종 tap 반영 후 각 lane bias 를 더한다.
+requant DSP1 개를 32lane 에 시간 공유한다. param_addr=batch*32+lane 으로 {bias32,M32}를 read1, biasadd1, multiply1, RNE1, clip1. lane II=1 로 32 개를 발행하고 끝 pipeline 을 drain 한 뒤 256bit 에 모은다. 보수적으로 batch 당 48 enabled cycles 를 예약한다(9tap 포함, 공급/출력 stall 제외). 미사용 lane 은 param read 생략 가능하지만 일정은 32lane 유지, data=0.
+모든 output lane 준비 후 m_valid=1, PW ready 까지 data/tag/mask hold. 다음 batch 는 output accept 이후 시작. batch_last 는 마지막 유효 channel batch 에만. done 은 마지막 픽셀 마지막 batch output accept 뒤 1cycle.
+## 리소스와 시험
+총 33DSP, window 전체 저장 대신 입력 tap latch 와 32 accumulator. parameter RAM 은 가중치 모듈 소유. signed multiply, bias0 이지만 weight 가 nonzero 인 채널, 마지막 tap 포함, 채널 48 tailmask, 출력 stall 에서 중복 누적 없음이 필수.
+
+[레이턴시·reset·stall·종료 요구사항]
+상태 순서는 IDLE→TAPS→DRAIN_MAC→QUANT32→EMIT→NEXT다. lane별 양자화는 param read1+bias add1+multiply1+RNE1+clip1이고 lane issue II=1이다. 32lane을 발행하고 pipeline을 drain한다. 9tap을 포함하여 batch당 48 enabled cycles를 보수적으로 예약하며 공급·출력 stall은 제외한다. 모든 lane 준비 후 m_valid를 내고 PW가 수락할 때까지 data/tag/mask를 유지한다. 다음 batch는 output accept 이후 시작한다. 마지막 pixel·batch accept 뒤 1cycle done이다.
+
+[반드시 그려 검증할 파형 시나리오]
+1. tap0부터 tap8까지 입력과 weight 응답에 서로 다른 지연을 넣어 같은 batch/tap만 결합되는지 본다.
+2. tap0 초기화와 tap8 반영 후 bias/quant 시작 시점을 관찰하여 마지막 곱이 누락되지 않는지 본다.
+3. 32lane 공유 requant의 read/add/multiply/RNE/clip 지연과 lane II=1을 관찰한다.
+4. Cin48 마지막 batch와 PW output stall을 조합하여 tail 0, batch_last, 다음 batch 시작 및 done을 확인한다.
+
+[수락 체크리스트]
+- tap0 대입과 tap1..8 누산을 구분하고 채널 간 합산을 하지 않는다.
+- bias가 0이어도 nonzero weight의 MAC을 생략하지 않는다.
+- RNE와 body [0,127] 포화를 마지막 탭 반영 후 수행한다.
+- 입력 탭과 weight 응답의 태그를 맞추고 mismatch는 fault로 남긴다.
+- 출력 stall에서 재누산하지 않고 다음 batch를 조기에 시작하지 않는다.
+- Cin48 tail mask와 미사용 lane의 0을 검사한다.
+- signed multiply와 양·음 반올림 경계를 포함한다.
+- line_buffer의 tap 순서 및 PW의 32채널 입력 계약과 대조한다.
+- 33 DSP와 가중치 모듈 소유 param RAM을 중복 배정하지 않는다.
+
+[산출물]
+1. depthwise_conv_pe.v: 위 포트와 고정 파라미터를 사용한 합성 가능한 Verilog-2001 RTL.
+2. tb_depthwise_conv_pe.v: 위 기능·프로토콜·경계조건·통합 연결을 검사하는 self-checking Verilog-2001 테스트벤치.
+3. 위 4개 시나리오 각각의 VCD 파형, 사람이 읽을 수 있는 타이밍 그림, 실행 명령과 가공하지 않은 전체 로그.
+4. 검사 결과표: 예상값/실제값/판정, no-stall latency와 stall 복구, 포트 일치 여부. 산술 모듈은 정수 reference와 bit 단위 비교. 비산술 모듈은 주소·byte·태그·순서·완료 조건을 비교.
+5. 합성 도구를 사용할 수 있으면 DSP/RAMB36/LUT 및 timing 결과. 도구·원본 모델이 없으면 해당 항목을 미검증으로 표시하고 측정값을 추정으로 대신하지 않는다.
+완료 기준은 테스트 통과와 명세 일치다. 아래 템플릿의 TODO를 남겨 둔 상태를 구현 완료라고 보고하지 마라.
+
+[확인 요청 처리]
+외부 포트/타이밍 충돌, 원본 실행 대조 오류, 전체 설계에 영향을 주는 모호함, 공용 자원 예산 변경은 기초 설계 AI에 확인 요청한다.
+영향 없는 사소한 내부 구현 선택은 담당자가 결정할 수 있다. 중앙 확정 전 문제 부분을 보류하거나 "미확정" 잠정 구현으로 분리한다.
+다음 형식으로 기초 설계 AI에게 전달할 확인 요청 보고서를 작성하라.
+주장과 확인된 사실을 구분하고, 증거가 없으면 "미확인"으로 표시하라.
+정해지지 않은 사양을 확정값으로 구현하거나 다른 페이지를 자동 수정하지 마라.
+
+🚨 이슈 [번호] — depthwise_conv_pe: [구체적 제목]
+1. 요청 정보
+   - 모듈 / 담당 / 기준 버전: depthwise_conv_pe / [담당자] / CNN-v4.0
+   - 상태: 확인 요청 / 미확정
+   - 유형: 인터페이스 충돌 / 원본 대조 오류 / 구현 불가능한 모호함 / 공용 자원 영향
+2. 현재 명세
+   - 페이지 URL, 섹션, 포트명 또는 필드명:
+   - 문제가 되는 원문 문장·표 행 전체:
+3. 발견 내용과 재현 근거
+   - 실제 실행 명령, 입력 파일·버전, 환경, 재현 순서:
+   - 기대 동작과 실제 관찰 결과:
+   - 계산식·비트 배치·상수 대조와 원본 코드 위치:
+   - 첨부 raw 전체 로그와 함수/모듈 전체 파일명:
+4. 영향 범위
+   - 영향받는 모듈 페이지 및 연결 포트:
+   - 공용 규칙, 통합 계약, 모듈 담당표, 사용자 포트명세 XLSX의 시트/행:
+   - Python 모델, packer, interface.json/manifest, ROM, 테스트 영향:
+   - DSP/BRAM·레이턴시·대역폭 변화: 기존 / 제안 / 근거 / 미확인 사항
+5. 해결 방안 비교
+   - 방안 A: 정확한 수정문, 장점, 비용, 호환성
+   - 방안 B(있는 경우): 정확한 수정문, 장점, 비용, 호환성
+   - 담당자 추천과 이유(중앙 확정 전 제안 상태):
+6. 중앙 확인 요청
+   - 독립 검증을 요청하는 주장:
+   - 선택·확정이 필요한 질문:
+   - 제안된 검증 시나리오와 통과 기준:
+7. 첨부 목록 및 구현 상태
+   - 가공하지 않은 전체 로그, 영향 함수/모듈 전체, 텍스트 제안 문서:
+   - 보류한 부분 또는 "미확정"으로 분리한 잠정 구현:
+   - 영향을 받지 않아 계속 진행할 수 있는 부분:
+8. 중앙 처리 결과(요청자는 비워 둠)
+   - 재검증 결과 / 확정안과 이유 / 영향 범위 / 반영 파일·페이지 목록 / 재검증 결과
+담당자가 이 보고서와 첨부파일을 중앙 창구에 직접 전달할 수 있게 완성하라.
+원본 raw 전체 로그, 문제가 되는 함수/모듈 전체, Markdown 수정안을 모듈·이슈가 드러나는 파일명으로 첨부하라.
+중앙은 근거를 독립 검증하고 전체 영향 페이지를 확인한 뒤 확정안과 이유를 남긴다. 확정 시 관련 Notion·사용자 XLSX·공용 규칙·필요한 모델/ROM을 함께 갱신하며, 그 전에는 제안을 승인된 사양으로 간주하지 않는다.
+

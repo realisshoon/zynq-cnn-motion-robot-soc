@@ -1,0 +1,547 @@
+{
+  "version": "CNN-v4.0",
+  "geometry_status": "IMPLEMENTATION_BASELINE_NOT_CHECKPOINT_ATTESTED",
+  "joints": [
+    {
+      "joint": 0,
+      "grid_row": 7,
+      "grid_col": 8,
+      "offset_y": -85,
+      "offset_x": 266,
+      "x": 703,
+      "y": 260,
+      "score_raw": 91,
+      "valid": true,
+      "word": 1527792319
+    },
+    {
+      "joint": 1,
+      "grid_row": 6,
+      "grid_col": 10,
+      "offset_y": 178,
+      "offset_x": -381,
+      "x": 710,
+      "y": 242,
+      "score_raw": 54,
+      "valid": true,
+      "word": 906961606
+    },
+    {
+      "joint": 2,
+      "grid_row": 7,
+      "grid_col": 8,
+      "offset_y": -193,
+      "offset_x": 184,
+      "x": 683,
+      "y": 234,
+      "score_raw": 96,
+      "valid": true,
+      "word": 1611571883
+    },
+    {
+      "joint": 3,
+      "grid_row": 7,
+      "grid_col": 9,
+      "offset_y": -153,
+      "offset_x": 133,
+      "x": 751,
+      "y": 244,
+      "score_raw": 13,
+      "valid": true,
+      "word": 219103983
+    },
+    {
+      "joint": 4,
+      "grid_row": 7,
+      "grid_col": 8,
+      "offset_y": -135,
+      "offset_x": 20,
+      "x": 645,
+      "y": 248,
+      "score_raw": 32,
+      "valid": true,
+      "word": 537887365
+    },
+    {
+      "joint": 5,
+      "grid_row": 8,
+      "grid_col": 10,
+      "offset_y": 34,
+      "offset_x": -18,
+      "x": 796,
+      "y": 368,
+      "score_raw": 93,
+      "valid": true,
+      "word": 1561789212
+    },
+    {
+      "joint": 6,
+      "grid_row": 8,
+      "grid_col": 7,
+      "offset_y": -6,
+      "offset_x": 135,
+      "x": 592,
+      "y": 359,
+      "score_raw": 103,
+      "valid": true,
+      "word": 1729524304
+    },
+    {
+      "joint": 7,
+      "grid_row": 9,
+      "grid_col": 11,
+      "offset_y": 94,
+      "offset_x": 45,
+      "x": 891,
+      "y": 462,
+      "score_raw": 64,
+      "valid": true,
+      "word": 1075635067
+    },
+    {
+      "joint": 8,
+      "grid_row": 9,
+      "grid_col": 6,
+      "offset_y": 183,
+      "offset_x": -4,
+      "x": 479,
+      "y": 483,
+      "score_raw": 68,
+      "valid": true,
+      "word": 1142829535
+    },
+    {
+      "joint": 9,
+      "grid_row": 9,
+      "grid_col": 12,
+      "offset_y": 78,
+      "offset_x": -148,
+      "x": 925,
+      "y": 458,
+      "score_raw": 26,
+      "valid": true,
+      "word": 438084509
+    },
+    {
+      "joint": 10,
+      "grid_row": 10,
+      "grid_col": 6,
+      "offset_y": -123,
+      "offset_x": -156,
+      "x": 443,
+      "y": 491,
+      "score_raw": 26,
+      "valid": true,
+      "word": 438219195
+    },
+    {
+      "joint": 11,
+      "grid_row": 12,
+      "grid_col": 9,
+      "offset_y": -142,
+      "offset_x": 185,
+      "x": 764,
+      "y": 646,
+      "score_raw": 87,
+      "valid": true,
+      "word": 1462264572
+    },
+    {
+      "joint": 12,
+      "grid_row": 12,
+      "grid_col": 8,
+      "offset_y": -164,
+      "offset_x": -125,
+      "x": 610,
+      "y": 641,
+      "score_raw": 107,
+      "valid": true,
+      "word": 1797788258
+    },
+    {
+      "joint": 13,
+      "grid_row": 14,
+      "grid_col": 9,
+      "offset_y": -54,
+      "offset_x": 114,
+      "x": 0,
+      "y": 0,
+      "score_raw": 17,
+      "valid": false,
+      "word": 285212672
+    },
+    {
+      "joint": 14,
+      "grid_row": 14,
+      "grid_col": 8,
+      "offset_y": -57,
+      "offset_x": 28,
+      "x": 0,
+      "y": 0,
+      "score_raw": 38,
+      "valid": false,
+      "word": 637534208
+    },
+    {
+      "joint": 15,
+      "grid_row": 15,
+      "grid_col": 8,
+      "offset_y": -45,
+      "offset_x": 20,
+      "x": 0,
+      "y": 0,
+      "score_raw": -50,
+      "valid": false,
+      "word": 3456106496
+    },
+    {
+      "joint": 16,
+      "grid_row": 15,
+      "grid_col": 8,
+      "offset_y": -52,
+      "offset_x": 6,
+      "x": 0,
+      "y": 0,
+      "score_raw": -40,
+      "valid": false,
+      "word": 3623878656
+    }
+  ],
+  "markers": [
+    {
+      "found": false,
+      "count": 0,
+      "x": 0,
+      "y": 0,
+      "word": 0
+    },
+    {
+      "found": false,
+      "count": 0,
+      "x": 0,
+      "y": 0,
+      "word": 0
+    }
+  ],
+  "layers": [
+    {
+      "name": "features.conv0.conv",
+      "shape": [
+        128,
+        128,
+        24
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "513edfd90ba213f16f5306deff310ab32dc65f37ff92f27ea5de4c8826a46fa7"
+    },
+    {
+      "name": "features.conv1.depthwise",
+      "shape": [
+        128,
+        128,
+        24
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "d14a8648a1c9d44cf9a7184640826067412b01b84b9838d69449220e6e07130d"
+    },
+    {
+      "name": "features.conv1.pointwise",
+      "shape": [
+        128,
+        128,
+        48
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "8312d5afed89643a2d3e7c4863d404f73ce0282b4539b9ca256b45c0cb7ab9b3"
+    },
+    {
+      "name": "features.conv2.depthwise",
+      "shape": [
+        64,
+        64,
+        48
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "d61dfd248250ca4926d2a64ce35a9501f0f3379996bcc99e81184256283bd1d4"
+    },
+    {
+      "name": "features.conv2.pointwise",
+      "shape": [
+        64,
+        64,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "20bf2218973a2396186efa7acbc885dfa6e9f4179ad65e2d4af2373c47ef8886"
+    },
+    {
+      "name": "features.conv3.depthwise",
+      "shape": [
+        64,
+        64,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "05ee1b09899935084e43ba543d2887bc3a9a26e9c8835206c3c11ca0b5a1fa88"
+    },
+    {
+      "name": "features.conv3.pointwise",
+      "shape": [
+        64,
+        64,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "40362fd79f983928729749c62d0e67b6c1fa93dff228bb01d753c487e41818dc"
+    },
+    {
+      "name": "features.conv4.depthwise",
+      "shape": [
+        32,
+        32,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "0473d665fffae0303b9afd3b6c6ef808b44b3327204f8803275e3ed4dd77ed1e"
+    },
+    {
+      "name": "features.conv4.pointwise",
+      "shape": [
+        32,
+        32,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "2740fa86284f79618edc2535373ce31f39ca9be4be22f2e3c214ccdfc3c7fbcb"
+    },
+    {
+      "name": "features.conv5.depthwise",
+      "shape": [
+        32,
+        32,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "74e6031591cda9f25505c98c1477ab386a6db8342ca577c8cfa18f6d65225db7"
+    },
+    {
+      "name": "features.conv5.pointwise",
+      "shape": [
+        32,
+        32,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "88e2b5a791c834c8e135571c0a018f7a5b17ac9742bf9b421a6a2fe2ae2f05bc"
+    },
+    {
+      "name": "features.conv6.depthwise",
+      "shape": [
+        16,
+        16,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "698641f69fcd8b382b09878bebb5520b1564a14ca8824bbbabfadf536a0d5864"
+    },
+    {
+      "name": "features.conv6.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "ac57ec8b84b59c815809b6ef567d975c969f2dcbfd3e194d51e9be506601f216"
+    },
+    {
+      "name": "features.conv7.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "536db96ba60245094155a29b5e6632b890fb3a5a22af1cdc857499f85be901f5"
+    },
+    {
+      "name": "features.conv7.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "bfd7930e91f43bdb7c572856dd3bebc65d590e35be6a137c481b78fcc6d216a4"
+    },
+    {
+      "name": "features.conv8.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "5b5ddcb6815a8013fb58004e0e7d71ee906b39bf6735389ee63b275270bf8b37"
+    },
+    {
+      "name": "features.conv8.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "70ad3a0c520da88ed404592ed4e7368d9a9418c4673c9bd5a64ae28fd1d8e5f3"
+    },
+    {
+      "name": "features.conv9.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "593b1e9076328180f66dadae29b467b19860197e65cf874bf7d1c7745b468ab8"
+    },
+    {
+      "name": "features.conv9.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "a13445d2442c2d5b020cd9676d6ecdb56d6ff20a014e86572bf006462dc753a8"
+    },
+    {
+      "name": "features.conv10.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "84f8f6140726724c9e2feffd84399a8e8b928a4164c0842d28e44e4d984a3c02"
+    },
+    {
+      "name": "features.conv10.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "8800508d78a51e1771aa4e90f1f9623738919836daa8f65fdcc65d54990e4433"
+    },
+    {
+      "name": "features.conv11.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "f5df291eda6807d6695732db0cf34065a39d0e586adbf86aed5ca8f6fc2ff474"
+    },
+    {
+      "name": "features.conv11.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "5037607c9df016e7198b1e3aa5136089977a1f7b67185c13fafca9958613db39"
+    },
+    {
+      "name": "features.conv12.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "fd78d39e460ec79a8925cd9766a31ddcee9778b04077cc8dd74843cf8298778e"
+    },
+    {
+      "name": "features.conv12.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "36cdb3cf669b8ecde5f3017f7b4d4f3bd5b20f86181cab0d6352bc4c698c8f9a"
+    },
+    {
+      "name": "features.conv13.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "d16b7ad8f629ea9d13c6ddc3f6f3ae6a956bc842e6bd8f9c4e3b646be345cb4f"
+    },
+    {
+      "name": "features.conv13.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "dc63d3db60e1244018a8a580049eb79a13d7640e68d4f6c03068c4dfeb2f3f5a"
+    },
+    {
+      "name": "heatmap",
+      "shape": [
+        16,
+        16,
+        17
+      ],
+      "min": -128,
+      "max": 107,
+      "sha256": "cbebeb17d764c01d8f29cf9411eceb4a6c36e36a2478fad97659ecf32fab1807"
+    },
+    {
+      "name": "offset",
+      "shape": [
+        16,
+        16,
+        34
+      ],
+      "min": -1083,
+      "max": 646,
+      "sha256": "f15209d472853f073fe1e0eeda2cce4ffeefbb5d57633cac24e5ddc087765892"
+    }
+  ]
+}
