@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "ko-KR"
+
+reviews:
+  profile: "assertive"
+  high_level_summary: true
+  review_status: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "dev/cnn"
+      - "dev/robot"
+
+  path_instructions:
+    - path: "CNN/**"
+      instructions: |
+        FPGA/CNN RTL 및 검증 관점에서 리뷰한다.
+        기능 오류, 합성 가능성, signed/unsigned 및 bit width, overflow/truncation,
+        pipeline data-valid 정렬, reset, FSM/counter 경계 조건을 우선 확인한다.
+        AXI4-Stream이 있으면 valid/ready handshake와 backpressure 중 payload 안정성을 확인한다.
+        Python Golden Model 관련 변경은 INT8/INT16/INT32 dtype, saturation/clipping,
+        rounding, tensor shape/channel ordering, padding/stride와 RTL bit-exact 대응을 확인한다.
+        단순 스타일보다 실제 기능 오류, 합성/timing 위험, 검증 누락을 우선 지적한다.
+
+    - path: "robot_arm/**"
+      instructions: |
+        임베디드 로봇팔 제어 관점에서 리뷰한다.
+        포인터/배열 범위, 초기화, servo angle clamp, PWM 범위 및 단위 변환,
+        좌표-관절각 변환, 상태 전이, overflow/underflow, 비정상 입력 처리와
+        하드웨어에 위험할 수 있는 급격한 출력 변화를 우선 확인한다.
+        단순 스타일보다 실제 로봇 동작 오류 가능성과 안전한 제어 흐름을 우선 지적한다.
+
+chat:
+  auto_reply: true
