@@ -2,7 +2,7 @@
   "version": "CNN-v4.0",
   "weights_sha256": "a4b6fb22f95912cf196f2d2e6214dc8ff6c998785b670d55cd14be95f580bced",
   "geometry_status": "IMPLEMENTATION_BASELINE_NOT_CHECKPOINT_ATTESTED",
-  "geometry_note": "dilation=1/padding=1 selected from existing written specification. Run export_geometry.py against actual float model; hardware supports d=1 or 2 without interface change.",
+  "geometry_note": "CNN-v4.0 line_buffer/DW geometry is dilation=1 only, padding=1, stride=1/2. All 29 canonical operations use dilation=1. line_buffer rejects dilation!=1 at cfg accept without starting the operation and sets sticky fault.",
   "clock_hz": 100000000,
   "w_in": 32,
   "w_out": 4,
