@@ -34,6 +34,21 @@ static int output_hold_or_invalid(
 
     memset(target, 0, sizeof(*target));
     target->valid = 0U;
+    ctx->last_target_valid = 0U;
+
+    /*
+     * 장시간 Major dropout 동안 손목/손 geometry는 stale해질 수 있으므로
+     * hand 쪽 3D/normal history만 다음 정상 frame에서 다시 잡는다.
+     *
+     * Body frame과 Major angle history는 유지한다. 측면에서 Shoulder가 다시
+     * 잡히는 첫 frame은 오히려 불안정할 수 있으므로, 이전 안정 body frame에서
+     * 천천히 따라가는 편이 갑작스러운 Base 축 점프를 줄인다.
+     */
+    ctx->hand_angle_valid = 0U;
+    ctx->prev_hand_normal_valid = 0U;
+    ctx->prev_roll_raw_valid = 0U;
+    ctx->finger_pose3d_valid = 0U;
+
     return -1;
 }
 
@@ -154,7 +169,7 @@ int pose_mapping_update(
     /* ------------------------------------------------------------
      * Step 1. CNN Landmark Update
      * ------------------------------------------------------------ */
-    pm_update_all_landmarks(ctx, pose, dt_age_sec, dt_filter_sec);
+    pm_update_all_landmarks(ctx, pose, dt_filter_sec);
 
     /*
      * Shoulder / Elbow / Wrist 중 하나라도 현재 frame에서 빠졌다면
@@ -162,7 +177,6 @@ int pose_mapping_update(
      * 짧은 시간 동안 마지막 정상 Target만 유지한다.
      */
     if (!pm_major_all_fresh(ctx)) {
-        (void)pm_major_all_usable(ctx);
         return output_hold_or_invalid(ctx, target);
     }
 
