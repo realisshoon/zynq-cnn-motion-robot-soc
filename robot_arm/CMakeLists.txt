@@ -6,6 +6,9 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
+# ============================================================
+# 공통 빌드 설정
+# ============================================================
 function(configure_robot_target target_name)
     target_include_directories(${target_name}
         PUBLIC
@@ -20,17 +23,44 @@ function(configure_robot_target target_name)
     endif()
 endfunction()
 
+# ============================================================
+# Agent 1 : Human Pose Interpretation / Joint Target Generation
+# ============================================================
 add_library(human_target_angle STATIC
     src/human_target_angle/pose_mapping.c
+    src/human_target_angle/pose_math.c
+    src/human_target_angle/pose_tracking.c
+    src/human_target_angle/pose_reconstruction.c
+    src/human_target_angle/pose_joint.c
+    src/human_target_angle/pose_hand.c
 )
 configure_robot_target(human_target_angle)
 
+# pose_mapping_internal.h는 Agent1 내부 전용 헤더다.
+target_include_directories(human_target_angle
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/human_target_angle
+)
+
+# Agent1은 sqrtf/atan2f/acosf/expf/hypotf 등을 사용한다.
+if(UNIX OR MINGW)
+    target_link_libraries(human_target_angle PUBLIC m)
+endif()
+
+# ============================================================
+# Agent 2 : Robot Calibration / Motion
+# 팀원 영역 - 기존 설정 유지
+# ============================================================
 add_library(robot_calibration STATIC
     src/robot_calibration/kinematics_2d.c
     src/robot_calibration/motion_control.c
 )
 configure_robot_target(robot_calibration)
 
+# ============================================================
+# Agent 3 : Output Controller
+# 팀원 영역 - 기존 설정 유지
+# ============================================================
 add_library(output_controller STATIC
     src/output_controller/output_control.c
     src/output_controller/servo_control.c
@@ -40,10 +70,14 @@ add_library(output_controller STATIC
 )
 configure_robot_target(output_controller)
 
+# ============================================================
+# Main Application
+# ============================================================
 add_executable(robot_arm_2d_control
     src/main.c
 )
 configure_robot_target(robot_arm_2d_control)
+
 target_link_libraries(robot_arm_2d_control
     PRIVATE
         human_target_angle
@@ -51,30 +85,62 @@ target_link_libraries(robot_arm_2d_control
         output_controller
 )
 
+# ============================================================
+# Tests
+# ============================================================
 include(CTest)
 
 if(BUILD_TESTING)
-    add_executable(test_pose_mapping tests/human_target_angle/test_pose_mapping.c)
+    # Agent 1
+    add_executable(test_pose_mapping
+        tests/human_target_angle/test_pose_mapping.c
+    )
     configure_robot_target(test_pose_mapping)
     target_link_libraries(test_pose_mapping PRIVATE human_target_angle)
     add_test(NAME pose_mapping COMMAND test_pose_mapping)
 
-    add_executable(test_kinematics_2d tests/robot_calibration/test_kinematics_2d.c)
+    add_executable(test_pose_visual
+    tests/human_target_angle/test_pose_visual.c
+    )
+    configure_robot_target(test_pose_visual)
+    target_link_libraries(test_pose_visual PRIVATE human_target_angle)
+
+    add_executable(test_pose_csv
+    tests/human_target_angle/test_pose_csv.c
+    )
+
+    configure_robot_target(test_pose_csv)
+
+    target_link_libraries(test_pose_csv
+        PRIVATE human_target_angle
+    )
+
+    # Agent 2 - 팀원 영역
+    add_executable(test_kinematics_2d
+        tests/robot_calibration/test_kinematics_2d.c
+    )
     configure_robot_target(test_kinematics_2d)
     target_link_libraries(test_kinematics_2d PRIVATE robot_calibration)
     add_test(NAME kinematics_2d COMMAND test_kinematics_2d)
 
-    add_executable(test_servo_control tests/output_controller/test_servo_control.c)
+    # Agent 3 - 팀원 영역
+    add_executable(test_servo_control
+        tests/output_controller/test_servo_control.c
+    )
     configure_robot_target(test_servo_control)
     target_link_libraries(test_servo_control PRIVATE output_controller)
     add_test(NAME servo_control COMMAND test_servo_control)
 
-    add_executable(test_record tests/output_controller/test_record.c)
+    add_executable(test_record
+        tests/output_controller/test_record.c
+    )
     configure_robot_target(test_record)
     target_link_libraries(test_record PRIVATE output_controller)
     add_test(NAME motion_record COMMAND test_record)
 
-    add_executable(test_output_control tests/output_controller/test_output_control.c)
+    add_executable(test_output_control
+        tests/output_controller/test_output_control.c
+    )
     configure_robot_target(test_output_control)
     target_link_libraries(test_output_control PRIVATE output_controller)
     add_test(NAME output_control COMMAND test_output_control)
