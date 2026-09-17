@@ -1,6 +1,6 @@
 {
   "version": "CNN-v4.0",
-  "weights_sha256": "141b1a941a94b9e96a529e0322f6799e57d43bb43d7cd67982aaeee6bbaccab9",
+  "weights_sha256": "a4b6fb22f95912cf196f2d2e6214dc8ff6c998785b670d55cd14be95f580bced",
   "geometry_status": "IMPLEMENTATION_BASELINE_NOT_CHECKPOINT_ATTESTED",
   "geometry_note": "dilation=1/padding=1 selected from existing written specification. Run export_geometry.py against actual float model; hardware supports d=1 or 2 without interface change.",
   "clock_hz": 100000000,
