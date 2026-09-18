@@ -98,12 +98,17 @@ module feature_map_io (
                      !write_valid_reg && write_count != 0;
     wire write_accept = write_valid_reg && m_dma_write_ready;
     wire body_accept = s_body_valid && s_body_ready;
+    wire [4:0] expected_body_op_id =
+        (op_id_reg == 5'd0) ? 5'd0 : (op_id_reg + 5'd1);
+    wire body_tag_mismatch = body_accept &&
+        (s_body_tag[37:33] != expected_body_op_id);
     wire [2:0] body_bytes = {2'd0, s_body_mask[0]} +
                             {2'd0, s_body_mask[1]} +
                             {2'd0, s_body_mask[2]} +
                             {2'd0, s_body_mask[3]};
     wire write_lane_step = active && write_path_en && !fault_reg &&
-                           body_busy && write_count != 10'd512;
+                           !body_tag_mismatch && body_busy &&
+                           write_count != 10'd512;
     wire write_byte_step = write_lane_step && body_mask_reg[body_lane];
     wire [7:0] write_byte = body_data_reg[body_lane * 16 +: 8];
     reg [63:0] packed_word;
@@ -127,7 +132,7 @@ module feature_map_io (
                           (read_count == 0) && !read_word_valid &&
                           !pixel_valid_reg && !read_frame_generated;
     wire protocol_fault = active && (
-        dma_error ||
+        dma_error || body_tag_mismatch ||
         (read_push && (s_dma_read_keep != 8'hff ||
                        read_beat_end > {1'b0, src_bytes_reg} ||
                        s_dma_read_last !=
@@ -160,7 +165,7 @@ module feature_map_io (
     assign s_body_ready = active && write_path_en && !fault_reg &&
                           !body_busy && write_count != 10'd512 &&
                           write_input_bytes < {1'b0, dst_bytes_reg};
-    assign m_dma_write_data = rst_n ? write_word : 64'd0;
+    assign m_dma_write_data = (rst_n && write_valid_reg) ? write_word : 64'd0;
     assign m_dma_write_keep = write_keep_reg;
     assign m_dma_write_last = write_last_reg;
     assign m_dma_write_valid = write_valid_reg;

@@ -6,128 +6,128 @@
 // weight_bram_swap_fsm; this PE retains only the current response word.
 // The 32-lane / 33-DSP kernel and public interface are unchanged.
 module depthwise_conv_pe (
-    input  wire         clk,
-    input  wire         rst_n,
-    input  wire         cfg_valid,
-    output wire         cfg_ready,
-    input  wire [255:0] cfg_desc,
-    output wire         done,
-    output wire         fault,
-    input  wire [255:0] s_tap_data,
-    input  wire         s_tap_valid,
-    output wire         s_tap_ready,
-    input  wire [ 31:0] s_tap_mask,
-    input  wire [ 63:0] s_tap_tag,
+    input wire clk,
+    input wire rst_n,
+    input wire cfg_valid,
+    output wire cfg_ready,
+    input wire [255:0] cfg_desc,
+    output wire done,
+    output wire fault,
+    input wire [255:0] s_tap_data,
+    input wire s_tap_valid,
+    output wire s_tap_ready,
+    input wire [31:0] s_tap_mask,
+    input wire [63:0] s_tap_tag,
     output wire [255:0] m_pixel_data,
-    output wire         m_pixel_valid,
-    input  wire         m_pixel_ready,
-    output wire [ 31:0] m_pixel_mask,
-    output wire [ 63:0] m_pixel_tag,
-    output wire         dw_w_req_valid,
-    input  wire         dw_w_req_ready,
-    output wire [  6:0] dw_w_req_addr,
-    input  wire         dw_w_rsp_valid,
-    output wire         dw_w_rsp_ready,
-    input  wire [255:0] dw_w_rsp_data,
-    output wire         dw_p_req_valid,
-    input  wire         dw_p_req_ready,
-    output wire [  8:0] dw_p_req_addr,
-    input  wire         dw_p_rsp_valid,
-    output wire         dw_p_rsp_ready,
-    input  wire [ 63:0] dw_p_rsp_data
+    output wire m_pixel_valid,
+    input wire m_pixel_ready,
+    output wire [31:0] m_pixel_mask,
+    output wire [63:0] m_pixel_tag,
+    output wire dw_w_req_valid,
+    input wire dw_w_req_ready,
+    output wire [6:0] dw_w_req_addr,
+    input wire dw_w_rsp_valid,
+    output wire dw_w_rsp_ready,
+    input wire [255:0] dw_w_rsp_data,
+    output wire dw_p_req_valid,
+    input wire dw_p_req_ready,
+    output wire [8:0] dw_p_req_addr,
+    input wire dw_p_rsp_valid,
+    output wire dw_p_rsp_ready,
+    input wire [63:0] dw_p_rsp_data
 );
 
-    localparam integer       CNN_W_IN = 32;
+    localparam integer CNN_W_IN = 32;
 
-    localparam         [3:0] ST_IDLE  = 4'd0;
-    localparam         [3:0] ST_W_REQ = 4'd1;
-    localparam         [3:0] ST_QUANT = 4'd4;
-    localparam         [3:0] ST_EMIT  = 4'd5;
-    localparam         [3:0] ST_FAULT = 4'd15;
+    localparam [3:0] ST_IDLE = 4'd0;
+    localparam [3:0] ST_W_REQ = 4'd1;
+    localparam [3:0] ST_QUANT = 4'd4;
+    localparam [3:0] ST_EMIT = 4'd5;
+    localparam [3:0] ST_FAULT = 4'd15;
 
-    reg         [  3:0] state;
-    reg         [  3:0] tap_index;
-    reg         [  3:0] batch_index;
-    reg         [  4:0] cfg_op_id;
-    reg         [  5:0] cfg_shift;
-    reg         [  8:0] cfg_cin;
-    reg         [  3:0] cfg_last_batch;
+    reg [3:0] state;
+    reg [3:0] tap_index;
+    reg [3:0] batch_index;
+    reg [4:0] cfg_op_id;
+    reg [5:0] cfg_shift;
+    reg [8:0] cfg_cin;
+    reg [3:0] cfg_last_batch;
     // Decode lane geometry once when the descriptor is accepted.  Keeping the
     // active values registered removes the batch-index/subtract/variable-mask
     // cone from the tap-accept and requant control enables without adding a
     // datapath pipeline stage.
-    reg         [  5:0] active_lane_count;
-    reg         [ 31:0] expected_lane_mask;
-    reg         [  5:0] tail_lane_count;
-    reg         [ 31:0] tail_lane_mask;
+    reg [5:0] active_lane_count;
+    reg [31:0] expected_lane_mask;
+    reg [5:0] tail_lane_count;
+    reg [31:0] tail_lane_mask;
 
-    reg         [255:0] weight_word;
-    reg                 weight_buf_valid;
-    reg         [  3:0] weight_buf_tap;
-    reg         [  3:0] weight_req_count;
-    reg                 weight_outstanding;
-    reg         [  3:0] weight_outstanding_tap;
-    (* use_dsp = "yes" *)reg signed  [ 23:0] accum                  [0:31];
-    reg         [255:0] result_word;
-    reg         [ 31:0] result_mask;
-    reg         [ 63:0] result_tag;
+    reg [255:0] weight_word;
+    reg weight_buf_valid;
+    reg [3:0] weight_buf_tap;
+    reg [3:0] weight_req_count;
+    reg weight_outstanding;
+    reg [3:0] weight_outstanding_tap;
+    (* use_dsp = "yes" *) reg signed [23:0] accum[0:31];
+    reg [255:0] result_word;
+    reg [31:0] result_mask;
+    reg [63:0] result_tag;
 
-    reg                 done_reg;
-    reg                 fault_reg;
+    reg done_reg;
+    reg fault_reg;
 
-    reg         [  5:0] param_req_count;
-    reg                 param_outstanding;
-    reg         [  4:0] param_outstanding_lane;
-    reg         [  5:0] result_count;
-    reg         [  5:0] quant_issue_count;
+    reg [5:0] param_req_count;
+    reg param_outstanding;
+    reg [4:0] param_outstanding_lane;
+    reg [5:0] result_count;
+    reg [5:0] quant_issue_count;
 
-    reg                 p0_valid;
-    reg         [  4:0] p0_lane;
+    reg p0_valid;
+    reg [4:0] p0_lane;
     // Bias addition is intentionally fabric logic; the shared requant multiplier
     // is the one DSP budgeted for this pipeline.
-    (* use_dsp = "no" *)reg signed  [ 24:0] p0_sum;
-    reg         [ 16:0] p0_m;
-    reg signed  [ 23:0] p0_acc;
-    reg signed  [ 23:0] p0_bias;
+    (* use_dsp = "no" *) reg signed [24:0] p0_sum;
+    reg [16:0] p0_m;
+    reg signed [23:0] p0_acc;
+    reg signed [23:0] p0_bias;
 
-    reg                 p1_valid;
-    reg         [  4:0] p1_lane;
-    (* use_dsp = "yes" *)reg signed  [ 42:0] p1_product;
-    reg signed  [ 23:0] p1_acc;
-    reg signed  [ 23:0] p1_bias;
-    reg         [ 16:0] p1_m;
+    reg p1_valid;
+    reg [4:0] p1_lane;
+    (* use_dsp = "yes" *) reg signed [42:0] p1_product;
+    reg signed [23:0] p1_acc;
+    reg signed [23:0] p1_bias;
+    reg [16:0] p1_m;
 
-    reg                 p2_valid;
-    reg         [  4:0] p2_lane;
-    (* use_dsp = "no" *)reg signed  [ 42:0] p2_rounded;
-    reg signed  [ 23:0] p2_acc;
-    reg signed  [ 23:0] p2_bias;
-    reg         [ 16:0] p2_m;
+    reg p2_valid;
+    reg [4:0] p2_lane;
+    (* use_dsp = "no" *) reg signed [42:0] p2_rounded;
+    reg signed [23:0] p2_acc;
+    reg signed [23:0] p2_bias;
+    reg [16:0] p2_m;
 
     // Hierarchical waveform probes; these are not production debug ports.
-    reg         [  4:0] requant_lane;
-    reg signed  [ 23:0] current_acc;
-    reg signed  [ 23:0] current_bias;
-    reg         [ 16:0] current_m;
-    reg         [  7:0] current_result;
+    reg [4:0] requant_lane;
+    reg signed [23:0] current_acc;
+    reg signed [23:0] current_bias;
+    reg [16:0] current_m;
+    reg [7:0] current_result;
 
-    wire signed [ 23:0] accum_probe0;
-    wire signed [ 23:0] accum_probe1;
-    wire signed [ 23:0] accum_probe31;
+    wire signed [23:0] accum_probe0;
+    wire signed [23:0] accum_probe1;
+    wire signed [23:0] accum_probe31;
     assign accum_probe0  = accum[0];
     assign accum_probe1  = accum[1];
     assign accum_probe31 = accum[31];
 
-    integer            lane;
+    integer lane;
 
     // Keep each lane's 9x8 signed multiply visible to synthesis.  The original
     // function/in-loop form was numerically correct, but Vivado could cost-map
     // these small multipliers into LUT/CARRY logic.  The attribute is attached to
     // the actual multiply result; no register or cycle is added.
-    wire signed [ 8:0] mac_activation_signed9[0:31];
-    wire signed [ 7:0] mac_weight_signed8    [0:31];
-    (* use_dsp = "yes" *)wire signed [16:0] mac_product_signed17  [0:31];
-    wire signed [23:0] mac_term_signed24     [0:31];
+    wire signed [8:0] mac_activation_signed9[0:31];
+    wire signed [7:0] mac_weight_signed8[0:31];
+    (* use_dsp = "yes" *) wire signed [16:0] mac_product_signed17[0:31];
+    wire signed [23:0] mac_term_signed24[0:31];
 
     genvar mac_lane;
     generate
@@ -156,22 +156,24 @@ module depthwise_conv_pe (
     // End the DSP datapath at p1_product.  RNE is expressed only as a signed
     // quotient, guard/sticky/parity tests, and a bitwise ripple increment so
     // Vivado cannot absorb the rounding correction into a second DSP post-adder.
-    (* use_dsp = "no" *)wire signed [42:0] rne_logic_quotient;
-    reg                rne_logic_guard;
-    reg                rne_logic_sticky;
-    wire               rne_logic_increment;
-    wire        [43:0] rne_logic_carry;
-    (* use_dsp = "no" *)wire signed [42:0] rne_logic_result;
-    integer            rne_bit;
+    (* use_dsp = "no" *) wire signed [42:0] rne_logic_quotient;
+    reg rne_logic_guard;
+    reg rne_logic_sticky;
+    wire rne_logic_increment;
+    wire [43:0] rne_logic_carry;
+    (* use_dsp = "no" *) wire signed [42:0] rne_logic_result;
+    integer rne_bit;
 
     assign rne_logic_quotient = $signed(p1_product) >>> cfg_shift;
 
     always @* begin
-        rne_logic_guard  = 1'b0;
+        rne_logic_guard = 1'b0;
         rne_logic_sticky = 1'b0;
         if (cfg_shift != 0) begin
-            if (cfg_shift <= 6'd43) rne_logic_guard = p1_product[cfg_shift-1'b1];
-            else rne_logic_guard = p1_product[42];
+            if (cfg_shift <= 6'd43)
+                rne_logic_guard = p1_product[cfg_shift - 1'b1];
+            else
+                rne_logic_guard = p1_product[42];
 
             for (rne_bit = 0; rne_bit < 43; rne_bit = rne_bit + 1) begin
                 if (rne_bit < (cfg_shift - 1'b1))
@@ -180,8 +182,9 @@ module depthwise_conv_pe (
         end
     end
 
-    assign rne_logic_increment = rne_logic_guard && (rne_logic_sticky || rne_logic_quotient[0]);
-    assign rne_logic_carry[0]  = rne_logic_increment;
+    assign rne_logic_increment = rne_logic_guard &&
+        (rne_logic_sticky || rne_logic_quotient[0]);
+    assign rne_logic_carry[0] = rne_logic_increment;
 
     genvar rne_lane;
     generate
@@ -238,20 +241,23 @@ module depthwise_conv_pe (
     assign cfg_fire = cfg_valid && cfg_ready;
 
     assign next_batch_index = batch_index + 1'b1;
-    assign current_weight_base = {batch_index, 3'b000} + {{3{1'b0}}, batch_index};
+    assign current_weight_base = {batch_index, 3'b000}
+                               + {{3{1'b0}}, batch_index};
 
     // Keep at most one weight request outstanding.  A consumed N+1 response may
     // launch the next request on the same edge, while a one-entry holding register
     // decouples the response channel from a stalled tap input.  Every pixel/tap
     // obtains its weight from the external owner; no layer/batch cache exists.
-    assign dw_w_rsp_ready  = (state == ST_W_REQ) && weight_outstanding &&
+    assign dw_w_rsp_ready = (state == ST_W_REQ) && weight_outstanding &&
                         (!weight_buf_valid || tap_fire);
     assign w_rsp_fire = dw_w_rsp_valid && dw_w_rsp_ready;
     assign can_issue_weight = !weight_outstanding || w_rsp_fire;
-    assign dw_w_req_valid = (state == ST_W_REQ) && (weight_req_count < 4'd9) && can_issue_weight;
+    assign dw_w_req_valid = (state == ST_W_REQ) &&
+                         (weight_req_count < 4'd9) && can_issue_weight;
     // batch*9 is expressed as batch*8 + batch so address arithmetic cannot
     // consume an additional DSP outside the fixed 33-DSP datapath budget.
-    assign dw_w_req_addr = current_weight_base + {{3{1'b0}}, weight_req_count};
+    assign dw_w_req_addr = current_weight_base
+                     + {{3{1'b0}}, weight_req_count};
     assign w_req_fire = dw_w_req_valid && dw_w_req_ready;
 
     assign s_tap_ready = (state == ST_W_REQ) && weight_buf_valid;
@@ -281,95 +287,97 @@ module depthwise_conv_pe (
 
     always @(posedge clk) begin
         if (!rst_n) begin
-            state                  <= ST_IDLE;
-            tap_index              <= 4'd0;
-            batch_index            <= 4'd0;
-            cfg_op_id              <= 5'd0;
-            cfg_shift              <= 6'd0;
-            cfg_cin                <= 9'd0;
-            cfg_last_batch         <= 4'd0;
-            active_lane_count      <= 6'd0;
-            expected_lane_mask     <= 32'd0;
-            tail_lane_count        <= 6'd0;
-            tail_lane_mask         <= 32'd0;
-            weight_word            <= 256'd0;
-            weight_buf_valid       <= 1'b0;
-            weight_buf_tap         <= 4'd0;
-            weight_req_count       <= 4'd0;
-            weight_outstanding     <= 1'b0;
+            state <= ST_IDLE;
+            tap_index <= 4'd0;
+            batch_index <= 4'd0;
+            cfg_op_id <= 5'd0;
+            cfg_shift <= 6'd0;
+            cfg_cin <= 9'd0;
+            cfg_last_batch <= 4'd0;
+            active_lane_count <= 6'd0;
+            expected_lane_mask <= 32'd0;
+            tail_lane_count <= 6'd0;
+            tail_lane_mask <= 32'd0;
+            weight_word <= 256'd0;
+            weight_buf_valid <= 1'b0;
+            weight_buf_tap <= 4'd0;
+            weight_req_count <= 4'd0;
+            weight_outstanding <= 1'b0;
             weight_outstanding_tap <= 4'd0;
-            result_word            <= 256'd0;
-            result_mask            <= 32'd0;
-            result_tag             <= 64'd0;
-            done_reg               <= 1'b0;
-            fault_reg              <= 1'b0;
-            param_req_count        <= 6'd0;
-            param_outstanding      <= 1'b0;
+            result_word <= 256'd0;
+            result_mask <= 32'd0;
+            result_tag <= 64'd0;
+            done_reg <= 1'b0;
+            fault_reg <= 1'b0;
+            param_req_count <= 6'd0;
+            param_outstanding <= 1'b0;
             param_outstanding_lane <= 5'd0;
-            result_count           <= 6'd0;
-            quant_issue_count      <= 6'd0;
-            p0_valid               <= 1'b0;
-            p0_lane                <= 5'd0;
-            p0_sum                 <= 25'sd0;
-            p0_m                   <= 17'd0;
-            p0_acc                 <= 24'sd0;
-            p0_bias                <= 24'sd0;
-            p1_valid               <= 1'b0;
-            p1_lane                <= 5'd0;
-            p1_product             <= 43'sd0;
-            p1_acc                 <= 24'sd0;
-            p1_bias                <= 24'sd0;
-            p1_m                   <= 17'd0;
-            p2_valid               <= 1'b0;
-            p2_lane                <= 5'd0;
-            p2_rounded             <= 43'sd0;
-            p2_acc                 <= 24'sd0;
-            p2_bias                <= 24'sd0;
-            p2_m                   <= 17'd0;
-            requant_lane           <= 5'd0;
-            current_acc            <= 24'sd0;
-            current_bias           <= 24'sd0;
-            current_m              <= 17'd0;
-            current_result         <= 8'd0;
+            result_count <= 6'd0;
+            quant_issue_count <= 6'd0;
+            p0_valid <= 1'b0;
+            p0_lane <= 5'd0;
+            p0_sum <= 25'sd0;
+            p0_m <= 17'd0;
+            p0_acc <= 24'sd0;
+            p0_bias <= 24'sd0;
+            p1_valid <= 1'b0;
+            p1_lane <= 5'd0;
+            p1_product <= 43'sd0;
+            p1_acc <= 24'sd0;
+            p1_bias <= 24'sd0;
+            p1_m <= 17'd0;
+            p2_valid <= 1'b0;
+            p2_lane <= 5'd0;
+            p2_rounded <= 43'sd0;
+            p2_acc <= 24'sd0;
+            p2_bias <= 24'sd0;
+            p2_m <= 17'd0;
+            requant_lane <= 5'd0;
+            current_acc <= 24'sd0;
+            current_bias <= 24'sd0;
+            current_m <= 17'd0;
+            current_result <= 8'd0;
         end else begin
             done_reg <= 1'b0;
 
             case (state)
                 ST_IDLE: begin
                     if (cfg_fire) begin
-                        cfg_op_id      <= cfg_desc[4:0];
-                        cfg_shift      <= cfg_desc[74:69];
-                        cfg_cin        <= cfg_desc[53:45];
+                        cfg_op_id <= cfg_desc[4:0];
+                        cfg_shift <= cfg_desc[74:69];
+                        cfg_cin <= cfg_desc[53:45];
                         cfg_last_batch <= (cfg_desc[53:45] - 1'b1) >> 5;
                         if (cfg_desc[53:45] >= 9'd32) begin
-                            active_lane_count  <= 6'd32;
+                            active_lane_count <= 6'd32;
                             expected_lane_mask <= 32'hffffffff;
                         end else begin
-                            active_lane_count  <= cfg_desc[50:45];
+                            active_lane_count <= cfg_desc[50:45];
                             expected_lane_mask <= make_lane_mask(cfg_desc[50:45]);
                         end
                         if (cfg_desc[49:45] == 5'd0) begin
                             tail_lane_count <= 6'd32;
-                            tail_lane_mask  <= 32'hffffffff;
+                            tail_lane_mask <= 32'hffffffff;
                         end else begin
                             tail_lane_count <= {1'b0, cfg_desc[49:45]};
-                            tail_lane_mask  <= make_lane_mask({1'b0, cfg_desc[49:45]});
+                            tail_lane_mask <= make_lane_mask(
+                                {1'b0, cfg_desc[49:45]}
+                            );
                         end
-                        tap_index              <= 4'd0;
-                        batch_index            <= 4'd0;
-                        weight_buf_valid       <= 1'b0;
-                        weight_buf_tap         <= 4'd0;
-                        weight_req_count       <= 4'd0;
-                        weight_outstanding     <= 1'b0;
+                        tap_index <= 4'd0;
+                        batch_index <= 4'd0;
+                        weight_buf_valid <= 1'b0;
+                        weight_buf_tap <= 4'd0;
+                        weight_req_count <= 4'd0;
+                        weight_outstanding <= 1'b0;
                         weight_outstanding_tap <= 4'd0;
-                        result_word            <= 256'd0;
-                        result_mask            <= 32'd0;
-                        result_tag             <= 64'd0;
+                        result_word <= 256'd0;
+                        result_mask <= 32'd0;
+                        result_tag <= 64'd0;
 
                         // Full CNN-v4.0 DW range is 1..384 channels, or at most
                         // twelve 32-lane batches.  The 4-bit batch TAG field and
                         // 7-bit batch*9+tap address cover this range exactly.
-                        if ((cfg_desc[6:5] != 2'd1)  ||
+                        if ((cfg_desc[6:5] != 2'd1) ||
                         (cfg_desc[8:7] != 2'd0) ||
                         (cfg_desc[17:9] == 9'd0) ||
                         (cfg_desc[17:9] > 9'd256) ||
@@ -389,7 +397,7 @@ module depthwise_conv_pe (
                         (cfg_desc[74:69] != 6'd16) ||
                         (cfg_desc[255:149] != 107'd0)) begin
                             fault_reg <= 1'b1;
-                            state     <= ST_FAULT;
+                            state <= ST_FAULT;
                         end else begin
                             state <= ST_W_REQ;
                         end
@@ -398,7 +406,7 @@ module depthwise_conv_pe (
 
                 ST_W_REQ: begin
                     if (w_rsp_fire) begin
-                        weight_word    <= dw_w_rsp_data;
+                        weight_word <= dw_w_rsp_data;
                         weight_buf_tap <= weight_outstanding_tap;
                     end
 
@@ -565,12 +573,11 @@ module depthwise_conv_pe (
                                 // Same cfg, next output pixel.  Weight words are
                                 // requested again from the external owner.
                                 batch_index <= 4'd0;
-                                active_lane_count <= (cfg_cin >= 9'd32) ? 6'd32 : cfg_cin[5:0];
+                                active_lane_count <= (cfg_cin >= 9'd32) ?
+                                                     6'd32 : cfg_cin[5:0];
                                 expected_lane_mask <= (cfg_cin >= 9'd32) ?
                                                       32'hffffffff :
-                                                      make_lane_mask(
-                                    cfg_cin[5:0]
-                                );
+                                                      make_lane_mask(cfg_cin[5:0]);
                                 tap_index <= 4'd0;
                                 weight_word <= 256'd0;
                                 weight_buf_valid <= 1'b0;
@@ -586,10 +593,10 @@ module depthwise_conv_pe (
                         end else begin
                             batch_index <= batch_index + 1'b1;
                             if (next_batch_index == cfg_last_batch) begin
-                                active_lane_count  <= tail_lane_count;
+                                active_lane_count <= tail_lane_count;
                                 expected_lane_mask <= tail_lane_mask;
                             end else begin
-                                active_lane_count  <= 6'd32;
+                                active_lane_count <= 6'd32;
                                 expected_lane_mask <= 32'hffffffff;
                             end
                             tap_index <= 4'd0;
