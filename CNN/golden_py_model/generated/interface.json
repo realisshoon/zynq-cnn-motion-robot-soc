@@ -1975,8 +1975,8 @@
           "direction": "out",
           "width": 1,
           "peer": "top_level_fsm",
-          "meaning": "마지막 출력 accept 후 다음 cycle 1cycle pulse",
-          "timing": "마지막 출력 accept 기준",
+          "meaning": "mode별 operation 완료 후 다음 cycle 1cycle pulse; heatmap mode는 마지막 heatmap input accept, offset mode는 joint16 result downstream accept가 완료 event",
+          "timing": "heatmap: 마지막 input accept 후 다음 cycle; offset: joint16 result accept 후 다음 cycle",
           "reset": "0"
         },
         {
