@@ -180,6 +180,135 @@ int pm_build_body_frame(
 }
 
 /*
+ * 현재 3D Shoulder로 만든 Body frame을 시간축으로 안정화한다.
+ *
+ * 중요한 점:
+ * - 측면에서는 두 Shoulder가 영상에서 거의 겹쳐 body axis가 민감해질 수 있다.
+ * - 한 frame의 이상한 Shoulder 때문에 Base/Roll 기준축이 크게 튀는 것을 줄인다.
+ * - frame을 hard reject하지 않고 반영량(alpha)만 낮추므로 lock-out을 만들지 않는다.
+ */
+int pm_update_stable_body_frame(PoseMappingContext *ctx, float dt_filter_sec)
+{
+    Vec3 raw_x, raw_y, raw_z;
+    Vec3 filtered_x;
+    Vec3 camera_up = pm_vec3(0.0f, 1.0f, 0.0f);
+    Vec3 camera_forward = pm_vec3(0.0f, 0.0f, 1.0f);
+    Vec3 new_y, new_z;
+    float shoulder_span_px;
+    float reliability = 1.0f;
+    float alpha;
+    float axis_dot;
+    float axis_jump_deg;
+
+    if (ctx == NULL) return -1;
+
+    if (pm_build_body_frame(
+            ctx->shoulder_l_3d,
+            ctx->shoulder_r_3d,
+            &raw_x,
+            &raw_y,
+            &raw_z) != 0) {
+        return -1;
+    }
+
+    if (!ctx->body_frame_valid) {
+        ctx->body_x_axis = raw_x;
+        ctx->body_y_axis = raw_y;
+        ctx->body_z_axis = raw_z;
+        ctx->body_frame_valid = 1U;
+        return 0;
+    }
+
+    shoulder_span_px = pm_distance_2d(
+        ctx->shoulder_l.value,
+        ctx->shoulder_r.value
+    );
+
+    /*
+     * Side-view처럼 Shoulder가 가까워질수록 body direction 관측 신뢰도가 낮다.
+     * 그래도 0으로 만들지 않고 천천히 따라가게 한다.
+     */
+    if (shoulder_span_px < PM_BODY_FRAME_LOW_CONF_SPAN_PX) {
+        reliability *= PM_BODY_FRAME_LOW_CONF_SCALE;
+    }
+
+    /*
+     * 한 CNN frame 사이에 body X축이 크게 바뀌면 landmark 흔들림일 가능성이 높다.
+     * 역시 reject 대신 반영량만 낮춘다.
+     */
+    axis_dot = pm_clampf(
+        pm_vdot(raw_x, ctx->body_x_axis),
+        -1.0f,
+        1.0f
+    );
+    axis_jump_deg = acosf(axis_dot) * PM_RAD_TO_DEG;
+
+    if (axis_jump_deg > PM_BODY_FRAME_LARGE_JUMP_DEG) {
+        reliability *= PM_BODY_FRAME_LARGE_JUMP_SCALE;
+    }
+
+    alpha = pm_alpha_from_tau(dt_filter_sec, PM_BODY_FRAME_TAU_SEC);
+    alpha *= reliability;
+    alpha = pm_clampf(alpha, 0.0f, 1.0f);
+
+    filtered_x = pm_vadd(
+        pm_vscale(ctx->body_x_axis, 1.0f - alpha),
+        pm_vscale(raw_x, alpha)
+    );
+
+    if (pm_vnormalize(&filtered_x) != 0) {
+        /* 새 값이 퇴화하면 마지막 정상 body frame을 유지한다. */
+        return 0;
+    }
+
+    /* filtered X축을 기준으로 Y/Z를 다시 직교화한다. */
+    new_y = pm_project_perpendicular(camera_up, filtered_x);
+    if (pm_vnormalize(&new_y) != 0) {
+        return 0;
+    }
+
+    new_z = pm_vcross(filtered_x, new_y);
+    if (pm_vnormalize(&new_z) != 0) {
+        return 0;
+    }
+
+    if (pm_vdot(new_z, camera_forward) < 0.0f) {
+        new_z = pm_vscale(new_z, -1.0f);
+    }
+
+    new_y = pm_vcross(new_z, filtered_x);
+    if (pm_vnormalize(&new_y) != 0) {
+        return 0;
+    }
+
+    ctx->body_x_axis = filtered_x;
+    ctx->body_y_axis = new_y;
+    ctx->body_z_axis = new_z;
+    ctx->body_frame_valid = 1U;
+
+    return 0;
+}
+
+int pm_get_stable_body_frame(
+    const PoseMappingContext *ctx,
+    Vec3 *body_x,
+    Vec3 *body_y,
+    Vec3 *body_z
+)
+{
+    if (ctx == NULL || body_x == NULL || body_y == NULL || body_z == NULL) {
+        return -1;
+    }
+
+    if (!ctx->body_frame_valid) return -1;
+
+    *body_x = ctx->body_x_axis;
+    *body_y = ctx->body_y_axis;
+    *body_z = ctx->body_z_axis;
+    return 0;
+}
+
+/*
  * 사람 관절 추정값용 연속 각도 필터.
  * 1) 필요 시 ±180도 경계 unwrap
  * 2) 작은 추정 노이즈 deadband

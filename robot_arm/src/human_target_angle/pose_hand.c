@@ -80,12 +80,8 @@ int pm_calculate_hand_angles_and_gripper(
 
     if (ctx == NULL || out == NULL || shoulder_span_px <= PM_EPS) return -1;
 
-    if (pm_build_body_frame(
-            ctx->shoulder_l_3d,
-            ctx->shoulder_r_3d,
-            &body_x,
-            &body_y,
-            &body_z) != 0) {
+    /* Major angle 단계에서 갱신한 동일한 안정화 Body frame을 공유한다. */
+    if (pm_get_stable_body_frame(ctx, &body_x, &body_y, &body_z) != 0) {
         return -1;
     }
 
@@ -206,15 +202,21 @@ int pm_calculate_hand_angles_and_gripper(
         raw_delta = raw_roll_deg - ctx->prev_roll_raw_unwrapped_deg;
 
         if (fabsf(raw_delta) > PM_ROLL_SPIKE_MARGIN_DEG) {
-            raw_roll_deg = ctx->prev_roll_raw_unwrapped_deg;
+            /*
+             * 예전처럼 이전값을 그대로 HOLD하면 실제 손목 자세가 바뀐 뒤에도
+             * 같은 큰 delta가 반복되어 Roll이 영구 고정될 수 있다.
+             * 이번 frame에서는 허용된 범위까지만 따라가게 해서 spike는 줄이되
+             * 다음 frame에서 새 자세로 계속 수렴할 수 있게 한다.
+             * Robot angular-rate limit이 아니라 Human pose estimate의 이상치 완화다.
+             */
+            raw_roll_deg = ctx->prev_roll_raw_unwrapped_deg +
+                copysignf(PM_ROLL_SPIKE_MARGIN_DEG, raw_delta);
         }
     } else {
         ctx->prev_roll_raw_valid = 1U;
     }
 
     ctx->prev_roll_raw_unwrapped_deg = raw_roll_deg;
-    ctx->last_stable_roll_raw_deg = raw_roll_deg;
-    ctx->last_stable_roll_valid = 1U;
 
     /* 정상적인 hand geometry가 나온 frame만 0점 평균에 사용한다. */
     update_roll_zero_calibration(ctx, raw_roll_deg, dt_age_sec);

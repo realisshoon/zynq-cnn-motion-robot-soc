@@ -43,6 +43,7 @@ int main(int argc, char **argv)
     PoseMappingContext ctx;
     HumanPose2D pose;
     HumanJointTarget target;
+    int update_ret;
 
     if (!in) {
         fprintf(stderr, "input open failed: %s\n", in_name);
@@ -62,7 +63,7 @@ int main(int argc, char **argv)
     }
 
     fprintf(out,
-        "frame_id,time_sec,target_valid,"
+        "frame_id,time_sec,update_ret,target_valid,major_fresh,finger_fresh,"
         "shoulder_l_x3d,shoulder_l_y3d,shoulder_l_z,"
         "shoulder_r_x3d,shoulder_r_y3d,shoulder_r_z,"
         "elbow_x3d,elbow_y3d,elbow_z,"
@@ -115,12 +116,12 @@ int main(int argc, char **argv)
         prev_t = time_sec;
         first = 0;
 
-        (void)pose_mapping_update(
+        update_ret = pose_mapping_update(
             &ctx, &pose, POSE_ARM_RIGHT, dt, &target
         );
 
         fprintf(out,
-            "%u,%.6f,%u,"
+            "%u,%.6f,%d,%u,%u,%u,"
             "%.6f,%.6f,%.6f,"
             "%.6f,%.6f,%.6f,"
             "%.6f,%.6f,%.6f,"
@@ -128,7 +129,10 @@ int main(int argc, char **argv)
             "%.6f,%.6f,%.6f,"
             "%.6f,%.6f,%.6f,"
             "%.6f,%.6f,%.6f,%.6f,%.6f,%.1f\n",
-            frame_id,time_sec,(unsigned)target.valid,
+            frame_id,time_sec,update_ret,(unsigned)target.valid,
+            (unsigned)(ctx.shoulder_l.fresh && ctx.shoulder_r.fresh &&
+                       ctx.elbow.fresh && ctx.wrist.fresh),
+            (unsigned)(ctx.finger1.fresh && ctx.finger2.fresh),
             ctx.shoulder_l_3d.x,ctx.shoulder_l_3d.y,ctx.shoulder_l_3d.z,
             ctx.shoulder_r_3d.x,ctx.shoulder_r_3d.y,ctx.shoulder_r_3d.z,
             ctx.elbow_3d.x,ctx.elbow_3d.y,ctx.elbow_3d.z,
