@@ -7,6 +7,10 @@
 
 
 /*
+ * ============================================================
+ * Servo PWM Command
+ * ============================================================
+ *
  * 6개 Servo에 전달할 PWM Pulse Width Command
  *
  * 단위:
@@ -28,15 +32,17 @@ typedef struct {
 
 
 /*
+ * ============================================================
  * JointCommand -> ServoPwmCommand
+ * ============================================================
  *
- * Agent2에서 전달된 Robot Joint Angle을
+ * 상위 제어부에서 전달된 최종 Robot JointCommand를
  * 실제 Servo Hardware에서 사용할 PWM 값으로 변환한다.
  *
  * 반환값:
  *
- * 1 : 정상 변환
- * 0 : 입력 invalid 또는 잘못된 인자
+ * 1 = 정상 변환
+ * 0 = invalid 입력 / 잘못된 인자
  */
 uint8_t servo_control_convert(
     const JointCommand *joint_cmd,

@@ -5,12 +5,14 @@
 
 
 /*
+ * ============================================================
  * PWM Hardware Safe Range Clamp
+ * ============================================================
  *
  * 계산된 PWM 값이 ServoConfig에 정의된
  * PWM 범위를 벗어나지 않도록 제한한다.
  *
- * 이것은 Robot Joint Angle Limit이 아니라
+ * 이것은 Robot Joint Safety Limit이 아니라
  * Servo Hardware 보호용 제한이다.
  */
 static uint16_t clamp_pwm_us(
@@ -31,13 +33,15 @@ static uint16_t clamp_pwm_us(
 
 
 /*
- * Angle Reference Range Clamp
+ * ============================================================
+ * Servo Angle Range Clamp
+ * ============================================================
  *
- * Servo PWM 변환식에 사용할 수 있는
- * 각도 범위를 벗어난 값이 들어왔을 때
- * 계산 오류를 방지하기 위한 Hardware Conversion 보호이다.
+ * PWM 변환에서 사용할 수 있는 각도 범위를
+ * ServoConfig 기준으로 제한한다.
  *
- * Robot의 실제 안전 Joint Limit은 Agent2가 담당한다.
+ * Robot 자체의 Joint Limit / 충돌 방지 등은
+ * 상위 제어부에서 처리한다.
  */
 static float clamp_servo_angle(
     float angle_deg,
@@ -57,15 +61,9 @@ static float clamp_servo_angle(
 
 
 /*
+ * ============================================================
  * Servo Angle(deg) -> PWM Pulse Width(us)
- *
- * ServoConfig의
- *
- * min_deg    <-> min_us
- * center_deg <-> center_us
- * max_deg    <-> max_us
- *
- * 기준을 이용하여 선형 변환한다.
+ * ============================================================
  */
 static uint16_t angle_to_pwm_us(
     float angle_deg,
@@ -74,9 +72,6 @@ static uint16_t angle_to_pwm_us(
 {
     float pwm_us;
 
-    /*
-     * Conversion 범위 보호
-     */
     angle_deg =
         clamp_servo_angle(
             angle_deg,
@@ -85,7 +80,7 @@ static uint16_t angle_to_pwm_us(
 
 
     /*
-     * min_deg ~ center_deg 구간
+     * min_deg ~ center_deg
      */
     if (angle_deg <= config->center_deg) {
 
@@ -105,9 +100,8 @@ static uint16_t angle_to_pwm_us(
             );
     }
 
-
     /*
-     * center_deg ~ max_deg 구간
+     * center_deg ~ max_deg
      */
     else {
 
@@ -128,10 +122,6 @@ static uint16_t angle_to_pwm_us(
     }
 
 
-    /*
-     * float 결과를 uint16_t PWM 값으로 변환 후
-     * Hardware Safe Range 적용
-     */
     return clamp_pwm_us(
         (uint16_t)pwm_us,
         config
@@ -140,14 +130,14 @@ static uint16_t angle_to_pwm_us(
 
 
 /*
+ * ============================================================
  * Gripper Normalized Command -> PWM
+ * ============================================================
  *
  * gripper_norm:
  *
  * 0.0 = Close
  * 1.0 = Open
- *
- * 범위를 벗어난 값은 0.0 ~ 1.0으로 제한한다.
  */
 static uint16_t gripper_to_pwm_us(
     float gripper_norm,
@@ -157,9 +147,6 @@ static uint16_t gripper_to_pwm_us(
     float pwm_us;
 
 
-    /*
-     * Normalized Range Clamp
-     */
     if (gripper_norm < 0.0f) {
         gripper_norm = 0.0f;
     }
@@ -169,13 +156,6 @@ static uint16_t gripper_to_pwm_us(
     }
 
 
-    /*
-     * 0.0 ~ 1.0
-     *
-     *      ↓
-     *
-     * min_us ~ max_us
-     */
     pwm_us =
         (float)config->min_us
         +
@@ -196,9 +176,9 @@ static uint16_t gripper_to_pwm_us(
 
 
 /*
+ * ============================================================
  * JointCommand -> ServoPwmCommand
- *
- * output_controller의 핵심 변환 함수.
+ * ============================================================
  */
 uint8_t servo_control_convert(
     const JointCommand *joint_cmd,
@@ -214,26 +194,25 @@ uint8_t servo_control_convert(
 
 
     /*
-     * NULL Pointer 확인
+     * Pointer Check
      */
-    if (joint_cmd == NULL ||
-        pwm_cmd == NULL) {
+    if ((joint_cmd == NULL) ||
+        (pwm_cmd == NULL)) {
 
-        return 0;
+        return 0U;
     }
 
 
     /*
-     * Agent2에서 전달된 JointCommand가
-     * 유효하지 않으면 새로운 PWM 값을 생성하지 않는다.
+     * Invalid JointCommand 사용 금지
      */
     if (!joint_cmd->valid) {
-        return 0;
+        return 0U;
     }
 
 
     /*
-     * 각 Servo Hardware Configuration 가져오기
+     * Servo Hardware Configuration
      */
     base_config =
         servo_config_get(SERVO_BASE);
@@ -255,16 +234,16 @@ uint8_t servo_control_convert(
 
 
     /*
-     * Config 조회 실패 확인
+     * Config Check
      */
-    if (base_config == NULL ||
-        shoulder_config == NULL ||
-        elbow_config == NULL ||
-        wrist_pitch_config == NULL ||
-        wrist_roll_config == NULL ||
-        gripper_config == NULL) {
+    if ((base_config == NULL) ||
+        (shoulder_config == NULL) ||
+        (elbow_config == NULL) ||
+        (wrist_pitch_config == NULL) ||
+        (wrist_roll_config == NULL) ||
+        (gripper_config == NULL)) {
 
-        return 0;
+        return 0U;
     }
 
 
@@ -320,9 +299,6 @@ uint8_t servo_control_convert(
 
     /*
      * Gripper
-     *
-     * Gripper는 degree가 아니라
-     * 0.0 ~ 1.0 Normalized 값이다.
      */
     pwm_cmd->gripper_pwm_us =
         gripper_to_pwm_us(
@@ -331,5 +307,5 @@ uint8_t servo_control_convert(
         );
 
 
-    return 1;
+    return 1U;
 }
