@@ -202,6 +202,52 @@ static void test_long_dropout_recovery(void)
     assert(ctx.body_frame_valid == 1U);
 }
 
+/*
+ * Agent1 기본 smoke / dropout test.
+ * 실제 카메라 정확도를 검증하는 test가 아니라 다음 동작을 확인한다.
+ *
+ *  1) 10~20 Hz 범위의 가변 dt에서도 정상 계산
+ *  2) 같은 frame_id 중복 호출은 재계산하지 않음
+ *  3) Finger 1 frame 누락 시 Base/Shoulder/Elbow는 계속 출력하고
+ *     Wrist/Gripper는 이전값 유지
+ *  4) Major landmark 1 frame 누락 시 전체 target 잠깐 HOLD
+ *  5) 너무 긴 Finger loss는 invalid
+ */
+
+static Point2D p2(float x, float y)
+{
+    Point2D p;
+    p.x = x;
+    p.y = y;
+    p.valid = 1U;
+    return p;
+}
+
+static int finite_target(const HumanJointTarget *t)
+{
+    return isfinite(t->base_deg) &&
+           isfinite(t->shoulder_deg) &&
+           isfinite(t->elbow_deg) &&
+           isfinite(t->wrist_pitch_deg) &&
+           isfinite(t->wrist_roll_deg);
+}
+
+static void make_pose(HumanPose2D *pose, uint32_t frame_id)
+{
+    memset(pose, 0, sizeof(*pose));
+
+    pose->shoulder_l = p2(250.0f, 190.0f);
+    pose->shoulder_r = p2(390.0f, 190.0f);
+
+    pose->elbow   = p2(445.0f, 225.0f);
+    pose->wrist   = p2(500.0f, 255.0f);
+    pose->finger1 = p2(528.0f, 238.0f);
+    pose->finger2 = p2(535.0f, 278.0f);
+
+    pose->frame_id = frame_id;
+    pose->valid = 1U;
+}
+
 int main(void)
 {
     PoseMappingContext ctx;
