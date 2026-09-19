@@ -54,3 +54,6 @@ dkms.conf
 # debug information files
 *.dwo
 build/
+
+# Hand-built test executables (no extension, so not caught above)
+test_output_control

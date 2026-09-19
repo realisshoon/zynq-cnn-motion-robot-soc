@@ -17,8 +17,8 @@ int robot_calibration_apply(
 /* base, shoulder, elbow, wrist_pitch, wrist_roll (5개).
  * gripper는 agent1->agent2->agent3 구간에서 값이 바뀌면 안 되는 단순
  * 전달값이라 램프/동기화 대상에서 제외하고 RobotMotionState.gripper
- * 필드로 별도 보관한다. motion_limits.h의 MOTION_LIMITS_JOINT_COUNT와
- * 항상 같은 값으로 맞춰야 한다. */
+ * 필드로 별도 보관한다. motion_limits.h는 이제 관절 개수를 모르는 순수
+ * 스칼라 유틸이라, 이 매크로가 저장소 전체에서 유일한 관절 개수 상수다. */
 #define ROBOT_MOTION_JOINT_COUNT 5
 
 /*
@@ -34,8 +34,9 @@ int robot_calibration_apply(
  *   - 고정 제어 틱마다(예: 서보 PWM 50Hz에 맞춘 ~20ms) robot_calibration_step()을
  *     호출해서 이번 틱에 output_controller로 보낼 JointCommand를 얻는다.
  *
- * 관절 배열 순서(motion_limits.h와 공유): base, shoulder, elbow,
- * wrist_pitch, wrist_roll -- JointCommand 필드 순서와 동일(gripper 제외).
+ * 관절 배열 순서: base, shoulder, elbow, wrist_pitch, wrist_roll --
+ * JointCommand 필드 순서와 동일(gripper 제외). motion_limits.h는 배열이 아닌
+ * 스칼라 함수만 제공하므로 이 순서를 몰라도 된다.
  * 이 레이어의 설계 근거는 docs/agent2_design_log.md 참고.
  */
 typedef struct {

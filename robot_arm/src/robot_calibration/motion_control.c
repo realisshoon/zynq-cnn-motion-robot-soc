@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <string.h>
 #include <math.h>
 
 #include "common/robot_types.h"
@@ -22,6 +23,30 @@ static float clamp_value(float value, float min_value, float max_value)
     if (value < min_value) return min_value;
     if (value > max_value) return max_value;
     return value;
+}
+
+// -180~180 범위로 wrap된 각도를 다시 -180~180 범위로 접어넣는다.
+static float wrap_to_180(float deg)
+{
+    while (deg > 180.0f) deg -= 360.0f;
+    while (deg < -180.0f) deg += 360.0f;
+    return deg;
+}
+
+// last_unwrapped_deg 기준 최단 회전 방향으로 raw_deg를 풀어낸다.
+// last_unwrapped_deg는 누적으로 -180~180 밖의 값을 가질 수 있으므로,
+// 비교 직전에 wrap_to_180으로 접어서 raw_deg와 같은 표현 범위로 맞춘다.
+static float unwrap_angle(float raw_deg, float last_unwrapped_deg, int has_reference)
+{
+    float last_raw_deg;
+    float diff;
+
+    if (!has_reference) return raw_deg;
+
+    last_raw_deg = wrap_to_180(last_unwrapped_deg);
+    diff = wrap_to_180(raw_deg - last_raw_deg);
+
+    return last_unwrapped_deg + diff;
 }
 // configuration에 적용된 clamping을 적용한다.
 static float clamp_joint_angle(float angle_deg, const JointCalibration *config)
@@ -68,4 +93,26 @@ void motion_control_apply_limits(JointCommand *command)
     command->elbow_deg = clamp_joint_angle(command->elbow_deg, &robot_calibration_config.elbow);
     command->wrist_pitch_deg = clamp_joint_angle(command->wrist_pitch_deg, &robot_calibration_config.wrist_pitch);
     command->wrist_roll_deg = clamp_joint_angle(command->wrist_roll_deg, &robot_calibration_config.wrist_roll);
+}
+
+void motion_control_unwrap_state_init(HumanAngleUnwrapState *state)
+{
+    if (state == NULL) return;
+    memset(state, 0, sizeof(*state));
+}
+
+// base_deg/wrist_pitch_deg/wrist_roll_deg만 unwrap 대상이다.
+// (shoulder_deg/elbow_deg는 wrap되지 않는 범위라 건드리지 않는다.)
+void motion_control_unwrap_target(HumanAngleUnwrapState *state, HumanJointTarget *target)
+{
+    if (state == NULL || target == NULL) return;
+
+    target->base_deg = unwrap_angle(target->base_deg, state->base_deg, state->has_reference);
+    target->wrist_pitch_deg = unwrap_angle(target->wrist_pitch_deg, state->wrist_pitch_deg, state->has_reference);
+    target->wrist_roll_deg = unwrap_angle(target->wrist_roll_deg, state->wrist_roll_deg, state->has_reference);
+
+    state->base_deg = target->base_deg;
+    state->wrist_pitch_deg = target->wrist_pitch_deg;
+    state->wrist_roll_deg = target->wrist_roll_deg;
+    state->has_reference = 1;
 }
