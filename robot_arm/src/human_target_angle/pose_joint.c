@@ -29,12 +29,12 @@ int pm_calculate_major_angles(
         ? ctx->shoulder_l_3d
         : ctx->shoulder_r_3d;
 
-    if (pm_build_body_frame(
-            ctx->shoulder_l_3d,
-            ctx->shoulder_r_3d,
-            &body_x,
-            &body_y,
-            &body_z) != 0) {
+    /*
+     * 측면 자세에서는 Shoulder landmark가 흔들리기 쉬우므로
+     * raw body frame 대신 시간축으로 안정화된 body frame을 사용한다.
+     */
+    if (pm_update_stable_body_frame(ctx, dt_filter_sec) != 0 ||
+        pm_get_stable_body_frame(ctx, &body_x, &body_y, &body_z) != 0) {
         return -1;
     }
 
@@ -105,6 +105,10 @@ int pm_calculate_major_angles(
         );
     }
 
+    /*
+     * 내부 필터는 unwrap 상태를 유지하지만 public Human angle은 [-180, 180]로
+     * 정규화한다. 이후 Robot delta/rate 계산에서 shortest-angle 처리는 Agent2가 한다.
+     */
     out->base_deg = pm_wrap180(ctx->prev_base_deg);
     out->shoulder_deg = ctx->prev_shoulder_deg;
     out->elbow_deg = pm_clampf(ctx->prev_elbow_deg, 0.0f, 180.0f);
