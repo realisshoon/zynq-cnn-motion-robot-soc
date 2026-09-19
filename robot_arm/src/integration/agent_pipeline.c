@@ -1,0 +1,158 @@
+#include "integration/agent_pipeline.h"
+
+#include <stddef.h>
+#include <string.h>
+
+#include "human_target_angle/agent1_stage.h"
+#include "output_controller/output_control.h"
+#include "output_controller/servo_hal.h"
+
+/* 데모에서 사용하는 팔. 입력 좌표의 팔과 반드시 일치시켜야 한다(Agent1 담당자 확인). */
+#define AGENT_PIPELINE_ACTIVE_ARM POSE_ARM_RIGHT
+
+/*
+ * 전원 인가 시 팔이 놓이는 홈 자세(서보 각도 기준).
+ * TODO: 지금은 자리표시자다. 실측 offset이 나오면 교체하고 RTL reset 값과 일치시킨다.
+ * gripper_norm은 0.0=Close, 1.0=Open이다. 지금은 servo_hal_startup()의 안전 자세
+ * (6채널 모두 1500us)와 맞추려고 5관절 90도 + gripper 0.5(=1500us)로 뒀다.
+ */
+static const JointCommand k_home_pose = {
+    .base_deg = 90.0f,
+    .shoulder_deg = 90.0f,
+    .elbow_deg = 90.0f,
+    .wrist_pitch_deg = 90.0f,
+    .wrist_roll_deg = 90.0f,
+    .gripper_norm = 0.5f,
+    .valid = 1U
+};
+
+static int same_command(const JointCommand *a, const JointCommand *b)
+{
+    return a->base_deg == b->base_deg &&
+           a->shoulder_deg == b->shoulder_deg &&
+           a->elbow_deg == b->elbow_deg &&
+           a->wrist_pitch_deg == b->wrist_pitch_deg &&
+           a->wrist_roll_deg == b->wrist_roll_deg &&
+           a->gripper_norm == b->gripper_norm &&
+           a->valid == b->valid;
+}
+
+/* 홈이 관절 한계 안인지 확인한다(설정 오류를 부팅 시점에 잡는다). */
+static int home_within_limits(void)
+{
+    JointCommand clamped = k_home_pose;
+
+    motion_control_apply_limits(&clamped);
+    return same_command(&clamped, &k_home_pose);
+}
+
+int agent_pipeline_init(AgentPipelineContext *ctx)
+{
+    if (ctx == NULL) return -1;
+
+    memset(ctx, 0, sizeof(*ctx));
+
+    if (agent1_stage_init() != 0) return -1;
+    motion_control_unwrap_state_init(&ctx->unwrap);
+    robot_calibration_state_init(&ctx->motion);
+    output_control_init();
+
+    if (!home_within_limits()) return -1;
+
+    /*
+     * 홈으로 부트스트랩한다. Agent2는 첫 set_target을 램프 없이 스냅하므로,
+     * 홈을 먼저 넣어 두면 첫 실제 타겟이 홈에서부터 속도제한 램프로 출발한다.
+     * (홈은 상수라 apply()를 거치지 않고 set_target에 직접 넣는다.)
+     */
+    robot_calibration_set_target(&ctx->motion, &k_home_pose);
+    robot_calibration_step(&ctx->motion, &ctx->output);
+
+    /* 홈 shadow 쓰기 + UPDATE 후 enable 순서로 부팅 직후 서보가 튀지 않게 한다. */
+    if (!output_control_update(&ctx->output, &ctx->pwm)) return -1;
+    if (!servo_hal_apply(&ctx->pwm)) return -1;
+    if (!servo_hal_enable()) return -1;
+
+    return 0;
+}
+
+int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec)
+{
+    if (ctx == NULL || pose == NULL) return 0;
+
+    ctx->pose = *pose;
+    ctx->dt_sec = dt_sec;
+    ctx->frames_in++;
+    ctx->target_ready = 0U;
+
+    /*
+     * 반환값(1/0/-1)은 보지 않는다. 짧은 dropout 동안 HOLD(0)에서도 valid=1인
+     * 마지막 정상 타겟이 나오므로, 다음 단계 진행 여부는 출력 valid로만 판단한다.
+     */
+    (void)agent1_stage_run(&ctx->pose, AGENT_PIPELINE_ACTIVE_ARM, dt_sec);
+
+    if (!agent1_stage_output_valid()) return 0;
+
+    ctx->target = *agent1_stage_output();
+    ctx->target_ready = 1U;
+    ctx->targets_valid++;
+    return 1;
+}
+
+int agent2_run(AgentPipelineContext *ctx)
+{
+    JointCommand command;
+
+    if (ctx == NULL || !ctx->target_ready) return 0;
+
+    /* 호출 순서 계약: unwrap은 validate를 통과한 타겟만 받는다. */
+    if (!motion_control_validate_target(&ctx->target)) {
+        ctx->commands_rejected++;
+        return 0;
+    }
+    motion_control_unwrap_target(&ctx->unwrap, &ctx->target);
+
+    /* 무효/위험이면 폐기하고 마지막으로 승인한 목표를 계속 유지한다. */
+    if (!robot_calibration_apply(&ctx->target, &command)) {
+        ctx->commands_rejected++;
+        return 0;
+    }
+    ctx->commands_accepted++;
+
+    /* HOLD 프레임처럼 직전과 같은 명령이면 재계획하지 않는다(램프가 속도 0에서 다시 시작되는 것을 막는다). */
+    if (ctx->command_valid && same_command(&command, &ctx->command)) {
+        return 1;
+    }
+
+    robot_calibration_set_target(&ctx->motion, &command);
+    ctx->command = command;
+    ctx->command_valid = 1U;
+    ctx->retargets++;
+    return 1;
+}
+
+int agent2_tick(AgentPipelineContext *ctx)
+{
+    if (ctx == NULL) return 0;
+
+    ctx->ticks++;
+    robot_calibration_step(&ctx->motion, &ctx->output);
+    return ctx->output.valid ? 1 : 0;
+}
+
+int agent3_run(AgentPipelineContext *ctx)
+{
+    if (ctx == NULL || !ctx->output.valid) return 0;
+
+    /* 변환에 실패하면 pwm은 갱신되지 않으므로 레지스터에 쓰지 않는다. */
+    if (!output_control_update(&ctx->output, &ctx->pwm)) {
+        ctx->servo_errors++;
+        return 0;
+    }
+    if (!servo_hal_apply(&ctx->pwm)) {
+        ctx->servo_errors++;
+        return 0;
+    }
+
+    ctx->servo_writes++;
+    return 1;
+}
