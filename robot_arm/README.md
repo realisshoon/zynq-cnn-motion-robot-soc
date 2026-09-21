@@ -27,6 +27,13 @@ Zybo Z7-20(Zynq-7020)의 PS(ARM Cortex-A9, 베어메탈)에서 동작하는 **6�
   - [코드를 추가할 때](#코드를-추가할-때)
   - [디버깅 요령](#디버깅-요령)
   - [PC에서 pose 보내기](#pc에서-pose-보내기)
+- [UART 로그 (trace)](#uart-로그-trace)
+  - [켜는 방법](#켜는-방법)
+  - [로그 받기](#로그-받기)
+  - [줄 형식](#줄-형식)
+  - [값 읽는 법](#값-읽는-법)
+  - [영향과 한계](#영향과-한계)
+  - [변경 지점](#변경-지점)
 - [하드웨어(XSA)가 바뀌었을 때](#하드웨어xsa가-바뀌었을-때)
 - [문제 해결](#문제-해결)
 
@@ -76,7 +83,9 @@ Agent 원본 소스는 수정하지 않고 공개 API만 호출합니다. 처음
 | `include/integration/platform.h` | 하드웨어 경계 선언: `platform_init()`, `platform_tick_due()` |
 | `include/integration/input_pose.h` | 입력 경계 선언: `input_pose_init()`, `input_pose_ready()`, `input_pose_take()` |
 | `src/integration/platform_vitis.c` | 위 두 경계의 Vitis 구현(AXI Timer 인터럽트 틱, PS UART 수신) |
+| `include/integration/trace.h`, `src/integration/trace.c` | UART 디버그 로그(trace). `ROBOT_TRACE`를 정의한 빌드에서만 켜진다([UART 로그](#uart-로그-trace)) |
 | `tests/integration/test_integration_smoke.c` | 같은 `main`을 가짜 경계(테스트 코드)로 호스트에서 실행하는 스모크 테스트 |
+| `tests/integration/test_trace.c` | trace의 호스트 테스트(`-DROBOT_TRACE`로 빌드) |
 
 ### main의 흐름
 
@@ -110,6 +119,9 @@ int main(void)
 시계가 둘인 이유: Agent2의 속도제한(`max_delta_deg`)이 20 ms 틱 기준이라서, pose 도착(가변)과 서보 갱신(고정)을 분리합니다.
 내비게이션과 같습니다. 목적지 갱신(프레임 경로)은 가끔 하고, 운전(틱 경로)은 계속합니다.
 프레임 사이에도 틱은 계속 돌아서 서보는 항상 부드럽게 목표를 향해 움직입니다.
+
+실제 `main`에는 UART 로그용 `TRACE_*` 호출 7줄이 더 있습니다(`[TRACE]` 태그). `ROBOT_TRACE`를 정의하지 않으면 아무것도 하지 않아서
+위 발췌에서는 뺐습니다. [UART 로그](#uart-로그-trace)를 보세요.
 
 ### 함수 5개
 
@@ -177,7 +189,7 @@ robot_arm/
 │   ├── output_controller/   # Agent3
 │   ├── drivers/      # servo_pwm 레지스터 드라이버
 │   ├── uart_pose/    # UART pose 프로토콜과 수신
-│   └── integration/  # Agent 연결, 플랫폼 경계
+│   └── integration/  # Agent 연결, 플랫폼 경계, UART 로그(trace)
 ├── src/              # 구현 (모듈별 폴더, src/main.c 는 Agent3의 HAL 데모)
 ├── tests/            # 모듈별 호스트 테스트와 통합 스모크 테스트
 ├── config/           # 로봇, 카메라 공통 설정 (robot_config.h)
@@ -218,6 +230,10 @@ gcc $F $A1 tests/human_target_angle/test_pose_mapping.c -lm -o build/test_pose_m
 # Agent1 -> 2 -> 3 통합 스모크 테스트 (UART 파서, 부팅 순서, 20 ms 틱, 안전검사 거부, HOLD, 각도 wrap)
 gcc $F $A1 $A2 $A3 src/uart_pose/uart_pose_protocol.c src/integration/agent_pipeline.c \
     tests/integration/test_integration_smoke.c -lm -o build/test_integration_smoke && build/test_integration_smoke
+
+# UART 로그(trace) 테스트: -DROBOT_TRACE를 모든 파일에 준다(trace.c는 테스트가 #include 한다)
+gcc $F -DROBOT_TRACE $A1 $A2 $A3 src/integration/agent_pipeline.c \
+    tests/integration/test_trace.c -lm -o build/test_trace && build/test_trace
 ```
 
 `src/drivers/servo_pwm_driver.c`는 호스트에서 mock으로 빌드됩니다(서보 레지스터 쓰기를 메모리에 기록).
@@ -315,6 +331,7 @@ Debug As로 실행한 상태에서 합니다. **Run**으로 실행하면 브레�
 - **프로그램을 멈추거나 종료해도 PL의 PWM은 마지막 값으로 계속 나옵니다.** 서보를 바로 멈추려면 서보 전원을 끊으세요
   (FPGA를 다시 프로그램해도 PWM이 꺼져서 서보가 힘이 빠집니다).
 - 로그 UART(PS UART1)와 pose 송신이 같은 COM 포트라서 시리얼 터미널과 송신 스크립트는 동시에 열 수 없습니다.
+- **프레임/틱마다의 입출력을 PC에서 보고 싶을 때**는 [UART 로그](#uart-로그-trace)를 켭니다(`ROBOT_TRACE`).
 
 ### PC에서 pose 보내기
 
@@ -327,6 +344,112 @@ python robot_arm/pc/send_pose_uart.py --port COM3 --csv <pose CSV 경로> --hz 2
 - 처음에는 `--loop`를 붙이지 마세요(CSV의 끝과 처음 자세가 이어지지 않아 점프가 실제 움직임처럼 들어갑니다).
 - 시리얼 터미널을 닫고 실행하세요. 송신 중에는 스크립트가 보드 로그도 같이 출력합니다(`--no-board-text`로 끔).
 - 프로그램은 Suspend가 아니라 실행 중(Resume) 상태여야 프레임을 받습니다.
+- trace를 켠 빌드(UART 921600 baud)는 `--baud 921600`을 붙입니다. 끈 빌드는 기본값(115200)입니다.
+
+## UART 로그 (trace)
+
+파이프라인 각 단계(Agent1/2/3)의 입출력을 PC로 한 줄씩 보내는 디버그 기능입니다.
+**기본은 꺼져 있고**, 컴파일 심볼 `ROBOT_TRACE`를 정의한 빌드에서만 켜집니다. 끈 빌드는 기존과 같습니다
+(`-O2`에서 `agent_pipeline.c`, `main_integration.c`, `platform_vitis.c`의 기계어가 수정 전과 똑같은 것을 확인했습니다).
+
+### 켜는 방법
+
+1. Vitis에서 앱(`robot_testbench`) → Properties → C/C++ Build → Settings → Symbols(Defined symbols)에 `ROBOT_TRACE`를 추가합니다(Debug/Release 모두).
+   IDE를 닫고 명령으로 하려면 xsct에서 `app config -name robot_testbench -add define-compiler-symbols ROBOT_TRACE`를 실행합니다.
+2. 앱을 Clean 후 빌드합니다. 빌드 로그에 `[TRACE] ROBOT_TRACE enabled: UART runs at 921600 baud` 안내가 한 줄 나옵니다.
+3. 실행하면 배너가 바뀝니다: `[platform] ready (tick 20 ms, uart 921600 baud, trace on)`.
+   끈 빌드의 배너는 `[platform] ready (tick 20 ms)`이고 115200 baud입니다.
+
+`setup_vitis.ps1`은 이 심볼을 넣지 않습니다. 그래서 팀원이 기본으로 만든 앱은 이전처럼 115200 baud이고 PC 스크립트의 기본값과 맞습니다.
+
+**UART 속도가 다릅니다.** trace를 켠 빌드는 921600 baud입니다(PS UART는 송신과 수신이 같은 baud 발생기를 쓰므로 둘 다 바뀝니다).
+PC 쪽도 `--baud 921600`으로 열어야 합니다. 속도가 다르면 배너가 깨져 보이고 pose는 CRC 오류로 버려집니다.
+
+### 로그 받기
+
+```powershell
+python robot_arm/pc/send_pose_uart.py --port COM3 --csv <pose CSV 경로> --hz 20 --baud 921600 | Tee-Object run.log
+Select-String -Path run.log -Pattern '^(A1|P3|A2|TK|SM|EV),'   # 로그 줄만 골라 보기
+```
+
+- 스크립트를 고치지 않고 화면 출력을 그대로 저장합니다. 스크립트가 찍는 `[TX] ...` 줄은 태그가 달라서 섞이지 않습니다.
+  Windows PowerShell 5.1은 파일을 UTF-16으로 저장하므로 다른 도구로 읽을 때는 PowerShell 7을 쓰거나 UTF-8로 변환하세요.
+- 스크립트는 프레임을 보낼 때(20 Hz면 50 ms마다)만 수신 버퍼를 읽습니다. `--hz`를 낮게 쓰면 그 사이에 쌓인 로그가 PC 수신 버퍼를 넘칠 수 있습니다.
+  이렇게 잃은 줄은 보드의 `drop`으로는 안 보이므로 `fid`와 `tick`이 끊김 없이 이어지는지로 확인합니다.
+- 시리얼 터미널과 송신 스크립트는 같은 COM 포트라서 동시에 열 수 없습니다.
+
+### 줄 형식
+
+한 줄이 한 레코드이고 첫 토큰이 태그입니다. 쉼표로 나누고, 값이 없으면 빈 칸입니다. 각도는 소수 1자리, 그리퍼는 2자리,
+Point3D는 3자리입니다. `#`로 시작하는 줄은 컬럼 정의이며 부팅 때와 10초마다 다시 나옵니다(PC가 늦게 붙어도 받도록).
+
+| 태그 | 언제 | 컬럼 |
+|---|---|---|
+| `A1` | `agent1_run` 직후, 프레임마다 | `fid, t_ms, dur_us, dt_ms, pv, vm, rc, ov, base, sh, el, wp, wr, grip` |
+| `P3` | `A1` 바로 뒤, 프레임마다 | `fid, pm, fl, age_ms,` 6점의 `x, y, z` (`sl, sr, e, w, f1, f2`) |
+| `A2` | `agent2_run` 직후, 프레임마다 | `fid, t_ms, dur_us, st, fg,` 타겟 5개(`ub, ush, ue, uwp, uwr`), 매핑된 명령 6개(`cb, csh, ce, cwp, cwr, cg`) |
+| `TK` | 제어 틱마다(50 Hz) | `tick, t_ms, dur_us,` 출력 6개(`b, sh, e, wp, wr, g`), PWM 6개(`pb, psh, pe, pwp, pwr, pg`), `rem, w, er` |
+| `SM` | 1초마다 | `t_ms, fr, tv, acc, rej, rt, tk, sw, se, ovr, crc, fmt, rng, ow, drop, hi` |
+| `EV` | 상태가 바뀔 때만 | `t_ms, code, arg` |
+
+형식 예시입니다(숫자는 형식을 보이려고 만든 값입니다).
+
+```text
+A1,412,20510,132,50,1,63,1,1,12.3,45.0,90.1,10.2,-5.0,0.50
+P3,412,63,7,0,-0.213,0.041,0.850,0.198,0.037,0.861,-0.240,0.302,0.790,-0.315,0.512,0.702,-0.360,0.603,0.688,-0.342,0.611,0.700
+A2,412,20511,14,N,0x0,12.3,45.0,90.1,10.2,-5.0,101.3,47.5,88.0,90.0,92.5,0.50
+TK,1030,20520,9,101.3,47.5,88.0,90.0,92.5,0.50,1626,1028,1478,1500,1528,1500,3.2,1,0
+SM,21000,420,418,415,3,12,1050,1050,0,0,0,0,0,0,0,96
+EV,20990,A2_REJECT,431
+```
+
+### 값 읽는 법
+
+- **`t_ms`, `dur_us`**: `t_ms`는 부팅 후 ms입니다. `dur_us`는 그 단계의 실행 시간(µs)입니다. A1은 `agent1_run`, A2는 `agent2_run`,
+  TK는 `agent2_tick` + `agent3_run`이고 로그 만드는 시간은 뺍니다.
+- **`pv`, `vm`, `rc`, `ov`(A1)**: `pv`는 pose 전체 valid입니다. `vm`은 입력 랜드마크 6개의 유효 마스크입니다(finger1=1, finger2=2, elbow=4, wrist=8,
+  shoulder_l=16, shoulder_r=32, 모두 유효하면 63). `rc`는 Agent1의 반환값입니다(1 새 타겟, 0 HOLD, -1 타겟 없음).
+  `ov`는 출력이 유효한지로 다음 단계 진행 여부의 기준이며, 0이면 각도 칸이 비어 있습니다.
+- **`pm`, `fl`, `age_ms`(P3)**: `pm`은 Point3D 6점의 유효 마스크입니다(shoulder_l=1, shoulder_r=2, elbow=4, wrist=8, finger1=16, finger2=32).
+  `fl`은 상태 플래그입니다(major=1, finger=2, body_frame=4). `age_ms`는 마지막으로 새 타겟을 만든 뒤 지난 시간입니다(0이면 이번 프레임, 0보다 크면 HOLD).
+  3D 값은 재구성에 성공할 때만 갱신되므로 끊긴 동안에는 이전 값이 남습니다. 단위는 어깨너비 = 1.0입니다(`PM_SHOULDER_WIDTH_UNIT`).
+- **`st`(A2)**: `N` 새 목표 승인, `S` 직전과 같은 명령이라 재계획 안 함, `R` 안전검사 거부, `V` 입력 검증 실패,
+  `-` 이번 프레임에 Agent1 타겟이 없어 실행 안 함.
+- **`fg`(A2)**: `R`일 때 거부 사유(안전검사 flags, 16진수, 여러 개가 겹칠 수 있음)입니다.
+  `0x01` INVALID_COMMAND, `0x02` SELF_COLLISION, `0x04` FLOOR_COLLISION, `0x08` NEAR_SINGULARITY, `0x10` REACH_BOUNDARY.
+  `robot_calibration_apply()`가 flags를 버리므로, 거부된 명령의 복사본(valid=1)으로 공개 함수 `safety_check_apply()`를 한 번 더 불러 얻습니다.
+- **`ub..uwr`, `cb..cg`(A2)**: 앞쪽은 unwrap(±180° 경계 처리) 뒤의 타겟이고, 뒤쪽은 이번 프레임에 매핑된 명령입니다(거부됐으면 거부된 값).
+- **`rem`, `w`, `er`(TK)**: 램프가 목표까지 남은 각도(관절 중 최대), 이번 틱에 서보 쓰기가 성공했는지, 서보 오류가 났는지입니다.
+- **SM**: `fr` 받은 프레임, `tv` Agent1이 유효 타겟을 낸 수, `acc/rej/rt` Agent2 승인/거부/재계획, `tk` 틱, `sw/se` 서보 쓰기 성공/오류,
+  `ovr` 밀려서 버린 틱(오르면 main 루프가 20 ms 안에 못 돈 것), `crc/fmt/rng` PC→보드 UART 패킷 오류, `ow` main이 읽기 전에 덮어쓴 프레임,
+  `drop` 링버퍼가 차서 버린 로그 줄, `hi` 최근 1초의 링버퍼 최대 사용량(바이트, 8192면 가득).
+- **EV**: `BOOT`(arg=baud), `A1_LOST`/`A1_BACK`(Agent1 유효 타겟 소실/복귀, arg=fid), `A2_REJECT`/`A2_BACK`(거부 시작/해소, arg=fid),
+  `SERVO_ERR`, `TICK_OVERRUN`, `UART_ERR`, `TRACE_DROP`(arg=누적 횟수).
+
+### 영향과 한계
+
+- 켜면 코드가 약 9 KB, RAM이 약 8.3 KB(링버퍼 8 KB 포함) 늘어납니다(ARM 컴파일 결과).
+- 로그는 링버퍼에 쌓기만 하고 `main` 루프 끝에서 TX FIFO(64 B)에 들어가는 만큼만 보냅니다. `xil_printf`처럼 기다리지 않습니다.
+  링버퍼가 차면 줄을 통째로 버리고 `drop`을 셉니다.
+- 프레임 경로에 로그 만드는 시간이 더해집니다. 호스트 실측을 보드로 환산한 추정으로 프레임당 수십 µs(Debug `-O0`)입니다.
+  틱 로그(TK)는 서보 쓰기 뒤에 만들어서 서보 지연에 영향이 없습니다. 추정이므로 실제 값은 `dur_us`와 SM의 `ovr`로 확인하세요.
+- 로그 함수는 ISR에서 부르지 않습니다. 루프가 시작된 뒤에는 `xil_printf`를 쓰지 않습니다(같은 UART에 섞여 줄이 깨집니다).
+
+### 변경 지점
+
+변경한 지점에는 `[TRACE]` 태그가 있습니다. `grep -rn "\[TRACE\]" robot_arm/src robot_arm/include`로 찾을 수 있습니다.
+(Agent1의 getter만 Agent1 파일이라 태그 대신 "디버그/로그 전용" 주석이 있습니다.)
+
+| 파일 | 변경 |
+|---|---|
+| `include/integration/trace.h`, `src/integration/trace.c` | 신규: trace 본체 |
+| `src/integration/main_integration.c` | `TRACE_*` 호출 7줄 |
+| `include/integration/agent_pipeline.h`, `src/integration/agent_pipeline.c` | `ROBOT_TRACE`일 때 `a1_rc`, `a2_result`, `a2_mapped` 기록 |
+| `src/integration/platform_vitis.c` | baud 선택, 배너, trace 플랫폼 경계 3개(시간, 통계, 논블로킹 TX) |
+| `include/human_target_angle/agent1_stage.h`, `src/human_target_angle/agent1_stage.c` | Agent1 담당자와 합의해 추가한 읽기 전용 getter `agent1_stage_debug_context()` 1개(항상 컴파일됨) |
+| `tests/integration/test_trace.c` | 신규: 호스트 테스트 |
+
+Agent2와 Agent3 소스, PC 스크립트는 수정하지 않았습니다.
 
 ## 하드웨어(XSA)가 바뀌었을 때
 
