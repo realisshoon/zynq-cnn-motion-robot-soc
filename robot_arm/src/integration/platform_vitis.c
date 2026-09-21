@@ -15,10 +15,13 @@
  *  - UART 수신은 폴링이다. 한 프레임(36B)은 수신 FIFO(64B)에 들어가므로 main 루프가 자주 돌면 충분하다.
  *  - 로그는 부팅과 오류에만 한 줄씩 남긴다. xil_printf는 %f를 지원하지 않고,
  *    프레임마다 찍으면 그 시간만큼 틱이 늦어진다.
+ *  - [TRACE] ROBOT_TRACE를 정의하면 UART를 921600 baud로 열고, 맨 아래의 trace 플랫폼 경계 3개를 구현한다
+ *    (integration/trace.h). 프레임/틱 로그는 링버퍼에 쌓았다가 main 루프에서 TX FIFO로 논블로킹 전송한다.
  */
 
 #include "integration/input_pose.h"
 #include "integration/platform.h"
+#include "integration/trace.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -36,7 +39,12 @@
 
 /* ---- 설정값 (XSA가 만든 xparameters.h 기준) ---- */
 #define PLATFORM_UART_DEVICE_ID   XPAR_XUARTPS_0_DEVICE_ID              /* PS UART1 (USB-UART) */
+/* [TRACE] trace를 켠 빌드는 921600, 끈 빌드는 115200이다. PC 스크립트도 같은 속도로 열어야 한다(--baud). */
+#ifdef ROBOT_TRACE
+#define PLATFORM_UART_BAUD        ROBOT_TRACE_UART_BAUD
+#else
 #define PLATFORM_UART_BAUD        115200U
+#endif
 #define PLATFORM_GIC_DEVICE_ID    XPAR_SCUGIC_0_DEVICE_ID
 #define PLATFORM_TIMER_DEVICE_ID  XPAR_AXI_TIMER_0_DEVICE_ID
 #define PLATFORM_TIMER_IRQ_ID     XPAR_FABRIC_AXI_TIMER_0_INTERRUPT_INTR /* IRQ_F2P[0] = 61 */
@@ -124,7 +132,13 @@ int platform_init(void)
         return -1;
     }
 
+#ifdef ROBOT_TRACE
+    /* [TRACE] 배너에 UART 속도를 함께 찍는다. PC의 baud가 다르면 이 줄이 깨져 보인다. */
+    xil_printf("[platform] ready (tick %d ms, uart %u baud, trace on)\r\n",
+               (int)PLATFORM_TICK_MS, (unsigned)PLATFORM_UART_BAUD);
+#else
     xil_printf("[platform] ready (tick %d ms)\r\n", (int)PLATFORM_TICK_MS);
+#endif
     return 0;
 }
 
@@ -179,3 +193,40 @@ int input_pose_take(HumanPose2D *pose, float *dt_sec)
     s_have_last_frame = 1;
     return 1;
 }
+
+#ifdef ROBOT_TRACE
+/*
+ * [TRACE] trace 플랫폼 경계 (integration/trace.h). 호스트 테스트는 이 3개의 가짜 구현을 제공한다.
+ */
+
+uint32_t platform_trace_time_us(void)
+{
+    XTime now;
+
+    XTime_GetTime(&now);
+    /* 글로벌 타이머는 CPU 클럭의 절반(COUNTS_PER_SECOND)으로 센다. 32비트로 잘라 차이만 쓴다. */
+    return (uint32_t)(now / (COUNTS_PER_SECOND / 1000000U));
+}
+
+void platform_trace_stats(TracePlatformStats *out)
+{
+    out->tick_overruns = s_tick_overruns;
+    out->uart_crc_errors = s_rx.parser.crc_errors;
+    out->uart_format_errors = s_rx.parser.format_errors;
+    out->uart_range_errors = s_rx.parser.range_errors;
+    out->uart_overwritten = s_rx.overwritten_frames;
+}
+
+uint32_t platform_trace_tx(const uint8_t *data, uint32_t len)
+{
+    UINTPTR base = s_rx.uart.Config.BaseAddress; /* 수신기가 쓰는 UART와 같은 장치 */
+    uint32_t sent = 0U;
+
+    /* TX FIFO(64B)에 자리가 있을 때만 넣고 바로 돌아온다. xil_printf와 달리 기다리지 않는다. */
+    while (sent < len && !XUartPs_IsTransmitFull(base)) {
+        XUartPs_WriteReg(base, XUARTPS_FIFO_OFFSET, data[sent]);
+        ++sent;
+    }
+    return sent;
+}
+#endif /* ROBOT_TRACE */

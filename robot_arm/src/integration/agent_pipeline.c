@@ -7,6 +7,20 @@
 #include "output_controller/output_control.h"
 #include "output_controller/servo_hal.h"
 
+/*
+ * [TRACE] UART 로그용 기록. ROBOT_TRACE를 정의하지 않으면 아무것도 하지 않는다.
+ * 호출 지점마다 "[TRACE]" 태그를 붙였다.
+ */
+#ifdef ROBOT_TRACE
+#define TRACE_SET_A1_RC(ctx, rc)       ((ctx)->a1_rc = (int8_t)(rc))
+#define TRACE_SET_A2_RESULT(ctx, r)    ((ctx)->a2_result = (uint8_t)(r))
+#define TRACE_SET_A2_MAPPED(ctx, cmd)  ((ctx)->a2_mapped = (cmd))
+#else
+#define TRACE_SET_A1_RC(ctx, rc)       ((void)0)
+#define TRACE_SET_A2_RESULT(ctx, r)    ((void)0)
+#define TRACE_SET_A2_MAPPED(ctx, cmd)  ((void)0)
+#endif
+
 /* 데모에서 사용하는 팔. 입력 좌표의 팔과 반드시 일치시켜야 한다(Agent1 담당자 확인). */
 #define AGENT_PIPELINE_ACTIVE_ARM POSE_ARM_RIGHT
 
@@ -77,6 +91,8 @@ int agent_pipeline_init(AgentPipelineContext *ctx)
 
 int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec)
 {
+    int rc;
+
     if (ctx == NULL || pose == NULL) return 0;
 
     ctx->pose = *pose;
@@ -88,7 +104,9 @@ int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec)
      * 반환값(1/0/-1)은 보지 않는다. 짧은 dropout 동안 HOLD(0)에서도 valid=1인
      * 마지막 정상 타겟이 나오므로, 다음 단계 진행 여부는 출력 valid로만 판단한다.
      */
-    (void)agent1_stage_run(&ctx->pose, AGENT_PIPELINE_ACTIVE_ARM, dt_sec);
+    rc = agent1_stage_run(&ctx->pose, AGENT_PIPELINE_ACTIVE_ARM, dt_sec);
+    TRACE_SET_A1_RC(ctx, rc); /* [TRACE] 로그용으로만 보관한다. 다음 단계 진행 여부의 판단에는 쓰지 않는다. */
+    (void)rc;
 
     if (!agent1_stage_output_valid()) return 0;
 
@@ -102,11 +120,15 @@ int agent2_run(AgentPipelineContext *ctx)
 {
     JointCommand command;
 
+    if (ctx != NULL) {
+        TRACE_SET_A2_RESULT(ctx, A2_RESULT_NONE); /* [TRACE] 이번 프레임의 결과를 먼저 "없음"으로 둔다. */
+    }
     if (ctx == NULL || !ctx->target_ready) return 0;
 
     /* 호출 순서 계약: unwrap은 validate를 통과한 타겟만 받는다. */
     if (!motion_control_validate_target(&ctx->target)) {
         ctx->commands_rejected++;
+        TRACE_SET_A2_RESULT(ctx, A2_RESULT_REJECT_VALIDATE); /* [TRACE] */
         return 0;
     }
     motion_control_unwrap_target(&ctx->unwrap, &ctx->target);
@@ -114,12 +136,16 @@ int agent2_run(AgentPipelineContext *ctx)
     /* 무효/위험이면 폐기하고 마지막으로 승인한 목표를 계속 유지한다. */
     if (!robot_calibration_apply(&ctx->target, &command)) {
         ctx->commands_rejected++;
+        TRACE_SET_A2_MAPPED(ctx, command); /* [TRACE] 거부돼도 매핑된 각도는 남는다(valid만 0). 사유 flags를 로그에서 다시 구한다. */
+        TRACE_SET_A2_RESULT(ctx, A2_RESULT_REJECT_SAFETY); /* [TRACE] */
         return 0;
     }
     ctx->commands_accepted++;
+    TRACE_SET_A2_MAPPED(ctx, command); /* [TRACE] */
 
     /* HOLD 프레임처럼 직전과 같은 명령이면 재계획하지 않는다(램프가 속도 0에서 다시 시작되는 것을 막는다). */
     if (ctx->command_valid && same_command(&command, &ctx->command)) {
+        TRACE_SET_A2_RESULT(ctx, A2_RESULT_SAME); /* [TRACE] */
         return 1;
     }
 
@@ -127,6 +153,7 @@ int agent2_run(AgentPipelineContext *ctx)
     ctx->command = command;
     ctx->command_valid = 1U;
     ctx->retargets++;
+    TRACE_SET_A2_RESULT(ctx, A2_RESULT_NEW); /* [TRACE] */
     return 1;
 }
 
