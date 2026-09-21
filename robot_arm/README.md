@@ -290,6 +290,11 @@ powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Worksp
 4. `robot_arm/src/` **바로 아래**에 새 폴더나 새 파일을 만들면 자동으로 링크되지 않습니다.
    새 워크스페이스에서 스크립트를 다시 돌리거나 그 항목의 링크를 추가하세요.
 5. 링크 경로는 절대경로로 저장됩니다. 저장소를 다른 폴더로 옮기면 스크립트를 새 워크스페이스로 다시 돌리세요.
+6. **스크립트는 Debug 설정만 구성합니다.** include 경로, 컴파일 심볼(`SERVO_PWM_DRIVER_USE_XILINX`), `-lm`이 Debug 설정에만 들어가고
+   Release 설정에는 없습니다. Release가 필요하면 같은 설정을 넣어야 합니다. 특히 `SERVO_PWM_DRIVER_USE_XILINX`가 빠지면
+   서보 드라이버가 PC 테스트용 mock(레지스터 대신 메모리에 기록)으로 빌드되어 서보 PWM이 나오지 않습니다.
+   진짜 드라이버인지는 Vitis 툴체인의 `arm-none-eabi-nm`(`C:/Xilinx/Vitis/2020.2/gnu/aarch32/nt/gcc-arm-none-eabi/bin`)으로
+   `arm-none-eabi-nm <앱>.elf | findstr /i mock`을 실행해 아무것도 나오지 않는 것으로 확인합니다.
 
 ## Vitis 개발 워크플로
 
@@ -354,7 +359,8 @@ python robot_arm/pc/send_pose_uart.py --port COM3 --csv <pose CSV 경로> --hz 2
 
 ### 켜는 방법
 
-1. Vitis에서 앱(`robot_testbench`) → Properties → C/C++ Build → Settings → Symbols(Defined symbols)에 `ROBOT_TRACE`를 추가합니다(Debug/Release 모두).
+1. Vitis에서 앱(`robot_testbench`) → Properties → C/C++ Build → Settings → Symbols(Defined symbols)에 `ROBOT_TRACE`를 추가합니다. 이 워크스페이스는 Debug 설정에만 include 경로와 심볼이 들어 있으므로
+   Debug 설정에 추가하고 Debug As로 실행합니다(아래 "주의"의 6번).
    IDE를 닫고 명령으로 하려면 xsct에서 `app config -name robot_testbench -add define-compiler-symbols ROBOT_TRACE`를 실행합니다.
 2. 앱을 Clean 후 빌드합니다. 빌드 로그에 `[TRACE] ROBOT_TRACE enabled: UART runs at 921600 baud` 안내가 한 줄 나옵니다.
 3. 실행하면 배너가 바뀝니다: `[platform] ready (tick 20 ms, uart 921600 baud, trace on)`.
@@ -466,6 +472,7 @@ Agent2와 Agent3 소스, PC 스크립트는 수정하지 않았습니다.
 | 링크 에러: `platform_init`, `platform_tick_due`, `input_pose_*` 미정의 | `src/integration/platform_vitis.c`가 없는 브랜치입니다. 이 파일이 있는 브랜치인지 확인하세요 |
 | 앱 빌드에서 `cannot find -lxil` | 플랫폼 빌드가 실패한 상태입니다. 플랫폼 우클릭 → Clean Project → Build Project |
 | 브레이크포인트에 안 멈춤 | Run으로 실행했을 가능성이 큽니다. Debug As로 다시 실행하세요 |
+| 로그의 `pwm.*_pwm_us` 값은 정상인데 서보 PWM 핀에 신호가 없음 | 서보 드라이버가 mock으로 빌드됐을 수 있습니다. 앱 심볼에 `SERVO_PWM_DRIVER_USE_XILINX`가 있는지, ELF에 mock 심볼이 없는지 확인하세요(위 "주의"의 6번) |
 | 저장소에 `.Xil` 폴더가 생김 | xsct를 저장소 폴더에서 직접 실행했을 때 생깁니다. 이 스크립트는 워크스페이스 옆 `_setup_logs` 폴더에서 실행해서 생기지 않습니다 |
 
 참고: 서보 PWM IP(`servo_pwm`)의 자동 생성 드라이버 Makefile은 Windows용 Vitis 2020.2에서
