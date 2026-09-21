@@ -4,6 +4,32 @@ Zybo Z7-20(Zynq-7020)의 PS(ARM Cortex-A9, 베어메탈)에서 동작하는 **6�
 사람 팔의 2D 관절 좌표를 받아 로봇팔 관절 각도로 바꾸고, 안전검사와 속도제한을 거쳐 서보 PWM으로 출력합니다.
 사람 자세를 만드는 CNN 가속기(PL)는 별도로 개발 중이며, 입력은 현재 PC에서 UART로 보내는 pose 프레임으로 대신합니다.
 
+## 목차
+
+- [개요](#개요)
+- [통합 구조 (main_integration)](#통합-구조-main_integration)
+  - [파일](#파일)
+  - [main의 흐름](#main의-흐름)
+  - [함수 5개](#함수-5개)
+  - [상태: AgentPipelineContext](#상태-agentpipelinecontext)
+  - [하드웨어 경계 5개](#하드웨어-경계-5개)
+  - [지켜야 할 호출 규약](#지켜야-할-호출-규약)
+  - [코드 읽는 순서](#코드-읽는-순서)
+- [프로젝트 구조](#프로젝트-구조)
+- [호스트(PC) 빌드와 테스트](#호스트pc-빌드와-테스트)
+- [Vitis 작업환경 (Zybo Z7-20)](#vitis-작업환경-zybo-z7-20)
+  - [준비물](#준비물)
+  - [빠른 시작 (저장소 루트에서)](#빠른-시작-저장소-루트에서)
+  - [스크립트가 하는 일](#스크립트가-하는-일)
+  - [주의](#주의)
+- [Vitis 개발 워크플로](#vitis-개발-워크플로)
+  - [일상 작업 순서](#일상-작업-순서)
+  - [코드를 추가할 때](#코드를-추가할-때)
+  - [디버깅 요령](#디버깅-요령)
+  - [PC에서 pose 보내기](#pc에서-pose-보내기)
+- [하드웨어(XSA)가 바뀌었을 때](#하드웨어xsa가-바뀌었을-때)
+- [문제 해결](#문제-해결)
+
 ## 개요
 
 ```text
@@ -33,6 +59,112 @@ servo_pwm AXI IP (PL) → MG996R 서보 6채널 (5관절 + 그리퍼, 50 Hz)
 
 - **프레임 경로(가변 주기)**: pose가 도착하면 Agent1 → Agent2로 목표를 갱신합니다.
 - **제어 틱 경로(고정 20 ms, AXI Timer 인터럽트)**: Agent2가 램프를 한 틱 진행하고 Agent3가 서보 레지스터에 씁니다.
+
+코드 수준의 구조는 [통합 구조](#통합-구조-main_integration)를 보세요.
+
+## 통합 구조 (main_integration)
+
+세 Agent(Agent1, 2, 3)는 각자 독립적으로 만든 모듈이고, `integration/`은 이 셋을 **얇은 wrapper로 이어서** 하나의 프로그램으로 만듭니다.
+Agent 원본 소스는 수정하지 않고 공개 API만 호출합니다. 처음 코드를 읽는다면 이 절의 순서대로 보세요.
+
+### 파일
+
+| 파일 | 역할 |
+|---|---|
+| `src/integration/main_integration.c` | 진입점 `main`. 초기화 3줄과 무한 루프(프레임 경로, 틱 경로) |
+| `include/integration/agent_pipeline.h`, `src/integration/agent_pipeline.c` | Agent를 잇는 함수 5개와 파이프라인 상태(`AgentPipelineContext`) |
+| `include/integration/platform.h` | 하드웨어 경계 선언: `platform_init()`, `platform_tick_due()` |
+| `include/integration/input_pose.h` | 입력 경계 선언: `input_pose_init()`, `input_pose_ready()`, `input_pose_take()` |
+| `src/integration/platform_vitis.c` | 위 두 경계의 Vitis 구현(AXI Timer 인터럽트 틱, PS UART 수신) |
+| `tests/integration/test_integration_smoke.c` | 같은 `main`을 가짜 경계(테스트 코드)로 호스트에서 실행하는 스모크 테스트 |
+
+### main의 흐름
+
+```c
+int main(void)
+{
+    AgentPipelineContext pipeline;   /* 파이프라인 상태(프레임 사이에 유지) */
+    HumanPose2D pose;
+    float dt_sec;
+
+    if (platform_init() != 0) return -1;                  /* UART, 타이머, 서보 HAL 초기화 */
+    input_pose_init();                                    /* 입력 어댑터 초기화 */
+    if (agent_pipeline_init(&pipeline) != 0) return -1;   /* Agent 초기화, 홈 자세, 서보 enable */
+
+    for (;;) {
+        /* 프레임 경로(가변 주기): 새 pose가 오면 목표를 갱신한다. */
+        if (input_pose_ready() && input_pose_take(&pose, &dt_sec)) {
+            agent1_run(&pipeline, &pose, dt_sec);
+            agent2_run(&pipeline);
+        }
+
+        /* 제어 틱 경로(고정 20 ms): 램프를 한 틱 진행해서 서보에 적용한다. */
+        if (platform_tick_due()) {
+            agent2_tick(&pipeline);
+            agent3_run(&pipeline);
+        }
+    }
+}
+```
+
+시계가 둘인 이유: Agent2의 속도제한(`max_delta_deg`)이 20 ms 틱 기준이라서, pose 도착(가변)과 서보 갱신(고정)을 분리합니다.
+내비게이션과 같습니다. 목적지 갱신(프레임 경로)은 가끔 하고, 운전(틱 경로)은 계속합니다.
+프레임 사이에도 틱은 계속 돌아서 서보는 항상 부드럽게 목표를 향해 움직입니다.
+
+### 함수 5개
+
+| 함수 | 데이터 흐름 | 하는 일 |
+|---|---|---|
+| `agent_pipeline_init` | (부팅) | Agent 3개 초기화 → **홈 자세로 Agent2 부트스트랩** → PWM 변환 → shadow 6개 쓰기 + UPDATE → **그 다음 서보 enable**. 서보가 켜지자마자 튀지 않게 하는 순서입니다 |
+| `agent1_run` | `HumanPose2D` → `HumanJointTarget` | Agent1 실행. 다음 단계 진행 여부는 반환값이 아니라 **출력의 `valid`**로 판단합니다(짧은 끊김 동안에도 마지막 정상값을 valid로 유지하기 때문). 결과는 복사해 둡니다 |
+| `agent2_run` | `HumanJointTarget` → 목표 갱신 | 검증 → unwrap(±180° 경계 처리) → 서보 각도 매핑, 관절 한계, 안전검사(`apply`) → 승인되면 `set_target`. 거부되면 **마지막으로 승인된 목표를 유지**합니다. 직전과 같은 명령이면 재계획하지 않습니다 |
+| `agent2_tick` | → `JointCommand` | 램프를 한 틱(20 ms) 진행합니다. 관절마다 틱당 이동 상한이 있습니다 |
+| `agent3_run` | `JointCommand` → 서보 레지스터 | PWM(µs) 변환과 범위 검사 → shadow 6개 쓰기 → UPDATE. 변환이나 검사에 실패하면 레지스터에 쓰지 않습니다 |
+
+### 상태: AgentPipelineContext
+
+`main`의 지역 변수 하나(`pipeline`)를 모든 함수에 넘깁니다. C에는 객체가 없어서 상태를 한 구조체에 모았습니다.
+
+- Agent 상태: `unwrap`(각도 이어 붙이기 기억), `motion`(Agent2의 현재 위치와 목적지)
+- 프레임 경로 값: `pose`, `target`(Agent1 출력의 복사본), `command`(마지막으로 승인한 명령)
+- 틱 경로 값: `output`(이번 틱의 Agent2 출력), `pwm`(마지막 PWM 명령)
+- 디버깅용 카운터: `frames_in`, `targets_valid`, `commands_accepted`, `commands_rejected`, `retargets`, `ticks`, `servo_writes`, `servo_errors`
+
+### 하드웨어 경계 5개
+
+`main`은 시계와 입력을 이 5개 함수로만 봅니다. 선언은 헤더에만 있고 구현은 환경마다 다릅니다.
+
+| 함수 | 하는 일 |
+|---|---|
+| `platform_init()` | UART, 타이머, 서보 HAL 초기화. 성공 0, 실패 -1(실패하면 서보를 켜기 전에 종료) |
+| `platform_tick_due()` | 20 ms 틱이 왔으면 1. 인터럽트가 올리는 카운터를 읽어 한 틱씩 소비합니다(밀린 틱은 버림) |
+| `input_pose_init()` | 입력 어댑터 초기화 |
+| `input_pose_ready()` | 새 `HumanPose2D`가 준비됐으면 1 |
+| `input_pose_take()` | pose와 직전 프레임과의 간격 `dt_sec`을 넘깁니다(첫 프레임은 0.05초) |
+
+- **보드(Vitis)**: `src/integration/platform_vitis.c`가 구현합니다. AXI Timer 인터럽트(GIC ID 61)로 20 ms 틱을 만들고,
+  PS UART1(115200)에서 Agent1의 `uart_pose_rx_*`로 pose를 받습니다.
+- **호스트(PC) 테스트**: 테스트 코드가 가짜 구현을 제공해서 보드 없이 전체 흐름을 실행합니다.
+- **새 입력 방식(CNN 등)**은 `input_pose_*` 3개만 새로 구현하면 됩니다. Agent들은 입력 방식을 모릅니다.
+
+### 지켜야 할 호출 규약
+
+- Agent1 다음 단계 진행은 반환값(1/0/-1)이 아니라 출력 `valid`로 판단한다.
+- Agent2는 항상 검증 → unwrap → apply → set_target 순서로 부른다. 검증되지 않은 타겟을 unwrap에 넣지 않는다.
+- Agent2는 첫 `set_target`을 램프 없이 바로 적용하므로, 홈 자세로 먼저 부트스트랩한다.
+- 서보는 shadow 6개 → UPDATE → enable 순서로 켠다.
+- 인터럽트(ISR) 안에서는 Agent를 실행하지 않는다. ISR은 카운터만 올린다.
+- 사용하는 팔(`AGENT_PIPELINE_ACTIVE_ARM`, 현재 `POSE_ARM_RIGHT`)은 입력 좌표의 팔과 반드시 같아야 한다.
+- 홈 자세(`agent_pipeline.c`의 `k_home_pose`: 5관절 90°, 그리퍼 0.5 = 1500 µs)는 **자리표시자**다.
+  실측 후 RTL의 서보 reset 값과 함께 교체한다.
+
+### 코드 읽는 순서
+
+1. `main_integration.c` (33줄)
+2. `agent_pipeline.h`의 주석
+3. `agent_pipeline.c`를 위에서 아래로
+4. `platform.h`, `input_pose.h`
+5. `platform_vitis.c`
 
 ## 프로젝트 구조
 
