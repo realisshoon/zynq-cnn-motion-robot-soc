@@ -1,0 +1,323 @@
+{
+  "operation": "features.conv0.conv",
+  "input_shape": [
+    256,
+    256,
+    3
+  ],
+  "conv0_validation": {
+    "shape": [
+      128,
+      128,
+      24
+    ],
+    "dtype": "int8",
+    "min": 0,
+    "max": 127,
+    "shape_check": true,
+    "dtype_check": true,
+    "range_check": true,
+    "golden_exact_match": true,
+    "mismatch_count": 0
+  },
+  "conv0_samples": {
+    "0,0": [
+      50,
+      127,
+      0,
+      0,
+      78,
+      0,
+      0,
+      0,
+      9,
+      0,
+      86,
+      0,
+      83,
+      0,
+      14,
+      0,
+      61,
+      0,
+      0,
+      4,
+      53,
+      8,
+      37,
+      0
+    ],
+    "1,1": [
+      49,
+      58,
+      0,
+      0,
+      17,
+      0,
+      0,
+      0,
+      8,
+      0,
+      52,
+      0,
+      104,
+      0,
+      12,
+      48,
+      61,
+      0,
+      0,
+      0,
+      80,
+      0,
+      10,
+      0
+    ],
+    "64,64": [
+      33,
+      60,
+      0,
+      0,
+      15,
+      0,
+      0,
+      0,
+      24,
+      0,
+      55,
+      0,
+      97,
+      0,
+      37,
+      49,
+      65,
+      0,
+      0,
+      0,
+      73,
+      0,
+      25,
+      0
+    ],
+    "127,127": [
+      49,
+      58,
+      0,
+      0,
+      17,
+      0,
+      0,
+      0,
+      8,
+      0,
+      52,
+      0,
+      104,
+      0,
+      12,
+      48,
+      61,
+      0,
+      0,
+      0,
+      80,
+      0,
+      10,
+      0
+    ]
+  },
+  "conv0_channel_stats": [
+    {
+      "channel": 0,
+      "min": 32,
+      "max": 60,
+      "mean": 48.59759521484375,
+      "zero_count": 0,
+      "sat127_count": 0
+    },
+    {
+      "channel": 1,
+      "min": 0,
+      "max": 127,
+      "mean": 58.0081787109375,
+      "zero_count": 42,
+      "sat127_count": 170
+    },
+    {
+      "channel": 2,
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "zero_count": 16384,
+      "sat127_count": 0
+    },
+    {
+      "channel": 3,
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "zero_count": 16384,
+      "sat127_count": 0
+    },
+    {
+      "channel": 4,
+      "min": 0,
+      "max": 117,
+      "mean": 17.8392333984375,
+      "zero_count": 232,
+      "sat127_count": 0
+    },
+    {
+      "channel": 5,
+      "min": 0,
+      "max": 7,
+      "mean": 0.7657470703125,
+      "zero_count": 11007,
+      "sat127_count": 0
+    },
+    {
+      "channel": 6,
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "zero_count": 16384,
+      "sat127_count": 0
+    },
+    {
+      "channel": 7,
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "zero_count": 16384,
+      "sat127_count": 0
+    },
+    {
+      "channel": 8,
+      "min": 8,
+      "max": 25,
+      "mean": 11.66680908203125,
+      "zero_count": 0,
+      "sat127_count": 0
+    },
+    {
+      "channel": 9,
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "zero_count": 16384,
+      "sat127_count": 0
+    },
+    {
+      "channel": 10,
+      "min": 0,
+      "max": 127,
+      "mean": 55.4130859375,
+      "zero_count": 209,
+      "sat127_count": 152
+    },
+    {
+      "channel": 11,
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "zero_count": 16384,
+      "sat127_count": 0
+    },
+    {
+      "channel": 12,
+      "min": 32,
+      "max": 104,
+      "mean": 85.88531494140625,
+      "zero_count": 0,
+      "sat127_count": 0
+    },
+    {
+      "channel": 13,
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "zero_count": 16384,
+      "sat127_count": 0
+    },
+    {
+      "channel": 14,
+      "min": 0,
+      "max": 42,
+      "mean": 14.98492431640625,
+      "zero_count": 299,
+      "sat127_count": 0
+    },
+    {
+      "channel": 15,
+      "min": 0,
+      "max": 127,
+      "mean": 49.81610107421875,
+      "zero_count": 267,
+      "sat127_count": 150
+    },
+    {
+      "channel": 16,
+      "min": 48,
+      "max": 80,
+      "mean": 61.45318603515625,
+      "zero_count": 0,
+      "sat127_count": 0
+    },
+    {
+      "channel": 17,
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "zero_count": 16384,
+      "sat127_count": 0
+    },
+    {
+      "channel": 18,
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "zero_count": 16384,
+      "sat127_count": 0
+    },
+    {
+      "channel": 19,
+      "min": 0,
+      "max": 38,
+      "mean": 7.16015625,
+      "zero_count": 9136,
+      "sat127_count": 0
+    },
+    {
+      "channel": 20,
+      "min": 31,
+      "max": 80,
+      "mean": 67.93316650390625,
+      "zero_count": 0,
+      "sat127_count": 0
+    },
+    {
+      "channel": 21,
+      "min": 0,
+      "max": 46,
+      "mean": 4.74566650390625,
+      "zero_count": 9798,
+      "sat127_count": 0
+    },
+    {
+      "channel": 22,
+      "min": 0,
+      "max": 77,
+      "mean": 9.39337158203125,
+      "zero_count": 1135,
+      "sat127_count": 0
+    },
+    {
+      "channel": 23,
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "zero_count": 16384,
+      "sat127_count": 0
+    }
+  ]
+}
