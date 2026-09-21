@@ -52,3 +52,38 @@ int agent1_stage_output_valid(void)
     return g_agent1_initialized &&
            (g_agent1_output.valid != 0U);
 }
+
+
+
+int agent1_stage_start_roll_zero_calibration(void)
+{
+    if (!g_agent1_initialized) {
+        return -1;
+    }
+
+    return pose_mapping_start_roll_zero_calibration(
+        &g_agent1_ctx
+    );
+}
+
+uint8_t agent1_stage_is_roll_zero_calibrating(void)
+{
+    if (!g_agent1_initialized) {
+        return 0U;
+    }
+
+    return pose_mapping_is_roll_zero_calibrating(
+        &g_agent1_ctx
+    );
+}
+
+void agent1_stage_clear_roll_zero(void)
+{
+    if (!g_agent1_initialized) {
+        return;
+    }
+
+    pose_mapping_clear_roll_zero(
+        &g_agent1_ctx
+    );
+}
