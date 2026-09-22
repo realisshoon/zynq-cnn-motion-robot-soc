@@ -1,6 +1,6 @@
 # robot_arm
 
-> Agent1 **5축 전완 기반 경로**는 [README_AGENT1_TEST.md](README_AGENT1_TEST.md)를 참조하세요.
+> Agent1 **사람 몸 좌표계 기반 5축 전완 경로**는 [README_AGENT1_TEST.md](README_AGENT1_TEST.md)를 참조하세요.
 > 아래 기존 6축 보드 통합 설명은 유지됩니다. 새 Agent2/3 연결·실물 보정은 아직 완료되지 않았습니다.
 
 Zybo Z7-20(Zynq-7020)의 PS(ARM Cortex-A9, 베어메탈)에서 동작하는 **6축 서보 로봇팔 제어 소프트웨어**입니다.

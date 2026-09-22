@@ -97,7 +97,7 @@ if(AGENT1_ONLY)
     add_test(NAME forearm_uart COMMAND test_forearm ${CMAKE_CURRENT_SOURCE_DIR}/etc/uart_pose_stream.bin)
     add_test(NAME forearm_csv COMMAND test_pose_csv
         ${CMAKE_CURRENT_SOURCE_DIR}/etc/example_pose2d_1280x720_20hz.csv
-        ${CMAKE_CURRENT_BINARY_DIR}/forearm_result.csv --demo-table)
+        ${CMAKE_CURRENT_BINARY_DIR}/forearm_result.csv)
     add_executable(test_agent1_trace tests/human_target_angle/test_agent1_trace.c
         src/human_target_angle/agent1_stage.c src/human_target_angle/agent1_forearm_stage.c)
     configure_robot_target(test_agent1_trace)

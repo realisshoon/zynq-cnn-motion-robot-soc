@@ -31,7 +31,8 @@ typedef struct {
     uint8_t valid;
 } HumanPose2D;
 
-/* Human joint-space target: human_target_angle -> robot_calibration. */
+/* Legacy six-axis human target. Existing Agent2/integration still consumes
+ * this type; do not reinterpret HumanForearmTarget as this structure. */
 typedef struct {
     float base_deg;
 
@@ -44,6 +45,24 @@ typedef struct {
 
     uint8_t valid;
 } HumanJointTarget;
+
+/* Five-axis HUMAN angles: Agent1 -> Agent2 (not robot servo commands).
+ * elbow_roll: Body +Y azimuth, zero +Z, positive toward +X, [-180,180).
+ * elbow_pitch: elevation above Body XZ, +Body Y positive, [-90,90].
+ * Neither field is the legacy anatomical elbow inner angle.
+ * wrist_pitch: positive about projected Finger1->Finger2 axis, [-180,180).
+ * wrist_roll: RH about Elbow->Wrist relative to Body/forearm reference,
+ * [-180,180). See docs/agent1_forearm.md for zero and singularities.
+ * gripper: 0=CLOSE, 1=OPEN.
+ * frame_id retains the last fresh major measurement's ID during HOLD.
+ * valid covers major geometry only; elbow_roll_observable and hand_fresh
+ * distinguish a fresh observation from retained/default values. */
+typedef struct {
+    float elbow_roll_deg, elbow_pitch_deg;
+    float wrist_pitch_deg, wrist_roll_deg, gripper_norm;
+    uint32_t frame_id;
+    uint8_t valid, elbow_roll_observable, hand_fresh;
+} HumanForearmTarget;
 
 /* Calibrated robot command: robot_calibration -> output_controller. */
 typedef struct {

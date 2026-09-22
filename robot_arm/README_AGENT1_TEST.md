@@ -1,109 +1,90 @@
-# Agent1 5축 테스트 치트시트
+# Agent1 Human Body 기준 5축 테스트
 
-`robot_arm/`에서 실행. Pose2D → 기존 relative 3D → 새 Forearm/Wrist 각도.
-입력 6개 landmark/36-byte UART는 그대로다. **아직 실물 5축 통합 완료가 아니다.**
-기존 `agent1_stage_*`와 보드 A1/P3 trace는 6축 경로를 유지한다.
-새 경로는 `forearm_mapping_*` / `agent1_forearm_stage_*`이며 Agent2/3 연결은 후속 작업이다.
+Agent1 outputs HUMAN angles, not ROBOT servo angles.
 
-| 새 모터 | Agent1 필드 | 의미 |
-|---|---|---|
-| M0 elbow_roll | forearm_yaw_deg | 테이블 법선 주위 방위각; 전완 자체의 비틀림 아님 |
-| M1 elbow_pitch | forearm_pitch_deg | 테이블 평면 기준 고도각; 기존 elbow 내각 아님 |
-| M2 wrist_pitch | wrist_pitch_deg | 전완에 대한 손의 굽힘 |
-| M3 wrist_roll | wrist_roll_deg | 전완 축 주위 손의 회전 |
-| M4 gripper | gripper_norm | 0=CLOSE, 1=OPEN |
+robot_arm/에서 실행한다. 입력 → relative XYZ → 양 어깨 기반 Human Body Frame
+→ 사람 elbow/wrist/gripper 각도 순서다. 로봇 설치 방향과 서보 보정은 Agent2 책임이다.
 
-Agent1에는 서보 offset/direction/limit/PWM을 넣지 않는다.
+입력 6개 landmark: Finger1, Finger2, Elbow, Wrist, Shoulder_L, Shoulder_R.
+HumanPose2D와 기존 36-byte UART packet, 추출기, 로그 저장 기능을 유지한다.
 
-## TableFrame
+## 좌표·각도 규약
 
-실측 camera-space 법선 `up`과 기준 정면 `forward`를 공급한다.
-Z=정규화한 up, X=forward를 테이블에 투영·정규화, Y=Z×X. X×Y=Z인 오른손 기저다.
-X는 실제 로봇 neutral 전완의 정면을 카메라 공간에 표현한 방향을 권장한다.
-yaw: +X=0°, +Z 오른손 방향이 양수, [-180,180).
-pitch: 평면=0°, 위쪽 양수, [-90,90].
+- Body X: 해부학적 Shoulder_L → Shoulder_R(기존 시간 필터 적용).
+- Body Y: Camera up=(0,1,0)을 X에 수직 투영·정규화한 방향.
+- Body Z: X×Y. 카메라 forward 쪽으로 강제 반전하지 않는다.
+- Body Y는 몸 위쪽의 추정값이다. 몸 숙임을 포함한 임의의 3D 몸 회전을 완벽히 추정하지 못한다.
 
-`--demo-table`은 **실측 아님**: X=카메라 +Z(멀어짐), Y=카메라 +X, Z=카메라 +Y(영상 위).
-실측값이 없으므로 실제 설치 기준이라고 가정하지 않는다. 자세/카메라가 바뀌면 다시 보정한다.
-`--table up_x up_y up_z forward_x forward_y forward_z`로 실측값을 명시할 수 있다.
-이 옵션은 사용자가 보정했다고 선언하는 것이지 실측 여부를 소프트웨어가 검증하는 것은 아니다.
+| 사람 출력 | 의미 |
+|---|---|
+| elbow_roll_deg | Body +Y 주위 방위각; +Z=0°, +X 쪽 양수, [-180,180), wrap |
+| elbow_pitch_deg | Body XZ 평면 기준 고도각; +Y 위쪽 양수, [-90,90], no wrap |
+| wrist_pitch_deg | 손·전완 일직선=0°, 전완에 수직 투영한 Finger1→Finger2 축 주위 양수, [-180,180) |
+| wrist_roll_deg | 전완 축 주위 오른손 회전; Body/전완 기준 normal과 손 normal 일치=0°, [-180,180) |
+| gripper_norm | 0=CLOSE, 1=OPEN |
 
-## 빌드 / 회귀 테스트 — PC에서 실행 확인
+elbow_roll은 전완 자체의 비틀림이 아닌 방위각이다.
+elbow_pitch는 기존 팔꿈치 내각(펴진 팔≈180°)과 다르다.
+손목 pitch의 부호는 기존 6축 사람 각도 규약을 유지한다. 항상 '화면 위쪽=양수'인 값은 아니다.
+손목 reference와 특이점 상세는 [규약/검증 기록](docs/agent1_forearm.md)을 참조한다.
 
-```bash
-cmake -S . -B build/agent1 -DAGENT1_ONLY=ON -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/agent1 -j
-ctest --test-dir build/agent1 --output-on-failure
-bash tests/human_target_angle/run_axis_tests.sh
-```
+## 빌드·회귀 — 실행 확인
 
-CMake에 정식 `AGENT1_ONLY` 모드를 추가했다. 기존 전체 빌드의 A2/A3 누락 파일 문제는
-고치지 않았으며, 이 모드는 해당 타깃을 구성하지 않는다. 기존 `build/`와 별도 디렉터리다.
-CTest 7개: 기존 mapping/body 회귀, 새 전완/손목/HOLD/EMA/gripper,
-새 UART 522프레임, CSV replay, TRACE getter 컴파일·링크, replay 통계/범위 검사.
-스크립트는 기존 mock/legacy UART 회귀도 실행한다. Debug를 사용해야 assert 검증이 살아 있다.
+    cmake -S . -B build/agent1 -DAGENT1_ONLY=ON -DCMAKE_BUILD_TYPE=Debug
+    cmake --build build/agent1 -j
+    ctest --test-dir build/agent1 --output-on-failure
+    bash tests/human_target_angle/run_axis_tests.sh
 
-뷰어 신/구 CSV 로딩과 panel 렌더 테스트도 실행 확인했다(CSV 생성 후):
+CTest: 기존 mapping/body, 새 human forearm 기하·손목·회전 불변성·HOLD,
+UART 522프레임, CSV replay, TRACE getter, 통계/범위 검사.
+Debug로 실행해야 assert 검증이 활성화된다.
+AGENT1_ONLY는 기존 정식 Agent1 전용 빌드 모드다. 전체 빌드의 A2/A3 누락 소스 문제는 별도다.
 
-```bash
-PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR=/tmp/robot-arm-mpl .venv/bin/python \
-  tests/human_target_angle/test_forearm_viewer.py \
-  build/agent1/forearm_result.csv etc/example_agent1_result_1280x720.csv
-```
+## CSV replay — 실행 확인
 
-## 기존 Pose2D CSV → 새 결과 — 실행 확인
+    ./build/agent1/test_pose_csv etc/example_pose2d_1280x720_20hz.csv build/agent1/forearm_result.csv
+    python3 tools/analyze_forearm_replay.py build/agent1/forearm_result.csv --expect-frames 522
 
-```bash
-./build/agent1/test_pose_csv \
-  etc/example_pose2d_1280x720_20hz.csv \
-  build/agent1/forearm_result.csv --demo-table
-python3 tools/analyze_forearm_replay.py \
-  build/agent1/forearm_result.csv --expect-frames 522
-```
+인수: input.csv output.csv [right|left], 기본 right.
+출력은 새 5개 사람 각도/의도와 Body 축을 기록한다.
+target_valid는 major 목표 유효성, elbow_roll_observable은 방위각의 현재 관측 여부,
+hand_fresh는 손의 현재 갱신 여부다. 몸 축만 과거 값으로 남을 수 있으므로 body_frame_valid만으로
+전체 목표를 유효하다고 판단하지 않는다.
+frame_id는 입력 ID, target_frame_id는 마지막 fresh major 목표 ID이며 HOLD 때 이전 ID를 유지한다.
 
-이 유틸리티는 오른팔 입력용이다. 왼팔 제어는 API의 `POSE_ARM_LEFT`를 사용한다.
-입력 추출을 다시 할 필요 없다. 출력에는 옛 base/shoulder/elbow 열이 없고 새 5개 필드가 있다.
-`target_valid`, `yaw_observable`, `hand_fresh`, `table_calibrated`, `target_frame_id`도 확인한다.
-`frame_id`는 입력 프레임, `target_frame_id`는 마지막 fresh major 목표의 프레임이다.
+기존 잘못된 고정축 CSV는 다시 생성해야 한다. 이전 기준값 설정 옵션은 제거했다.
+BodyFrame은 입력 어깨에서 자동 계산하며 사용자 설치 방향 입력을 요구하지 않는다.
 
-## 뷰어 — 아래 짧은 미리보기 실행 확인
+## 뷰어 — 아래 미리보기 실행 확인
 
-현재 `etc/example.mp4`는 없다. 동일 입력의 기존 overlay 영상을 사용한다.
+    PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR=/tmp/robot-arm-mpl .venv/bin/python tools/agent1_video_xyz_viewer_v3.py --video etc/example_pose_overlay_1280x720_20hz.mp4 --result-csv build/agent1/forearm_result.csv --pose2d-csv etc/example_pose2d_1280x720_20hz.csv --output build/agent1/human_forearm_preview.mp4 --output-fps 20 --max-seconds 0.3 --panel-size 720 --elev 10 --azim -75
 
-```bash
-MPLCONFIGDIR=/tmp/robot-arm-mpl .venv/bin/python \
-  tools/agent1_video_xyz_viewer_v3.py \
-  --video etc/example_pose_overlay_1280x720_20hz.mp4 \
-  --result-csv build/agent1/forearm_result.csv \
-  --pose2d-csv etc/example_pose2d_1280x720_20hz.csv \
-  --output build/agent1/forearm_preview.mp4 \
-  --output-fps 20 --max-seconds 0.3 --panel-size 720 --elev 10 --azim -75
-```
+0.3초 제한을 제거하면 전체 길이를 렌더한다(이번 전체 길이 렌더는 NOT VERIFIED).
+실제로 존재하는 동일 입력의 overlay 영상을 사용했다. etc/example.mp4는 현재 없다.
+Body X/Y/Z 화살표와 Elbow→Wrist 벡터를 표시한다.
+기존 6축 CSV는 LEGACY 표시로 읽고, 폐기된 고정축 5축 CSV는 재생성을 요청하며 거부한다.
 
-전체 영상을 만들려면 `--max-seconds 0.3`을 제거한다(전체 길이 렌더는 이번에 미실행).
-테이블 XYZ 화살표는 팔꿈치에서 시작하고 보라색 화살표는 팔꿈치→손목이다.
-DEMO 표시를 실물 보정 완료로 읽으면 안 된다. 기존 CSV는 LEGACY로 구별한다.
-CSV를 다시 만들어도 기존 mp4는 자동 갱신되지 않는다.
+    PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR=/tmp/robot-arm-mpl .venv/bin/python tests/human_target_angle/test_forearm_viewer.py build/agent1/forearm_result.csv etc/example_agent1_result_1280x720.csv
+
+위 3개 뷰어 회귀 테스트 실행 확인. CSV를 다시 만들어도 과거 mp4는 자동 갱신되지 않는다.
 
 ## UART — 옵션 확인, 실물 실행 NOT VERIFIED
 
-Windows PowerShell에서 실제 저장소의 `robot_arm`으로 이동한 뒤 사용한다. COM9는 예시다.
-새 Agent2/3를 보드에 통합하기 전에는 **기존 6축 A1/P3 로그**가 나오는 것이 정상이다.
-새 5축 실물 동작 확인 명령으로 오해하지 말 것. 이번 작업에서 보드/서보는 구동하지 않았다.
+Windows PowerShell에서 실제 저장소 robot_arm 폴더로 이동한 뒤 사용한다. COM9는 예시다.
 
-```powershell
-py .\pc\send_pose_uart_with_video.py --port COM9 --baud 921600 --csv .\etc\example_pose2d_1280x720_20hz.csv --video .\etc\example_pose_overlay_1280x720_20hz.mp4 --hz 20 --log-dir "C:\Users\kccistc\Downloads\로그 파일"
-```
+    py .\pc\send_pose_uart_with_video.py --port COM9 --baud 921600 --csv .\etc\example_pose2d_1280x720_20hz.csv --video .\etc\example_pose_overlay_1280x720_20hz.mp4 --hz 20 --log-dir "C:\Users\kccistc\Downloads\로그 파일"
 
-Pose2D 추출기/전송기/로그 저장 기능은 변경하지 않았다. `--help`로 옵션 존재를 확인했다.
+현재 보드 pipeline은 기존 agent1_stage_* / HumanJointTarget 경로다.
+새 agent1_forearm_stage_* / HumanForearmTarget 소비부 연결은 Agent2 후속 작업이다.
+따라서 UART 실행만으로 새 5축 보드 제어가 활성화되지는 않는다.
 
-## 빠른 이상 확인
+## 이상 확인 / 알려진 문제
 
-- 시작부터 수직이면 yaw=0은 임시값이며 `yaw_observable=0`, 손도 기본값/`hand_fresh=0`이다.
-- 수직 근처 yaw는 HOLD하지만, 특이점을 벗어난 뒤 큰 변화가 생길 수 있다.
-- 이번 DEMO replay: invalid 0, yaw 미관측 1, hand HOLD 9; yaw 최대 변화 72.10°/frame.
-  테스트 PASS는 모터 직결이 안전하다는 뜻이 아니다. A2의 속도제한/재진입 정책이 필요하다.
-- 각도 차이는 yaw/손목에서 shortest-angle로 비교한다. pitch에는 wrap을 적용하지 않는다.
-- 입력 파일명은 20 Hz지만 timestamp 간격은 약 33/67 ms이다. replay는 실제 timestamp를 쓴다.
-- 자세한 규약/검증/한계: [agent1_forearm.md](docs/agent1_forearm.md).
-- 다음 담당자 전달: [Agent2 5축 프롬프트](docs/agent2_forearm_handoff_prompt.md).
+- 전완이 Body Y에 가까우면 elbow_roll을 HOLD한다. 처음부터 수직이면 임시 0°와 관측 불가 flag.
+- 수직에서 벗어난 후 큰 방위각 변화는 남는다. 522 replay 최대 59.65°/frame.
+- 이번 결과: fresh/valid 522, invalid 0, major HOLD 0, 방위각 미관측 1, hand HOLD 9.
+- angle wrap은 최단 각도 차로 비교한다. elbow_pitch에는 wrap을 적용하지 않는다.
+- 입력 파일명은 20hz지만 timestamp 간격은 약 33/67ms이다. replay는 실제 timestamp를 사용한다.
+- 몸 좌표 추정은 Camera up을 사용한다. 몸을 앞으로 숙이는 동작까지 회전 불변이라고 해석하지 않는다.
+- 새 공유 타입은 include/common/robot_types.h의 HumanForearmTarget.
+- [Agent2 전달용 최종본](docs/agent2_forearm_handoff_prompt.md).

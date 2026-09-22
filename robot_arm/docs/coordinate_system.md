@@ -1,7 +1,8 @@
 # Coordinate System / Agent1 → Agent2 계약
 
 > 이 문서의 BodyFrame/6축 계약은 legacy 경로용입니다.
-> 새 5축 TableFrame 계약은 [agent1_forearm.md](agent1_forearm.md)를 사용하세요.
+> 새 5축도 아래와 동일한 BodyFrame 생성 규약을 사용합니다. 전완 기준 HUMAN 각도 계약은
+> [agent1_forearm.md](agent1_forearm.md)를 사용하세요.
 
 ## 입력 영상과 복원 좌표
 

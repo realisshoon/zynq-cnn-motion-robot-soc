@@ -5,9 +5,11 @@
 
 /* Geometric observability thresholds, not additional temporal smoothing.
  * sin(angle from pole): enter ~1.15 deg, leave ~2.29 deg. */
-#define FM_YAW_ENTER 0.02f
-#define FM_YAW_LEAVE 0.04f
+#define FM_AZIMUTH_ENTER 0.02f
+#define FM_AZIMUTH_LEAVE 0.04f
 float fm_wrap180(float degrees);
+/* Uses the stable BodyFrame already updated by the public pipeline.
+ * Separating projection allows rigid rotation tests of supplied frames. */
 int fm_calculate_angles(ForearmMappingContext *ctx, float filter_dt,
                         HumanForearmTarget *out);
 int fm_calculate_hand(ForearmMappingContext *ctx, float shoulder_span,
