@@ -7,19 +7,9 @@
  * trace.c는 이 파일이 #include 해서 정적 함수를 직접 검사한다(따로 컴파일하지 않는다).
  * ROBOT_TRACE를 모든 파일에 줘야 AgentPipelineContext의 구조가 같아진다.
  *
- * 빌드/실행 (robot_arm/ 에서, SERVO_PWM_DRIVER_USE_XILINX는 정의하지 않는다):
- *   gcc -std=c99 -Wall -Wextra -Wpedantic -DROBOT_TRACE -Iinclude -Iconfig \
- *     src/human_target_angle/agent1_stage.c src/human_target_angle/pose_hand.c \
- *     src/human_target_angle/pose_joint.c src/human_target_angle/pose_mapping.c \
- *     src/human_target_angle/pose_math.c src/human_target_angle/pose_reconstruction.c \
- *     src/human_target_angle/pose_tracking.c \
- *     src/robot_calibration/motion_control.c src/robot_calibration/motion_limits.c \
- *     src/robot_calibration/motion_smoothing.c src/robot_calibration/robot_calibration.c \
- *     src/robot_calibration/robot_calibration_config.c src/robot_calibration/safety_check.c \
- *     src/output_controller/output_control.c src/output_controller/servo_config.c \
- *     src/output_controller/servo_control.c src/output_controller/servo_hal.c \
- *     src/drivers/servo_pwm_driver.c src/integration/agent_pipeline.c \
- *     tests/integration/test_trace.c -lm -o <출력경로>
+ * 빌드/실행 (robot_arm/ 에서):
+ *   python tests/robot_calibration/run_tests.py
+ * 러너가 새 forearm 소스 목록 전체에 -DROBOT_TRACE를 적용한다.
  */
 
 #ifndef ROBOT_TRACE
@@ -235,33 +225,16 @@ static void pipeline_init(AgentPipelineContext *ctx)
     assert(agent_pipeline_init(ctx) == 0);
 }
 
-/* 검증을 통과하고 안전검사도 통과하는(want_safe=1) 또는 안전검사에서 거부되는(0) 타겟을 찾는다. */
-static int find_target(int want_safe, HumanJointTarget *out)
+/* 현재 클램프 범위는 항상 안전하다. 정상 입력은 명시적인 4관절 fixture로 둔다. */
+static HumanForearmTarget safe_target(void)
 {
-    HumanJointTarget t;
-    JointCommand c;
-    float s;
-    float e;
-    float w;
-
-    memset(&t, 0, sizeof(t));
-    t.valid = 1U;
-    t.gripper_norm = 0.5f;
-    for (s = -90.0f; s <= 90.0f; s += 10.0f) {
-        for (e = 0.0f; e <= 180.0f; e += 10.0f) {
-            for (w = -90.0f; w <= 90.0f; w += 10.0f) {
-                t.shoulder_deg = s;
-                t.elbow_deg = e;
-                t.wrist_pitch_deg = w;
-                if (!motion_control_validate_target(&t)) continue;
-                if ((robot_calibration_apply(&t, &c) != 0) == (want_safe != 0)) {
-                    *out = t;
-                    return 1;
-                }
-            }
-        }
-    }
-    return 0;
+    const HumanForearmTarget target = {
+        .elbow_roll_deg = 10.0f, .elbow_pitch_deg = -20.0f,
+        .wrist_pitch_deg = 30.0f, .wrist_roll_deg = -40.0f,
+        .gripper_norm = 0.5f, .valid = 1U,
+        .elbow_roll_observable = 1U, .hand_fresh = 1U
+    };
+    return target;
 }
 
 /* ---- 1) 포맷터 ---- */
@@ -369,7 +342,7 @@ static void test_ring(void)
     reset_all();
     g_tx_budget = 0U;
     for (i = 0U; i < 1500U; ++i) emit_ev(i, "SEQ", i);
-    assert(s_dropped > 0U);
+    assert(s_dropped == 998U); /* 새 스키마 길이로 실행한 포화 실측값 */
     assert(s_head - s_tail <= TRACE_RING_SIZE);
     assert(s_hi > TRACE_RING_SIZE - 40U); /* 거의 가득 찼었다 */
     g_tx_budget = 0xFFFFFFFFU;
@@ -416,7 +389,7 @@ static void test_a1_p3(void)
     const PoseMappingContext *c;
     unsigned i;
 
-    assert(agent1_stage_debug_context() != NULL);
+    assert(agent1_forearm_stage_debug_context() != NULL);
     reset_all();
     pipeline_init(&ctx);
     trace_init();
@@ -437,12 +410,16 @@ static void test_a1_p3(void)
     assert(field_is(a1, 6U, "63"));       /* vm: 6점 모두 유효 */
     assert(field_is(a1, 7U, "1"));        /* rc: 새 타겟 */
     assert(field_is(a1, 8U, "1"));        /* ov */
-    assert(fabs(field_num(a1, 9U) - (double)ctx.target.base_deg) <= 0.051);
-    assert(fabs(field_num(a1, 10U) - (double)ctx.target.shoulder_deg) <= 0.051);
-    assert(fabs(field_num(a1, 14U) - (double)ctx.target.gripper_norm) <= 0.0051);
+    assert(fabs(field_num(a1, 9U) - (double)ctx.target.elbow_roll_deg) <= 0.051);
+    assert(fabs(field_num(a1, 10U) - (double)ctx.target.elbow_pitch_deg) <= 0.051);
+    assert(fabs(field_num(a1, 11U) - (double)ctx.target.wrist_pitch_deg) <= 0.051);
+    assert(fabs(field_num(a1, 12U) - (double)ctx.target.wrist_roll_deg) <= 0.051);
+    assert(strcmp(a1, "A1,42,1,250,50,1,63,1,1,63.3,-22.6,-22.5,-71.8,1.00") == 0);
+    printf("  sample %s\n", a1);
+    assert(fabs(field_num(a1, 13U) - (double)ctx.target.gripper_norm) <= 0.0051);
 
     /* P3: getter로 읽은 Point3D 값과 같다 */
-    c = agent1_stage_debug_context();
+    c = &agent1_forearm_stage_debug_context()->pose;
     assert(get_line("P3,", 0U, p3, sizeof(p3)));
     assert(field_is(p3, 1U, "42"));
     assert(field_is(p3, 2U, "63"));       /* pm */
@@ -498,7 +475,7 @@ static void test_a1_p3(void)
         if (field_is(a1, 8U, "0")) break;
     }
     assert(i < 11U);                      /* ov=0인 줄이 있고, 각도 칸은 비어 있다 */
-    assert(field_is(a1, 9U, "") && field_is(a1, 14U, ""));
+    assert(field_is(a1, 9U, "") && field_is(a1, 13U, ""));
     check_all_lines_match_schema();
     printf("  A1/P3 OK\n");
 }
@@ -507,14 +484,14 @@ static void test_a1_p3(void)
 static void test_a2(void)
 {
     AgentPipelineContext ctx;
-    HumanJointTarget safe;
-    JointCommand exp_cmd;
-    JointCommand copy;
-    SafetyCheckFlags expect = SAFETY_CHECK_OK;
+    HumanForearmTarget safe;
+    ForearmJointCommand exp_cmd;
+    ForearmJointCommand copy;
+    ForearmSafetyCheckFlags expect = FOREARM_SAFETY_CHECK_OK;
     char a2[TRACE_LINE_MAX];
     char want[16];
 
-    assert(find_target(1, &safe));
+    safe = safe_target();
     reset_all();
     pipeline_init(&ctx);
     trace_init();
@@ -531,9 +508,17 @@ static void test_a2(void)
     drain();
     assert(get_line("A2,", 0U, a2, sizeof(a2)));
     assert(field_is(a2, 1U, "100") && field_is(a2, 3U, "150") && field_is(a2, 4U, "N") && field_is(a2, 5U, "0x0"));
-    assert(fabs(field_num(a2, 6U) - (double)ctx.target.base_deg) <= 0.051);          /* unwrap 뒤 타겟 */
-    assert(fabs(field_num(a2, 12U) - (double)ctx.a2_mapped.shoulder_deg) <= 0.051);  /* 매핑된 명령 */
-    assert(fabs(field_num(a2, 16U) - (double)ctx.a2_mapped.gripper_norm) <= 0.0051);
+    assert(fabs(field_num(a2, 6U) - (double)ctx.target.elbow_roll_deg) <= 0.051);          /* unwrap 뒤 타겟 */
+    assert(fabs(field_num(a2, 11U) - (double)ctx.a2_mapped.elbow_pitch_deg) <= 0.051);  /* 매핑된 명령 */
+    assert(fabs(field_num(a2, 7U) - (double)ctx.target.elbow_pitch_deg) <= 0.051);
+    assert(fabs(field_num(a2, 8U) - (double)ctx.target.wrist_pitch_deg) <= 0.051);
+    assert(fabs(field_num(a2, 9U) - (double)ctx.target.wrist_roll_deg) <= 0.051);
+    assert(fabs(field_num(a2, 10U) - (double)ctx.a2_mapped.elbow_roll_deg) <= 0.051);
+    assert(fabs(field_num(a2, 12U) - (double)ctx.a2_mapped.wrist_pitch_deg) <= 0.051);
+    assert(fabs(field_num(a2, 13U) - (double)ctx.a2_mapped.wrist_roll_deg) <= 0.051);
+    assert(fabs(field_num(a2, 14U) - (double)ctx.a2_mapped.gripper_norm) <= 0.0051);
+    assert(strcmp(a2, "A2,100,10,150,N,0x0,10.0,-20.0,30.0,-40.0,100.0,70.0,120.0,50.0,0.50") == 0);
+    printf("  sample %s\n", a2);
 
     /* S: 같은 명령이면 재계획하지 않는다 */
     ctx.pose.frame_id = 101U;
@@ -541,26 +526,29 @@ static void test_a2(void)
     assert(agent2_run(&ctx) == 1);
     trace_a2(&ctx);
 
-    /* R formatter/event fixture. With calibrated elbows, 20..160 limits and
-     * neutral wrists, the old straight-arm rejection is intentionally gone.
-     * Inject a rejected command at the trace boundary; actual geometric
-     * rejection is exercised separately by test_safety_check. */
+    /* R 포맷/이벤트 경계 주입: [20,160] 안에서는 기하 거부가 불가능하다.
+     * 범위 밖 명령으로 테이블 충돌 사유 재계산만 검사한다. 파이프라인에
+     * 정상 입력을 넣어 거부된 것으로 취급하지 않는다. */
     ctx.pose.frame_id = 102U;
-    exp_cmd = (JointCommand){90,90,246,90,90,0.5f,0};
+    exp_cmd = (ForearmJointCommand){
+        .elbow_roll_deg = 90.0f, .elbow_pitch_deg = 0.0f,
+        .wrist_pitch_deg = -20.0f, .wrist_roll_deg = 90.0f,
+        .gripper_norm = 0.5f, .valid = 0U
+    };
     ctx.a2_mapped = exp_cmd;
     ctx.a2_result = A2_RESULT_REJECT_SAFETY;
     assert(ctx.a2_mapped.valid == 0U);    /* 거부되면 valid만 0이고 각도는 남는다 */
     copy = exp_cmd;
     copy.valid = 1U;
-    (void)safety_check_apply(&copy, NULL, &expect);
-    assert(expect != SAFETY_CHECK_OK);
-    assert(expect != SAFETY_CHECK_INVALID_COMMAND);
+    (void)forearm_safety_check_apply(&copy, &expect);
+    assert(expect == FOREARM_SAFETY_CHECK_TABLE_COLLISION);
+    assert(expect != FOREARM_SAFETY_CHECK_INVALID_COMMAND);
     copy.valid = 0U;
     {
-        SafetyCheckFlags naive = SAFETY_CHECK_OK;
+        ForearmSafetyCheckFlags naive = FOREARM_SAFETY_CHECK_OK;
 
-        (void)safety_check_apply(&copy, NULL, &naive);
-        assert(naive == SAFETY_CHECK_INVALID_COMMAND); /* valid=0 그대로면 이 값뿐이라 복사본에서 1로 바꾼다 */
+        (void)forearm_safety_check_apply(&copy, &naive);
+        assert(naive == FOREARM_SAFETY_CHECK_INVALID_COMMAND); /* valid=0 그대로면 이 값뿐이라 복사본에서 1로 바꾼다 */
     }
     trace_a2(&ctx);
     snprintf(want, sizeof(want), "0x%x", (unsigned)expect);
@@ -572,7 +560,7 @@ static void test_a2(void)
     /* V: 입력 검증 실패 */
     ctx.pose.frame_id = 104U;
     ctx.target = safe;
-    ctx.target.base_deg = NAN;
+    ctx.target.elbow_roll_deg = NAN;
     assert(agent2_run(&ctx) == 0);
     assert(ctx.a2_result == A2_RESULT_REJECT_VALIDATE);
     trace_a2(&ctx);
@@ -595,10 +583,10 @@ static void test_a2(void)
     assert(count_lines("A2,") == 7U);
     assert(get_line("A2,", 1U, a2, sizeof(a2)) && field_is(a2, 4U, "S") && field_is(a2, 5U, "0x0"));
     assert(get_line("A2,", 2U, a2, sizeof(a2)) && field_is(a2, 4U, "R") && field_is(a2, 5U, want));
-    assert(fabs(field_num(a2, 12U) - (double)exp_cmd.shoulder_deg) <= 0.051);        /* 거부된 명령의 각도 */
+    assert(fabs(field_num(a2, 11U) - (double)exp_cmd.elbow_pitch_deg) <= 0.051);        /* 거부된 명령의 각도 */
     assert(get_line("A2,", 3U, a2, sizeof(a2)) && field_is(a2, 4U, "R") && field_is(a2, 5U, want));
     assert(get_line("A2,", 4U, a2, sizeof(a2)) && field_is(a2, 4U, "V") && field_is(a2, 5U, "0x0"));
-    assert(field_is(a2, 6U, "") && field_is(a2, 16U, ""));                           /* 값 칸이 비어 있다 */
+    assert(field_is(a2, 6U, "") && field_is(a2, 14U, ""));                           /* 값 칸이 비어 있다 */
     assert(get_line("A2,", 5U, a2, sizeof(a2)) && field_is(a2, 4U, "-"));
     assert(get_line("A2,", 6U, a2, sizeof(a2)) && field_is(a2, 4U, "S"));
     assert(count_lines("EV,") == 3U);                                                 /* BOOT + A2_REJECT + A2_BACK */
@@ -620,15 +608,13 @@ static void test_tick_sm_ev(void)
     memset(&ctx, 0, sizeof(ctx));
     ctx.ticks = 7U;
     ctx.output.valid = 1U;
-    ctx.output.base_deg = 90.0f;
-    ctx.output.shoulder_deg = 45.25f;
-    ctx.output.elbow_deg = -3.04f;
-    ctx.output.wrist_pitch_deg = 10.0f;
+    ctx.output.elbow_roll_deg = 90.0f;
+    ctx.output.elbow_pitch_deg = 45.25f;
+    ctx.output.wrist_pitch_deg = -3.04f;
     ctx.output.wrist_roll_deg = 0.04f;
     ctx.output.gripper_norm = 0.5f;
-    ctx.pwm.base_pwm_us = 1500U;
-    ctx.pwm.shoulder_pwm_us = 1250U;
-    ctx.pwm.elbow_pwm_us = 1750U;
+    ctx.pwm.elbow_roll_pwm_us = 1500U;
+    ctx.pwm.elbow_pitch_pwm_us = 1250U;
     ctx.pwm.wrist_pitch_pwm_us = 1400U;
     ctx.pwm.wrist_roll_pwm_us = 1600U;
     ctx.pwm.gripper_pwm_us = 1550U;
@@ -647,11 +633,13 @@ static void test_tick_sm_ev(void)
     assert(get_line("TK,", 0U, line, sizeof(line)));
     assert(field_is(line, 1U, "7") && field_is(line, 2U, "5") && field_is(line, 3U, "9"));
     assert(field_is(line, 4U, "90.0") && field_is(line, 5U, "45.3") && field_is(line, 6U, "-3.0"));
-    assert(field_is(line, 7U, "10.0") && field_is(line, 8U, "0.0") && field_is(line, 9U, "0.50"));
-    assert(field_is(line, 10U, "1500") && field_is(line, 11U, "1250") && field_is(line, 15U, "1550"));
-    assert(field_is(line, 16U, "3.2") && field_is(line, 17U, "1") && field_is(line, 18U, "0"));
-    assert(get_line("TK,", 1U, line, sizeof(line)) && field_is(line, 17U, "0") && field_is(line, 18U, "0"));
-    assert(get_line("TK,", 2U, line, sizeof(line)) && field_is(line, 17U, "0") && field_is(line, 18U, "1"));
+    assert(field_is(line, 7U, "0.0") && field_is(line, 8U, "0.50"));
+    assert(field_is(line, 9U, "1500") && field_is(line, 10U, "1250") &&
+           field_is(line, 11U, "1400") && field_is(line, 12U, "1600") && field_is(line, 13U, "1550"));
+    printf("  sample %s\n", line);
+    assert(field_is(line, 14U, "3.2") && field_is(line, 15U, "1") && field_is(line, 16U, "0"));
+    assert(get_line("TK,", 1U, line, sizeof(line)) && field_is(line, 15U, "0") && field_is(line, 16U, "0"));
+    assert(get_line("TK,", 2U, line, sizeof(line)) && field_is(line, 15U, "0") && field_is(line, 16U, "1"));
     assert(get_line("EV,", 1U, line, sizeof(line)) && field_is(line, 2U, "SERVO_ERR") && field_is(line, 3U, "1"));
     ctx.output.valid = 0U;
     ctx.motion.has_target = 0;
@@ -660,7 +648,7 @@ static void test_tick_sm_ev(void)
     trace_tick(&ctx);
     drain();
     assert(get_line("TK,", 0U, line, sizeof(line)));
-    assert(field_is(line, 4U, "") && field_is(line, 9U, "") && field_is(line, 16U, ""));
+    assert(field_is(line, 4U, "") && field_is(line, 8U, "") && field_is(line, 14U, ""));
     check_all_lines_match_schema();
 
     /* SM: 1초마다, 스키마는 10초마다 */
@@ -819,7 +807,7 @@ static void test_pipeline_flow(void)
     drain();
 
     assert(s_dropped == 0U);
-    assert(s_hi < 2048U);                    /* 버퍼는 넉넉하다 */
+    assert(s_hi == 322U);                    /* 새 레코드로 실행한 최대 사용량 */
     assert(count_lines("A1,") == frames && count_lines("P3,") == frames && count_lines("A2,") == frames);
     assert(count_lines("TK,") == ticks);
     assert(count_lines("SM,") >= 2U);
@@ -840,12 +828,13 @@ static void test_pipeline_flow(void)
         if (field_is(line, 2U, "A1_BACK")) ++back;
     }
     assert(lost == 1U && back == 1U);        /* 끊김 구간에서 한 번, 복귀에서 한 번 */
-    assert(ctx.servo_errors == 0U);
+    assert(ctx.servo_writes == 150U && ctx.servo_errors == 0U);
     printf("  pipeline flow OK (프레임 %u, 틱 %u, 최대 링 사용량 %u B)\n", frames, ticks, (unsigned)s_hi);
 }
 
 int main(void)
 {
+    setvbuf(stdout, NULL, _IONBF, 0);
     printf("test_trace:\n");
     test_formatter();
     test_ring();
