@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 // CNN-v4.0 | Verilog-2001 skeleton | technical contract unchanged
-module argmax_threshold (
+module argmax_offset_select (
     input wire clk,
     input wire rst_n,
     input wire cfg_valid,

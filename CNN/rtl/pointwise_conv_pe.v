@@ -398,6 +398,7 @@ module pointwise_conv_pe (
     reg pending_slot;
     reg [6:0] pending_group;
     reg [3:0] pending_batch;
+    reg [255:0] pending_pixel_word_reg;
 
     reg [10:0] pipe_valid;
     reg [6:0] first_pipe;
@@ -574,8 +575,7 @@ module pointwise_conv_pe (
     end
     wire unexpected_rsp = active && !fault_reg && pw_rsp_valid && !pending_valid;
 
-    wire [4:0] pending_mem_index = (pending_slot ? 5'd12 : 5'd0) + pending_batch;
-    wire [255:0] pending_pixel_word = pixel_mem[pending_mem_index];
+    wire [4:0] sched_mem_index = (sched_slot ? 5'd12 : 5'd0) + sched_batch;
     wire mac_issue = rsp_fire;
     wire mac_issue_last = mac_issue && (pending_batch == last_batch_reg);
     wire p10_load = active && !fault_reg && compute_ce && pipe_valid[9];
@@ -586,7 +586,7 @@ module pointwise_conv_pe (
             pointwise_u8s8_dsp_mult u_p0_mult (
                 .clk(clk),
                 .ce(mac_issue),
-                .activation(pending_pixel_word[
+                .activation(pending_pixel_word_reg[
                     (p0_mac_index % `CNN_W_IN)*8 +: 8]),
                 .weight_bits(pw_rsp_data[p0_mac_index*8 +: 8]),
                 .product(p0_product[p0_mac_index])
@@ -662,6 +662,7 @@ module pointwise_conv_pe (
             pending_slot <= 1'b0;
             pending_group <= 7'd0;
             pending_batch <= 4'd0;
+            pending_pixel_word_reg <= 256'd0;
         end else begin
             done_reg <= 1'b0;
 
@@ -769,6 +770,7 @@ module pointwise_conv_pe (
                             pending_slot <= sched_slot;
                             pending_group <= sched_group;
                             pending_batch <= sched_batch;
+                            pending_pixel_word_reg <= pixel_mem[sched_mem_index];
                         end
                         2'b01: pending_valid <= 1'b0;
                         default: pending_valid <= pending_valid;
