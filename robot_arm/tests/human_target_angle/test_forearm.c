@@ -15,7 +15,9 @@ static void near(float actual, float expected, float tolerance)
 static void init(ForearmMappingContext *c)
 {
     assert(forearm_mapping_init(c) == 0);
-    assert(forearm_mapping_set_table(c, pm_vec3(0,0,1), pm_vec3(1,0,0), 1) == 0);
+    c->pose.shoulder_l_3d=pm_vec3(-0.5f,0,0);
+    c->pose.shoulder_r_3d=pm_vec3(0.5f,0,0);
+    assert(pm_update_stable_body_frame(&c->pose,0.05f)==0);
 }
 static HumanForearmTarget direction(ForearmMappingContext *c, Vec3 f)
 {
@@ -28,36 +30,29 @@ static HumanForearmTarget direction(ForearmMappingContext *c, Vec3 f)
 static Vec3 direction_at(float yaw, float pitch)
 {
     float y = yaw*PM_DEG_TO_RAD, p = pitch*PM_DEG_TO_RAD;
-    return pm_vec3(cosf(y)*cosf(p), sinf(y)*cosf(p), sinf(p));
+    return pm_vec3(sinf(y)*cosf(p), sinf(p), cosf(y)*cosf(p));
 }
 static void test_geometry(void)
 {
-    ForearmMappingContext c, before;
+    ForearmMappingContext c;
     HumanForearmTarget t;
     const float cases[][5] = {
-        {1,0,0,0,0}, {0,1,0,90,0}, {0,-1,0,-90,0}, {-1,0,0,-180,0},
-        {1,0,1,0,45}, {1,0,-1,0,-45}, {0,0,1,0,90}, {0,0,-1,0,-90}
+        {0,0,1,0,0}, {1,0,0,90,0}, {-1,0,0,-90,0}, {0,0,-1,-180,0},
+        {0,1,1,0,45}, {0,-1,1,0,-45}, {0,1,0,0,90}, {0,-1,0,0,-90}
     };
     for (unsigned i=0; i<sizeof(cases)/sizeof(cases[0]); i++) {
         init(&c);
         t = direction(&c, pm_vec3(cases[i][0],cases[i][1],cases[i][2]));
-        near(t.forearm_yaw_deg,cases[i][3],0.001f);
-        near(t.forearm_pitch_deg,cases[i][4],0.001f);
-        assert(t.yaw_observable == (i<6));
+        near(t.elbow_roll_deg,cases[i][3],0.001f);
+        near(t.elbow_pitch_deg,cases[i][4],0.001f);
+        assert(t.elbow_roll_observable == (i<6));
     }
     init(&c);
-    before = c;
-    assert(forearm_mapping_set_table(&c, pm_vec3(0,0,1), pm_vec3(0,0,1), 1) == -1);
-    assert(memcmp(&before,&c,sizeof(c)) == 0);
-    assert(forearm_mapping_set_table(&c, pm_vec3(NAN,0,1), pm_vec3(1,0,0),1) == -1);
-    assert(forearm_mapping_set_table(&c, pm_vec3(0,0,0), pm_vec3(1,0,0),1) == -1);
-    /* Rotated, scaled, non-orthogonal supplied directions are orthonormalized. */
-    assert(forearm_mapping_set_table(&c, pm_vec3(0,2,0), pm_vec3(0,1,3),0) == 0);
-    near(pm_vdot(c.table.x,c.table.z),0,1e-6f);
-    near(pm_vdot(pm_vcross(c.table.x,c.table.y),c.table.z),1,1e-6f);
-    t=direction(&c,c.table.y);
-    near(t.forearm_yaw_deg,90,0.001f);
-    assert(!t.calibrated);
+    near(pm_vdot(c.pose.body_x_axis,c.pose.body_y_axis),0,1e-6f);
+    near(pm_vdot(pm_vcross(c.pose.body_x_axis,c.pose.body_y_axis),c.pose.body_z_axis),1,1e-6f);
+    c.pose.body_frame_valid=0;
+    assert(fm_calculate_angles(&c,0.05f,&t)==-1);
+    c.pose.body_frame_valid=1;
     c.pose.wrist_3d=c.pose.elbow_3d;
     assert(fm_calculate_angles(&c,0.05f,&t)==-1);
     c.pose.wrist_3d.x=NAN;
@@ -69,42 +64,103 @@ static void test_temporal_geometry(void)
     HumanForearmTarget t;
     init(&c);
     t=direction(&c,direction_at(179,0));
-    float old=t.forearm_yaw_deg;
+    float old=t.elbow_roll_deg;
     for (int i=0;i<40;i++) {
         t=direction(&c,direction_at(-179,0));
-        assert(fabsf(fm_wrap180(t.forearm_yaw_deg-old))<2.1f);
-        old=t.forearm_yaw_deg;
+        assert(fabsf(fm_wrap180(t.elbow_roll_deg-old))<2.1f);
+        old=t.elbow_roll_deg;
     }
-    near(fm_wrap180(t.forearm_yaw_deg+179),0,PM_JOINT_DEADBAND_DEG+0.01f);
+    near(fm_wrap180(t.elbow_roll_deg+179),0,PM_JOINT_DEADBAND_DEG+0.01f);
     for (int sign=-1;sign<=1;sign+=2) {
         init(&c);
         t=direction(&c,direction_at(35,0));
         for (int i=0;i<60;i++) {
-            t=direction(&c,pm_vec3((i%2 ? -1 : 1)*0.001f,0.001f,(float)sign));
-            near(t.forearm_yaw_deg,35,0.001f);
-            assert(!t.yaw_observable);
+            t=direction(&c,pm_vec3((i%2 ? -1 : 1)*0.001f,(float)sign,0.001f));
+            near(t.elbow_roll_deg,35,0.001f);
+            assert(!t.elbow_roll_observable);
             near(pm_vlen(c.wrist_reference),1,1e-5f);
-            if(i>0) assert(pm_vdot(c.wrist_reference, pm_vec3(-sign*cosf(35*PM_DEG_TO_RAD),
-                                                         -sign*sinf(35*PM_DEG_TO_RAD),0))>0.99f);
+            if(i>0) assert(pm_vdot(c.wrist_reference, pm_vec3(-sign*sinf(35*PM_DEG_TO_RAD),
+                                                          0,-sign*cosf(35*PM_DEG_TO_RAD)))>0.99f);
         }
-        near(t.forearm_pitch_deg,90*sign,0.5f);
-        t=direction(&c,pm_vec3(0.03f,0,1));
-        assert(!t.yaw_observable); /* hysteresis */
-        t=direction(&c,pm_vec3(0.05f,0,1));
-        assert(t.yaw_observable);
+        near(t.elbow_pitch_deg,90*sign,0.5f);
+        t=direction(&c,pm_vec3(0.03f,1,0));
+        assert(!t.elbow_roll_observable); /* hysteresis */
+        t=direction(&c,pm_vec3(0.05f,1,0));
+        assert(t.elbow_roll_observable);
     }
     init(&c);
     direction(&c,direction_at(0,0));
     t=direction(&c,direction_at(60,40));
-    assert(t.forearm_yaw_deg>0 && t.forearm_yaw_deg<60);
-    assert(t.forearm_pitch_deg>0 && t.forearm_pitch_deg<40);
-    /* Shoulders/body axis are not the direct angle reference. */
-    c.pose.shoulder_l_3d=pm_vec3(100,-100,50);
-    c.pose.shoulder_r_3d=pm_vec3(-100,100,-50);
-    c.angle_valid=0; c.yaw_initialized=0;
-    t=direction(&c,direction_at(60,40));
-    near(t.forearm_yaw_deg,60,0.001f);
-    near(t.forearm_pitch_deg,40,0.001f);
+    assert(t.elbow_roll_deg>0 && t.elbow_roll_deg<60);
+    assert(t.elbow_pitch_deg>0 && t.elbow_pitch_deg<40);
+    /* Same camera-space F changes its body-local azimuth when shoulders turn. */
+    c.pose.shoulder_l_3d=pm_vec3(0,0,0.5f);
+    c.pose.shoulder_r_3d=pm_vec3(0,0,-0.5f);
+    c.pose.body_frame_valid=0; c.angle_valid=0; c.elbow_roll_initialized=0;
+    assert(pm_update_stable_body_frame(&c.pose,0.05f)==0);
+    t=direction(&c,pm_vec3(0,0,1));
+    near(t.elbow_roll_deg,-90,0.001f);
+}
+
+static Vec3 rotate(Vec3 v, Vec3 axis, float degrees)
+{
+    float a=degrees*PM_DEG_TO_RAD;
+    assert(pm_vnormalize(&axis)==0);
+    return pm_vadd(pm_vadd(pm_vscale(v,cosf(a)),pm_vscale(pm_vcross(axis,v),sinf(a))),
+                   pm_vscale(axis,pm_vdot(axis,v)*(1-cosf(a))));
+}
+
+static void test_body_rotation(void)
+{
+    ForearmMappingContext a,b;
+    HumanForearmTarget ta,tb;
+    const Vec3 axes[]={{1,0,0,1},{0,1,0,1},{0,0,1,1},{0.3f,0.7f,0.2f,1}};
+    for(unsigned k=0;k<sizeof(axes)/sizeof(axes[0]);k++) {
+        init(&a); init(&b);
+        b.pose.body_x_axis=rotate(a.pose.body_x_axis,axes[k],63);
+        b.pose.body_y_axis=rotate(a.pose.body_y_axis,axes[k],63);
+        b.pose.body_z_axis=rotate(a.pose.body_z_axis,axes[k],63);
+        for(int i=0;i<30;i++) {
+            /* Avoid testing exactly on the existing 0.5-degree deadband:
+             * rotation rounding can put equivalent floats on opposite sides. */
+            Vec3 f=direction_at(165+i,20+i*0.7f);
+            ta=direction(&a,f);
+            b.pose.elbow_3d=rotate(a.pose.elbow_3d,axes[k],63);
+            b.pose.wrist_3d=rotate(a.pose.wrist_3d,axes[k],63);
+            assert(fm_calculate_angles(&b,0.05f,&tb)==0);
+            near(fm_wrap180(tb.elbow_roll_deg-ta.elbow_roll_deg),0,0.003f);
+            near(tb.elbow_pitch_deg,ta.elbow_pitch_deg,0.003f);
+            near(pm_vdot(b.wrist_reference,rotate(a.wrist_reference,axes[k],63)),1,1e-5f);
+        }
+    }
+    /* Builder is equivariant for rotations preserving camera up (+Y). */
+    init(&a); ta=direction(&a,direction_at(30,20));
+    for(int deg=-180;deg<=180;deg+=30) {
+        init(&b);
+        b.pose.shoulder_l_3d=rotate(a.pose.shoulder_l_3d,pm_vec3(0,1,0),(float)deg);
+        b.pose.shoulder_r_3d=rotate(a.pose.shoulder_r_3d,pm_vec3(0,1,0),(float)deg);
+        b.pose.body_frame_valid=0;
+        assert(pm_update_stable_body_frame(&b.pose,0.05f)==0);
+        tb=direction(&b,rotate(direction_at(30,20),pm_vec3(0,1,0),(float)deg));
+        near(tb.elbow_roll_deg,ta.elbow_roll_deg,0.003f);
+        near(tb.elbow_pitch_deg,ta.elbow_pitch_deg,0.003f);
+    }
+    /* Limitation: pitching the torso about its shoulder line is unobservable
+     * from the two shoulders. Camera up remains fixed; no false invariance claim. */
+    init(&a); init(&b);
+    ta=direction(&a,pm_vec3(0,0,1));
+    tb=direction(&b,rotate(pm_vec3(0,0,1),pm_vec3(1,0,0),30));
+    near(ta.elbow_pitch_deg,0,0.001f);
+    near(tb.elbow_pitch_deg,-30,0.001f);
+
+    /* Original P3 Y-sign fixture; synthetic forearm parallel to the upper arm. */
+    forearm_mapping_init(&a);
+    a.pose.shoulder_l_3d=pm_vec3(0.298f,0.750f,7.253f);
+    a.pose.shoulder_r_3d=pm_vec3(-0.585f,0.750f,6.783f);
+    assert(pm_update_stable_body_frame(&a.pose,0.05f)==0);
+    ta=direction(&a,pm_vec3(-0.169f,-0.735f,-0.017f));
+    near(ta.elbow_pitch_deg,-76.9878f,0.02f);
+    assert(a.pose.body_y_axis.y>0);
 }
 static HumanForearmTarget hand(ForearmMappingContext *c, float yaw, float elevation,
                                float flexion, float roll, float finger_pixels)
@@ -131,7 +187,7 @@ static void test_wrist(void)
     const float cases[][2]={{0,0},{30,0},{-30,0},{0,45},{0,-45},{25,40},{0,179},{0,-179}};
     for(unsigned i=0;i<sizeof(cases)/sizeof(cases[0]);i++) {
         init(&c); t=hand(&c,25,35,cases[i][0],cases[i][1],12);
-        near(t.wrist_pitch_deg,cases[i][0],0.003f);
+        near(t.wrist_pitch_deg,-cases[i][0],0.003f); /* legacy HUMAN sign */
         near(t.wrist_roll_deg,cases[i][1],0.003f);
         assert(t.gripper_norm==1 && t.hand_fresh);
     }
@@ -147,12 +203,12 @@ static void test_wrist(void)
     t=hand(&c,0,0,0,-179,9); assert(t.gripper_norm==0);
     t=hand(&c,0,0,0,-179,12); assert(t.gripper_norm==1);
     /* First pole has no roll reference measurement; no hand target yet. */
-    init(&c); t=direction(&c,pm_vec3(0,0,1));
+    init(&c); t=direction(&c,pm_vec3(0,1,0));
     assert(fm_calculate_hand(&c,100,0.05f,0.05f,&t)==-1);
     /* A pole with heading history has a well-defined retained reference. */
     hand(&c,0,0,0,0,12); t=hand(&c,0,90,0,0,12);
-    near(t.wrist_roll_deg,0,0.003f); assert(!t.yaw_observable);
-    /* Nearly vertical noisy directions do not switch table fallback axes. */
+    near(t.wrist_roll_deg,0,0.003f); assert(!t.elbow_roll_observable);
+    /* Nearly vertical directions retain a continuous Body/forearm reference. */
     init(&c); hand(&c,0,85,0,0,12);
     Vec3 prev=c.wrist_reference;
     for(int i=0;i<30;i++) {
@@ -169,6 +225,47 @@ static void test_wrist(void)
     for(int i=0;i<80;i++) t=hand(&c,0,0,0,25,12);
     assert(c.pose.roll_zero_calibrated);
     near(t.wrist_roll_deg,0,0.6f);
+}
+
+static void test_wrist_body_reference(void)
+{
+    ForearmMappingContext a,b;
+    HumanForearmTarget ta,tb;
+    HumanJointTarget legacy;
+    PoseMappingContext legacy_ctx;
+    Vec3 axis=pm_vec3(0.2f,0.8f,0.4f);
+    init(&a); init(&b);
+    ta=hand(&a,25,35,20,-35,12);
+    b.pose.body_x_axis=rotate(a.pose.body_x_axis,axis,71);
+    b.pose.body_y_axis=rotate(a.pose.body_y_axis,axis,71);
+    b.pose.body_z_axis=rotate(a.pose.body_z_axis,axis,71);
+    b.pose.elbow_3d=rotate(a.pose.elbow_3d,axis,71);
+    b.pose.wrist_3d=rotate(a.pose.wrist_3d,axis,71);
+    b.pose.finger1_3d=rotate(a.pose.finger1_3d,axis,71);
+    b.pose.finger2_3d=rotate(a.pose.finger2_3d,axis,71);
+    b.pose.finger1.value=a.pose.finger1.value;
+    b.pose.finger2.value=a.pose.finger2.value;
+    assert(fm_calculate_angles(&b,0.05f,&tb)==0);
+    assert(fm_calculate_hand(&b,100,0.05f,0.05f,&tb)==0);
+    near(tb.wrist_pitch_deg,ta.wrist_pitch_deg,0.003f);
+    near(tb.wrist_roll_deg,ta.wrist_roll_deg,0.003f);
+
+    /* Away from the vertical reference singularity, retain the original
+     * Body-Y wrist zero and the original Finger1->Finger2 flexion sign. */
+    legacy_ctx=a.pose;
+    legacy_ctx.hand_angle_valid=0;
+    legacy_ctx.prev_hand_normal_valid=0;
+    legacy_ctx.prev_roll_raw_valid=0;
+    assert(pm_calculate_hand_angles_and_gripper(&legacy_ctx,100,0.05f,0.05f,&legacy)==0);
+    near(ta.wrist_pitch_deg,legacy.wrist_pitch_deg,0.003f);
+    near(ta.wrist_roll_deg,legacy.wrist_roll_deg,0.003f);
+    /* A sudden plane-normal sign ambiguity is continuous for a flat hand. */
+    init(&a); ta=hand(&a,0,0,0,30,12);
+    Vec3 tmp=a.pose.finger1_3d;
+    a.pose.finger1_3d=a.pose.finger2_3d;
+    a.pose.finger2_3d=tmp;
+    assert(fm_calculate_hand(&a,100,0.05f,0.05f,&tb)==0);
+    near(tb.wrist_roll_deg,ta.wrist_roll_deg,0.003f);
 }
 static Point2D p2(float x,float y)
 {
@@ -190,14 +287,13 @@ static void test_pipeline(void)
     HumanPose2D p=sample();
     HumanForearmTarget t, prev;
     forearm_mapping_init(&c);
-    assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==-1 && !t.valid);
-    init(&c);
     assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==1);
+    assert(c.pose.body_frame_valid);
     assert(t.valid && t.frame_id==123 && t.hand_fresh);
     old=c; prev=t;
     assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,100,&t)==0);
     assert(memcmp(&c,&old,sizeof(c))==0);
-    near(t.forearm_yaw_deg,prev.forearm_yaw_deg,0);
+    near(t.elbow_roll_deg,prev.elbow_roll_deg,0);
     p.frame_id++; p.finger1.valid=0;
     assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==1);
     assert(!t.hand_fresh && t.valid && t.frame_id==124);
@@ -211,7 +307,7 @@ static void test_pipeline(void)
     uint32_t last_fresh=p.frame_id;
     p.frame_id++; p.elbow.valid=0;
     assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==0);
-    assert(t.frame_id==last_fresh && t.valid && !t.yaw_observable);
+    assert(t.frame_id==last_fresh && t.valid && !t.elbow_roll_observable);
     for(int i=0;i<10;i++) {p.frame_id++; forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t);}
     assert(!t.valid);
     p=sample(); p.frame_id=200;
@@ -222,8 +318,8 @@ static void test_pipeline(void)
     assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==1);
     /* Same-id side change must reset history, never reuse the other arm. */
     forearm_mapping_update(&c,&p,POSE_ARM_LEFT,0.05f,&t);
-    assert(c.pose.last_arm_side==POSE_ARM_LEFT && c.table.valid);
-    assert(agent1_forearm_stage_init(pm_vec3(0,0,1),pm_vec3(1,0,0),1)==0);
+    assert(c.pose.last_arm_side==POSE_ARM_LEFT);
+    assert(agent1_forearm_stage_init()==0);
     assert(agent1_forearm_stage_run(&p,POSE_ARM_RIGHT,0.05f)==1);
     assert(agent1_forearm_stage_output()->valid);
     p.frame_id++; p.wrist.x=NAN;
@@ -240,13 +336,13 @@ static void test_uart(const char *path)
     HumanForearmTarget t;
     int byte, count=0;
     assert(f);
-    pose_uart_parser_init(&parser); init(&c);
+    pose_uart_parser_init(&parser); forearm_mapping_init(&c);
     while((byte=fgetc(f))!=EOF) {
         int r=pose_uart_parser_push(&parser,(uint8_t)byte,&p);
         assert(r>=0);
         if(r==1) {
             assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==1);
-            assert(t.valid && t.frame_id==p.frame_id && isfinite(t.forearm_pitch_deg));
+            assert(t.valid && t.frame_id==p.frame_id && isfinite(t.elbow_pitch_deg));
             count++;
         }
     }
@@ -254,7 +350,8 @@ static void test_uart(const char *path)
 }
 int main(int argc,char **argv)
 {
-    test_geometry(); test_temporal_geometry(); test_wrist(); test_pipeline();
+    test_geometry(); test_temporal_geometry(); test_body_rotation(); test_wrist();
+    test_wrist_body_reference(); test_pipeline();
     if(argc>1) test_uart(argv[1]);
     puts("Forearm geometry / wrist / temporal / pipeline: PASS");
     return 0;

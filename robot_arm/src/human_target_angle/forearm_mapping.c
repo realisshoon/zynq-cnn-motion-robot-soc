@@ -17,73 +17,54 @@ int forearm_mapping_init(ForearmMappingContext *ctx)
     return pose_mapping_init(&ctx->pose);
 }
 
-int forearm_mapping_set_table(ForearmMappingContext *ctx, Point3D up,
-                             Point3D forward, uint8_t calibrated)
-{
-    TableFrame table;
-    if (!ctx || !ctx->pose.initialized || pm_vnormalize(&up) != 0 ||
-        pm_vnormalize(&forward) != 0) return -1;
-    table.z = up;
-    table.x = pm_project_perpendicular(forward, up);
-    if (pm_vlen(table.x) < 0.01f || pm_vnormalize(&table.x) != 0) return -1;
-    table.y = pm_vcross(table.z, table.x);
-    if (pm_vnormalize(&table.y) != 0) return -1;
-    table.x = pm_vcross(table.y, table.z);
-    table.valid = 1U;
-    table.calibrated = calibrated ? 1U : 0U;
-    forearm_mapping_init(ctx);
-    ctx->table = table;
-    return 0;
-}
-
 int fm_calculate_angles(ForearmMappingContext *ctx, float dt,
                         HumanForearmTarget *out)
 {
-    Vec3 f, h, r;
+    Vec3 f, h, r, body_x, body_y, body_z;
     float fx, fy, fz, horizontal, yaw, pitch, yr, pr;
-    if (!ctx || !out || !ctx->table.valid) return -1;
+    if (!ctx || !out || pm_get_stable_body_frame(&ctx->pose,
+                                                &body_x, &body_y, &body_z) != 0) return -1;
     f = pm_vsub(ctx->pose.wrist_3d, ctx->pose.elbow_3d);
     if (pm_vnormalize(&f) != 0) return -1;
-    fx = pm_vdot(f, ctx->table.x);
-    fy = pm_vdot(f, ctx->table.y);
-    fz = pm_vdot(f, ctx->table.z);
-    horizontal = hypotf(fx, fy);
-    ctx->yaw_singular = horizontal < (ctx->yaw_singular ? FM_YAW_LEAVE : FM_YAW_ENTER);
-    pitch = atan2f(fz, horizontal) * PM_RAD_TO_DEG;
-    if (!ctx->yaw_singular) {
-        yaw = fm_wrap180(atan2f(fy, fx) * PM_RAD_TO_DEG);
-        ctx->raw_yaw_deg = yaw;
-        if (!ctx->yaw_initialized) ctx->yaw_unwrapped_deg = yaw;
-        else ctx->yaw_unwrapped_deg = pm_filter_angle_continuous(
-            ctx->yaw_unwrapped_deg, yaw, PM_JOINT_ANGLE_TAU_SEC,
+    fx = pm_vdot(f, body_x);
+    fy = pm_vdot(f, body_y);
+    fz = pm_vdot(f, body_z);
+    horizontal = hypotf(fx, fz);
+    ctx->elbow_roll_singular = horizontal < (ctx->elbow_roll_singular ? FM_AZIMUTH_LEAVE : FM_AZIMUTH_ENTER);
+    pitch = atan2f(fy, horizontal) * PM_RAD_TO_DEG;
+    if (!ctx->elbow_roll_singular) {
+        /* Same zero/sign as legacy base, now applied to the FOREARM. */
+        yaw = fm_wrap180(atan2f(fx, fz) * PM_RAD_TO_DEG);
+        ctx->raw_elbow_roll_deg = yaw;
+        if (!ctx->elbow_roll_initialized) ctx->elbow_roll_unwrapped_deg = yaw;
+        else ctx->elbow_roll_unwrapped_deg = pm_filter_angle_continuous(
+            ctx->elbow_roll_unwrapped_deg, yaw, PM_JOINT_ANGLE_TAU_SEC,
             PM_JOINT_DEADBAND_DEG, dt, 1U);
-        ctx->yaw_initialized = 1U;
+        ctx->elbow_roll_initialized = 1U;
     }
     /* At a pole retain both the output yaw and the last observed raw heading
      * used to build the wrist reference. With no history both start at zero,
-     * but yaw_observable=0 explicitly prevents treating that as measured yaw. */
-    ctx->raw_pitch_deg = pitch;
-    if (!ctx->angle_valid) ctx->pitch_deg = pitch;
-    else ctx->pitch_deg = pm_filter_angle_continuous(
-        ctx->pitch_deg, pitch, PM_JOINT_ANGLE_TAU_SEC,
+     * but elbow_roll_observable=0 marks that value as unobserved. */
+    ctx->raw_elbow_pitch_deg = pitch;
+    if (!ctx->angle_valid) ctx->elbow_pitch_deg = pitch;
+    else ctx->elbow_pitch_deg = pm_filter_angle_continuous(
+        ctx->elbow_pitch_deg, pitch, PM_JOINT_ANGLE_TAU_SEC,
         PM_JOINT_DEADBAND_DEG, dt, 0U);
     ctx->angle_valid = 1U;
 
     /* Forearm-local "up": elevation tangent at fixed azimuth. Unlike
-     * project(table Z, f), it remains defined at the poles using held yaw.
+     * project(Body Y, f), it remains defined at the poles using held azimuth.
      * Projection removes small noise components while yaw is held. */
-    yr = ctx->raw_yaw_deg * PM_DEG_TO_RAD;
+    yr = ctx->raw_elbow_roll_deg * PM_DEG_TO_RAD;
     pr = pitch * PM_DEG_TO_RAD;
-    h = pm_vadd(pm_vscale(ctx->table.x, cosf(yr)),
-                pm_vscale(ctx->table.y, sinf(yr)));
-    r = pm_vsub(pm_vscale(ctx->table.z, cosf(pr)), pm_vscale(h, sinf(pr)));
+    h = pm_vadd(pm_vscale(body_x, sinf(yr)), pm_vscale(body_z, cosf(yr)));
+    r = pm_vsub(pm_vscale(body_y, cosf(pr)), pm_vscale(h, sinf(pr)));
     r = pm_project_perpendicular(r, f);
     if (pm_vnormalize(&r) != 0) return -1;
     ctx->wrist_reference = r;
-    out->forearm_yaw_deg = fm_wrap180(ctx->yaw_unwrapped_deg);
-    out->forearm_pitch_deg = pm_clampf(ctx->pitch_deg, -90.0f, 90.0f);
-    out->yaw_observable = !ctx->yaw_singular;
-    out->calibrated = ctx->table.calibrated;
+    out->elbow_roll_deg = fm_wrap180(ctx->elbow_roll_unwrapped_deg);
+    out->elbow_pitch_deg = pm_clampf(ctx->elbow_pitch_deg, -90.0f, 90.0f);
+    out->elbow_roll_observable = !ctx->elbow_roll_singular;
     return 0;
 }
 
@@ -93,14 +74,13 @@ int fm_calculate_hand(ForearmMappingContext *ctx, float span, float age_dt,
     HumanJointTarget hand;
     /* No observed heading yet: the pole's arbitrary initial yaw cannot
      * define a measured roll zero. Caller holds/defaults hand fields. */
-    if (!ctx || !out || !ctx->yaw_initialized) return -1;
+    if (!ctx || !out || !ctx->elbow_roll_initialized) return -1;
     memset(&hand, 0, sizeof(hand));
     if (pm_calculate_hand_with_reference(&ctx->pose, span, age_dt, filter_dt,
                                          &ctx->wrist_reference, &hand) != 0) return -1;
-    /* Legacy pitch is positive about finger1->finger2. The five-axis
-     * flexion convention is positive toward H cross S, so negate it here.
-     * This is a human wrist convention, never a servo mounting correction. */
-    out->wrist_pitch_deg = fm_wrap180(-hand.wrist_pitch_deg);
+    /* Preserve the original HUMAN wrist flexion sign: positive about the
+     * projected Finger1->Finger2 axis. No physical servo sign is applied. */
+    out->wrist_pitch_deg = fm_wrap180(hand.wrist_pitch_deg);
     out->wrist_roll_deg = fm_wrap180(hand.wrist_roll_deg);
     out->gripper_norm = hand.gripper_norm;
     out->hand_fresh = 1U;
@@ -112,7 +92,7 @@ static int hold_or_invalid(ForearmMappingContext *ctx, HumanForearmTarget *out)
     if (ctx->last_target_valid && ctx->pose.target_age_sec <= PM_TARGET_HOLD_SEC) {
         *out = ctx->last_target;
         out->hand_fresh = 0U;
-        out->yaw_observable = 0U;
+        out->elbow_roll_observable = 0U;
         return 0;
     }
     memset(out, 0, sizeof(*out));
@@ -133,13 +113,11 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
     float filter_dt, span = 0.0f;
     if (!out) return -1;
     memset(out, 0, sizeof(*out));
-    if (!ctx || !pose || !ctx->pose.initialized || !ctx->table.valid ||
+    if (!ctx || !pose || !ctx->pose.initialized ||
         (side != POSE_ARM_LEFT && side != POSE_ARM_RIGHT)) return -1;
     p = &ctx->pose;
     if (p->last_arm_side_valid && p->last_arm_side != side) {
-        TableFrame table = ctx->table;
         forearm_mapping_init(ctx);
-        ctx->table = table;
     }
     p->last_arm_side = side;
     p->last_arm_side_valid = 1U;
@@ -164,7 +142,8 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
         return hold_or_invalid(ctx, out);
 
     memset(&fresh, 0, sizeof(fresh));
-    if (fm_calculate_angles(ctx, filter_dt, &fresh) != 0)
+    if (pm_update_stable_body_frame(p, filter_dt) != 0 ||
+        fm_calculate_angles(ctx, filter_dt, &fresh) != 0)
         return hold_or_invalid(ctx, out);
     if (!pm_fingers_both_fresh(p) ||
         pm_reconstruct_finger_pose3d(p, filter_dt) != 0 ||

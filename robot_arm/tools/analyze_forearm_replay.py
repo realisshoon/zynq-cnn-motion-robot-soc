@@ -28,13 +28,13 @@ def depth_sensitivity(rows):
     Evaluates geometry only, not a measured noise/error distribution."""
     maxima = [0.0, 0.0]
     for r in rows:
-        if not int(r["yaw_observable"]):
+        if not int(r["elbow_roll_observable"]):
             continue
         f = [float(r["wrist"+s])-float(r["elbow"+s]) for s in ("_x3d","_y3d","_z")]
-        axes = [[float(r[f"table_{a}_{b}"]) for b in "xyz"] for a in "xyz"]
+        axes = [[float(r[f"body_{a}_{b}"]) for b in "xyz"] for a in "xyz"]
         def angles(v):
             x,y,z = [sum(a*b for a,b in zip(v,axis)) for axis in axes]
-            return math.degrees(math.atan2(y,x)), math.degrees(math.atan2(z,math.hypot(x,y)))
+            return math.degrees(math.atan2(x,z)), math.degrees(math.atan2(y,math.hypot(x,z)))
         baseline=angles(f)
         length=math.sqrt(sum(a*a for a in f))
         for sign in (-1,1):
@@ -42,7 +42,44 @@ def depth_sensitivity(rows):
             for i in range(2):
                 maxima[i]=max(maxima[i],abs(wrap(perturbed[i]-baseline[i])))
     return dict(camera_dz_perturbation="+/-2% forearm length (synthetic, not measured)",
-                max_yaw_change=maxima[0],max_pitch_change=maxima[1])
+                max_elbow_roll_change=maxima[0],max_elbow_pitch_change=maxima[1])
+
+
+def transition_diagnostics(rows, field, count=3):
+    """Measure frame/forearm changes at largest output steps; not a claim
+    that estimated depth changes are necessarily reconstruction errors."""
+    def dot(a,b):
+        return sum(x*y for x,y in zip(a,b))
+    def unit(v):
+        length=math.sqrt(dot(v,v))
+        return [x/length for x in v]
+    def axes(r):
+        return [[float(r[f"body_{a}_{b}"]) for b in "xyz"] for a in "xyz"]
+    def forearm(r):
+        return [float(r["wrist"+s])-float(r["elbow"+s]) for s in ("_x3d","_y3d","_z")]
+    def azimuth(f,basis):
+        return math.degrees(math.atan2(dot(f,basis[0]),dot(f,basis[2])))
+    def angle(cosine):
+        return math.degrees(math.acos(max(-1,min(1,cosine))))
+    pairs=sorted(zip(rows,rows[1:]),key=lambda pair:abs(wrap(float(pair[1][field])-float(pair[0][field]))),reverse=True)
+    results=[]
+    for a,b in pairs[:count]:
+        aa,bb=axes(a),axes(b)
+        fa,fb=forearm(a),forearm(b)
+        ua,ub=unit(fa),unit(fb)
+        results.append(dict(from_frame=int(a["frame_id"]),to_frame=int(b["frame_id"]),
+                            output_delta=wrap(float(b[field])-float(a[field])),
+                            body_rotation_deg=angle((sum(dot(x,y) for x,y in zip(aa,bb))-1)/2),
+                            forearm_camera_rotation_deg=angle(dot(ua,ub)),
+                            horizontal_before=math.hypot(dot(ua,aa[0]),dot(ua,aa[2])),
+                            horizontal_after=math.hypot(dot(ub,bb[0]),dot(ub,bb[2])),
+                            observable_before=int(a["elbow_roll_observable"]),
+                            observable_after=int(b["elbow_roll_observable"]),
+                            azimuth_change_fixed_previous_body=wrap(azimuth(fb,aa)-azimuth(fa,aa)),
+                            azimuth_change_due_to_body_basis=wrap(azimuth(fb,bb)-azimuth(fb,aa)),
+                            camera_dz_before=fa[2],camera_dz_after=fb[2],
+                            hand_fresh_before=int(a["hand_fresh"]),hand_fresh_after=int(b["hand_fresh"])))
+    return results
 
 
 def analyze(path, expected=None):
@@ -57,24 +94,26 @@ def analyze(path, expected=None):
     if not fresh:
         raise ValueError("No fresh valid targets")
     for r in fresh:
-        for field in ("forearm_yaw_deg", "wrist_pitch_deg", "wrist_roll_deg"):
+        for field in ("elbow_roll_deg", "wrist_pitch_deg", "wrist_roll_deg"):
             if not -180 <= float(r[field]) < 180:
                 raise ValueError(f"Out of range {field}: {r[field]}")
-        if not -90 <= float(r["forearm_pitch_deg"]) <= 90 or float(r["gripper_norm"]) not in (0,1):
+        if not -90 <= float(r["elbow_pitch_deg"]) <= 90 or float(r["gripper_norm"]) not in (0,1):
             raise ValueError("Pitch/gripper contract violation")
         if r["target_frame_id"] != r["frame_id"]:
             raise ValueError("Fresh target frame_id mismatch")
-    fields=("forearm_yaw_deg","forearm_pitch_deg","wrist_pitch_deg","wrist_roll_deg")
-    stats={k:angle_stats(fresh,k,k!="forearm_pitch_deg") for k in fields}
-    raw={k:angle_stats(fresh,k,k=="raw_yaw_deg") for k in ("raw_yaw_deg","raw_pitch_deg")}
+    fields=("elbow_roll_deg","elbow_pitch_deg","wrist_pitch_deg","wrist_roll_deg")
+    stats={k:angle_stats(fresh,k,k!="elbow_pitch_deg") for k in fields}
+    raw={k:angle_stats(fresh,k,k=="raw_elbow_roll_deg") for k in ("raw_elbow_roll_deg","raw_elbow_pitch_deg")}
     result=dict(frames=len(rows), fresh=len(fresh), invalid=len(rows)-len(valid),
                 hold=sum(int(r["update_ret"])==0 for r in rows),
-                yaw_unobservable=sum(not int(r["yaw_observable"]) for r in fresh),
+                elbow_roll_unobservable=sum(not int(r["elbow_roll_observable"]) for r in fresh),
+                singular_frames=[int(r["frame_id"]) for r in fresh if not int(r["elbow_roll_observable"])],
                 hand_held=sum(not int(r["hand_fresh"]) for r in fresh),
-                calibrated=all(int(r["table_calibrated"]) for r in rows),
                 angles=stats, before_angle_ema=raw,
                 gripper_transitions=sum(a["gripper_norm"]!=b["gripper_norm"] for a,b in zip(valid,valid[1:])),
-                depth_sensitivity=depth_sensitivity(fresh))
+                depth_sensitivity=depth_sensitivity(fresh),
+                largest_elbow_roll_steps=transition_diagnostics(fresh,"elbow_roll_deg"),
+                largest_wrist_roll_steps=transition_diagnostics(fresh,"wrist_roll_deg",1))
     # Image-side-view proxy only: small shoulder Camera-X span / 3D span.
     # Occlusion and monocular reconstruction prevent treating it as true torso yaw.
     side=[]

@@ -2,6 +2,7 @@
 #include "output_controller/servo_config.h"
 
 #include <stddef.h>
+#include <math.h>
 
 
 /*
@@ -177,135 +178,56 @@ static uint16_t gripper_to_pwm_us(
 
 /*
  * ============================================================
- * JointCommand -> ServoPwmCommand
+ * Per-channel hardware conversion
  * ============================================================
  */
-uint8_t servo_control_convert(
-    const JointCommand *joint_cmd,
-    ServoPwmCommand *pwm_cmd
-)
+uint8_t servo_control_convert_channel(ServoChannel channel, float value,
+                                      uint16_t *pwm_us)
 {
-    const ServoConfig *base_config;
-    const ServoConfig *shoulder_config;
-    const ServoConfig *elbow_config;
-    const ServoConfig *wrist_pitch_config;
-    const ServoConfig *wrist_roll_config;
-    const ServoConfig *gripper_config;
+    const ServoConfig *config = servo_config_get(channel);
+    if (pwm_us == NULL || config == NULL || !isfinite(value)) return 0U;
+    *pwm_us = channel == SERVO_GRIPPER
+        ? gripper_to_pwm_us(value, config) : angle_to_pwm_us(value, config);
+    return 1U;
+}
 
+uint8_t servo_control_convert(const ForearmJointCommand *joint_cmd,
+                              ServoPwmCommand *pwm_cmd)
+{
+    ServoPwmCommand temp;
 
-    /*
-     * Pointer Check
-     */
-    if ((joint_cmd == NULL) ||
-        (pwm_cmd == NULL)) {
-
+    if (joint_cmd == NULL || pwm_cmd == NULL) {
         return 0U;
     }
-
-
-    /*
-     * Invalid JointCommand 사용 금지
-     */
     if (!joint_cmd->valid) {
         return 0U;
     }
-
-
-    /*
-     * Servo Hardware Configuration
-     */
-    base_config =
-        servo_config_get(SERVO_BASE);
-
-    shoulder_config =
-        servo_config_get(SERVO_SHOULDER);
-
-    elbow_config =
-        servo_config_get(SERVO_ELBOW);
-
-    wrist_pitch_config =
-        servo_config_get(SERVO_WRIST_PITCH);
-
-    wrist_roll_config =
-        servo_config_get(SERVO_WRIST_ROLL);
-
-    gripper_config =
-        servo_config_get(SERVO_GRIPPER);
-
-
-    /*
-     * Config Check
-     */
-    if ((base_config == NULL) ||
-        (shoulder_config == NULL) ||
-        (elbow_config == NULL) ||
-        (wrist_pitch_config == NULL) ||
-        (wrist_roll_config == NULL) ||
-        (gripper_config == NULL)) {
-
+    if (!servo_control_convert_channel(
+            SERVO_ELBOW_ROLL, joint_cmd->elbow_roll_deg,
+            &temp.elbow_roll_pwm_us)) {
+        return 0U;
+    }
+    if (!servo_control_convert_channel(
+            SERVO_ELBOW_PITCH, joint_cmd->elbow_pitch_deg,
+            &temp.elbow_pitch_pwm_us)) {
+        return 0U;
+    }
+    if (!servo_control_convert_channel(
+            SERVO_WRIST_PITCH, joint_cmd->wrist_pitch_deg,
+            &temp.wrist_pitch_pwm_us)) {
+        return 0U;
+    }
+    if (!servo_control_convert_channel(
+            SERVO_WRIST_ROLL, joint_cmd->wrist_roll_deg,
+            &temp.wrist_roll_pwm_us)) {
+        return 0U;
+    }
+    if (!servo_control_convert_channel(
+            SERVO_GRIPPER, joint_cmd->gripper_norm,
+            &temp.gripper_pwm_us)) {
         return 0U;
     }
 
-
-    /*
-     * Base
-     */
-    pwm_cmd->base_pwm_us =
-        angle_to_pwm_us(
-            joint_cmd->base_deg,
-            base_config
-        );
-
-
-    /*
-     * Shoulder
-     */
-    pwm_cmd->shoulder_pwm_us =
-        angle_to_pwm_us(
-            joint_cmd->shoulder_deg,
-            shoulder_config
-        );
-
-
-    /*
-     * Elbow
-     */
-    pwm_cmd->elbow_pwm_us =
-        angle_to_pwm_us(
-            joint_cmd->elbow_deg,
-            elbow_config
-        );
-
-
-    /*
-     * Wrist Pitch
-     */
-    pwm_cmd->wrist_pitch_pwm_us =
-        angle_to_pwm_us(
-            joint_cmd->wrist_pitch_deg,
-            wrist_pitch_config
-        );
-
-
-    /*
-     * Wrist Roll
-     */
-    pwm_cmd->wrist_roll_pwm_us =
-        angle_to_pwm_us(
-            joint_cmd->wrist_roll_deg,
-            wrist_roll_config
-        );
-
-
-    /*
-     * Gripper
-     */
-    pwm_cmd->gripper_pwm_us =
-        gripper_to_pwm_us(
-            joint_cmd->gripper_norm,
-            gripper_config
-        );
-
-
+    *pwm_cmd = temp;
     return 1U;
 }

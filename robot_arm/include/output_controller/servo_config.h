@@ -11,10 +11,9 @@
  */
 typedef enum {
 
-    SERVO_BASE = 0,
+    SERVO_ELBOW_ROLL = 0,
 
-    SERVO_SHOULDER,
-    SERVO_ELBOW,
+    SERVO_ELBOW_PITCH,
 
     SERVO_WRIST_PITCH,
     SERVO_WRIST_ROLL,
