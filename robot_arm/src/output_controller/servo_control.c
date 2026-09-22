@@ -178,7 +178,7 @@ static uint16_t gripper_to_pwm_us(
 
 /*
  * ============================================================
- * JointCommand -> ServoPwmCommand
+ * Per-channel hardware conversion
  * ============================================================
  */
 uint8_t servo_control_convert_channel(ServoChannel channel, float value,
@@ -191,11 +191,43 @@ uint8_t servo_control_convert_channel(ServoChannel channel, float value,
     return 1U;
 }
 
-uint8_t servo_control_convert(const JointCommand *joint_cmd,
+uint8_t servo_control_convert(const ForearmJointCommand *joint_cmd,
                               ServoPwmCommand *pwm_cmd)
 {
-    /* BLOCKED BY AGENT2 INTERFACE. Never reinterpret legacy robot angles. */
-    (void)joint_cmd;
-    (void)pwm_cmd;
-    return 0U;
+    ServoPwmCommand temp;
+
+    if (joint_cmd == NULL || pwm_cmd == NULL) {
+        return 0U;
+    }
+    if (!joint_cmd->valid) {
+        return 0U;
+    }
+    if (!servo_control_convert_channel(
+            SERVO_ELBOW_ROLL, joint_cmd->elbow_roll_deg,
+            &temp.elbow_roll_pwm_us)) {
+        return 0U;
+    }
+    if (!servo_control_convert_channel(
+            SERVO_ELBOW_PITCH, joint_cmd->elbow_pitch_deg,
+            &temp.elbow_pitch_pwm_us)) {
+        return 0U;
+    }
+    if (!servo_control_convert_channel(
+            SERVO_WRIST_PITCH, joint_cmd->wrist_pitch_deg,
+            &temp.wrist_pitch_pwm_us)) {
+        return 0U;
+    }
+    if (!servo_control_convert_channel(
+            SERVO_WRIST_ROLL, joint_cmd->wrist_roll_deg,
+            &temp.wrist_roll_pwm_us)) {
+        return 0U;
+    }
+    if (!servo_control_convert_channel(
+            SERVO_GRIPPER, joint_cmd->gripper_norm,
+            &temp.gripper_pwm_us)) {
+        return 0U;
+    }
+
+    *pwm_cmd = temp;
+    return 1U;
 }

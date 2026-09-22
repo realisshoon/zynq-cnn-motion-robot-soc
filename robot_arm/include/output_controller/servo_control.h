@@ -19,9 +19,10 @@ typedef struct {
 uint8_t servo_control_convert_channel(ServoChannel channel, float value,
                                       uint16_t *pwm_us);
 
-/* BLOCKED BY AGENT2 INTERFACE: ForearmJointCommand does not exist yet.
- * Legacy entry point retained only to reject all inputs (returns 0, no writes).
- * No legacy-to-forearm remapping is performed. */
-uint8_t servo_control_convert(const JointCommand *joint_cmd,
+/* Convert Agent2's final five-axis robot command to PWM.
+ * Returns 1 only after all five conversions succeed.
+ * Returns 0 on NULL, invalid command or conversion failure; output unchanged.
+ * ForearmJointCommand is owned by common/robot_types.h (Agent2). */
+uint8_t servo_control_convert(const ForearmJointCommand *joint_cmd,
                               ServoPwmCommand *pwm_cmd);
 #endif
