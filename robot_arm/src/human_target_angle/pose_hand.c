@@ -158,7 +158,7 @@ int pm_calculate_hand_angles_and_gripper(
     ctx->prev_hand_normal = hand_normal_proj;
     ctx->prev_hand_normal_valid = 1U;
 
-    /* Body Y를 Forearm에 직교시켜 Roll의 기준 normal로 사용한다. */
+    /* Camera-up-based Body Y supplies roll zero (X, then Z fallback). */
     reference_normal = pm_project_perpendicular(body_y, forearm_n);
     reference_quality = pm_vlen(reference_normal);
 
