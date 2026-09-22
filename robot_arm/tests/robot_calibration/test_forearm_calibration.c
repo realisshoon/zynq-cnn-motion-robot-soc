@@ -206,14 +206,18 @@ static ForearmJointCommand raw_command(float roll, float pitch, float wp, float 
 }
 
 /*
- * 2026-09-22 좌표계 수정(elbow_pitch=90=수직) 이후: [20,160] 클램프 범위
- * 안에서는 전역 최소 높이가 +0.548cm로, 어떤 조합도 테이블(-5cm)에 닿지
- * 않는다(스크립트로 전수 탐색 확인). 즉 지금 확정된 관절범위에서는 테이블
- * 충돌이 실제로 도달 불가능한 상태다 -- 기구 실측으로 범위가 넓어지거나
- * 테이블 높이가 낮아지면 다시 도달 가능해진다. 이 사실 자체를 회귀로
- * 남겨두고, 중간경로 차단 메커니즘은 클램프 밖 값으로 직접
+ * 2026-09-22 좌표계 수정(elbow_pitch=90=수직, wrist_pitch=90=전완 기준
+ * 90도 굽힘) 이후: [20,160] 클램프 범위 안에서는 전역 최소 높이가
+ * -1.79cm로, 어떤 조합도 테이블(-5cm)에는 닿지 않는다(스크립트로 전수
+ * 탐색 확인. wrist_pitch가 90도 굽힘 기준으로 바뀌면서 여유가
+ * +0.548cm에서 줄었지만 아직은 안전하다). 즉 지금 확정된 관절범위에서는
+ * 테이블 충돌이 실제로 도달 불가능한 상태다 -- 기구 실측으로 범위가
+ * 넓어지거나 테이블 높이가 낮아지면 다시 도달 가능해진다. 이 사실 자체를
+ * 회귀로 남겨두고, 중간경로 차단 메커니즘은 클램프 밖 값으로 직접
  * ForearmJointCommand를 만들어 계속 검증한다(apply()가 아니라
  * set_target()/step()을 직접 호출 -- 이 둘은 clamp를 하지 않는다).
+ * 자기충돌(wrist_pitch>155)은 반대로 클램프 범위 안에서 도달 가능해졌다
+ * -- test_forearm_safety_check.c의 test_self_collision 참고.
  */
 static void test_clamped_envelope_never_reaches_table(void)
 {
@@ -234,11 +238,11 @@ static void test_clamped_envelope_never_reaches_table(void)
 static void test_safe_endpoints_do_not_allow_unsafe_ramp(void)
 {
     ForearmMotionState s;
-    /* 클램프 밖(roll=90,pitch=0,wp=-20 고정) 값으로 중간경로 차단 메커니즘만
-     * 검증한다. wr=20/160에서 tip.z=-3.214cm(안전), wr=90 중간에서
-     * tip.z=-9.397cm(테이블 -5cm 아래). */
-    ForearmJointCommand start=raw_command(90,0,-20,20);
-    ForearmJointCommand end=raw_command(90,0,-20,160);
+    /* 클램프 밖(roll=90,pitch=170,wp=90 고정) 값으로 중간경로 차단
+     * 메커니즘만 검증한다. wr=20/160에서 tip.z=0.799cm(안전), wr=90
+     * 중간에서 tip.z=-5.681cm(테이블 -5cm 아래). */
+    ForearmJointCommand start=raw_command(90,170,90,20);
+    ForearmJointCommand end=raw_command(90,170,90,160);
     ForearmJointCommand output=start, previous;
     int blocked=0;
     forearm_calibration_state_init(&s);
@@ -256,8 +260,10 @@ static void test_safe_endpoints_do_not_allow_unsafe_ramp(void)
         }
     }
     assert(blocked>0 && output.wrist_roll_deg<90);
-    /* A safe new goal must release the hold, with no skipped trajectory time. */
-    end=raw_command(90,0,20,20);
+    /* A safe new goal must release the hold, with no skipped trajectory time.
+     * elbow_roll/pitch는 그대로 두고(안 그러면 170도 차이 때문에 250틱
+     * 안에 도달 못 한다) wp/wr만 안전한 값으로 바꾼다. */
+    end=raw_command(90,170,20,20);
     forearm_calibration_set_target(&s,&end);
     assert(s.blocked_flags==0);
     for (int tick=0; tick<250; tick++) {
@@ -274,6 +280,7 @@ static void test_safe_endpoints_do_not_allow_unsafe_ramp(void)
 
 int main(void)
 {
+    setvbuf(stdout, NULL, _IONBF, 0);
     test_validate();
     test_map_and_limits();
     test_unwrap();
