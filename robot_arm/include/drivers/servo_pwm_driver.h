@@ -14,11 +14,12 @@
  * 실제 RTL Register 이름과 일부 이름이 다르지만
  * Software에서는 Robot Joint 기준으로 사용한다.
  */
+#define SERVO_PWM_DRIVER_HW_CHANNEL_COUNT 6U
+/* Five logical channels map to HW CH0..CH4; HW CH5 is unused. */
 typedef enum {
 
-    SERVO_PWM_DRIVER_BASE = 0,
-    SERVO_PWM_DRIVER_SHOULDER,
-    SERVO_PWM_DRIVER_ELBOW,
+    SERVO_PWM_DRIVER_ELBOW_ROLL = 0,
+    SERVO_PWM_DRIVER_ELBOW_PITCH,
     SERVO_PWM_DRIVER_WRIST_PITCH,
     SERVO_PWM_DRIVER_WRIST_ROLL,
     SERVO_PWM_DRIVER_GRIPPER,

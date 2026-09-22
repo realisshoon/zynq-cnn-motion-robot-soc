@@ -20,9 +20,10 @@
 static const ServoConfig servo_configs[SERVO_COUNT] = {
 
     /*
-     * Base
+     * Elbow Roll
      */
-    [SERVO_BASE] = {
+    /* NOT VERIFIED FOR NEW 5-AXIS MECHANISM: retained legacy values. */
+    [SERVO_ELBOW_ROLL] = {
 
         .min_deg    = 0.0f,
         .center_deg = 90.0f,
@@ -35,24 +36,10 @@ static const ServoConfig servo_configs[SERVO_COUNT] = {
 
 
     /*
-     * Shoulder
+     * Elbow Pitch
      */
-    [SERVO_SHOULDER] = {
-
-        .min_deg    = 0.0f,
-        .center_deg = 90.0f,
-        .max_deg    = 180.0f,
-
-        .min_us     = 500U,
-        .center_us  = 1500U,
-        .max_us     = 2500U
-    },
-
-
-    /*
-     * Elbow
-     */
-    [SERVO_ELBOW] = {
+    /* NOT VERIFIED FOR NEW 5-AXIS MECHANISM: retained legacy values. */
+    [SERVO_ELBOW_PITCH] = {
 
         .min_deg    = 0.0f,
         .center_deg = 90.0f,
@@ -67,6 +54,7 @@ static const ServoConfig servo_configs[SERVO_COUNT] = {
     /*
      * Wrist Pitch
      */
+    /* NOT VERIFIED FOR NEW 5-AXIS MECHANISM: retained legacy values. */
     [SERVO_WRIST_PITCH] = {
 
         .min_deg    = 0.0f,
@@ -82,6 +70,7 @@ static const ServoConfig servo_configs[SERVO_COUNT] = {
     /*
      * Wrist Roll
      */
+    /* NOT VERIFIED FOR NEW 5-AXIS MECHANISM: retained legacy values. */
     [SERVO_WRIST_ROLL] = {
 
         .min_deg    = 0.0f,
@@ -101,6 +90,7 @@ static const ServoConfig servo_configs[SERVO_COUNT] = {
      *
      * 이 ServoConfig에서는 실제 PWM Hardware 범위만 관리한다.
      */
+    /* NOT VERIFIED FOR NEW 5-AXIS MECHANISM: retained legacy values. */
     [SERVO_GRIPPER] = {
 
         .min_deg    = 0.0f,
