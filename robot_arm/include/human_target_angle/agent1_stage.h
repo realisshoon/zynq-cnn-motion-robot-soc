@@ -46,6 +46,15 @@ const HumanJointTarget *agent1_stage_output(void);
 int agent1_stage_output_valid(void);
 
 /*
+ * 디버그/로그 전용: Agent1 내부 상태(PoseMappingContext)를 읽기 전용으로 조회한다.
+ * - 3D 재구성 결과(shoulder_l_3d 등)와 target_age_sec를 UART 로그로 뽑을 때 쓴다.
+ * - const 포인터라 호출자가 내부 상태를 바꿀 수 없다.
+ * - 제어 흐름 판단에는 쓰지 말 것(다음 단계 진행 여부는 agent1_stage_output_valid()).
+ * - 내용은 다음 agent1_stage_run() 호출 때 바뀐다.
+ */
+const PoseMappingContext *agent1_stage_debug_context(void);
+
+/*
  * Wrist Roll zero calibration wrapper.
  *
  * 1차 통합에서는 호출하지 않아도 된다.

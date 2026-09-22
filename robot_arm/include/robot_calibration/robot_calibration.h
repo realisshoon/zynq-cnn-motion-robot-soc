@@ -48,6 +48,7 @@ typedef struct {
     int stretched_ticks;
     int ticks_elapsed;
     int has_target;
+    int linear_retarget;
 } RobotMotionState;
 
 void robot_calibration_state_init(RobotMotionState *state);
@@ -55,8 +56,10 @@ void robot_calibration_state_init(RobotMotionState *state);
 /*
  * 로봇팔의 현재 명령 위치에서 `target`까지 가는 램프를 다시 계획한다.
  * 이전 램프가 끝나기 전에 다시 호출해도 안전하다(예: 동작 도중 새
- * HumanJointTarget이 도착한 경우) -- 새 램프는 이전 목표가 아니라 로봇팔이
- * 실제로 지금 있는 위치에서 시작한다. 최초 호출(아직 위치를 모르는 상태)에는
+ * HumanJointTarget이 도착한 경우) -- 새 램프는 직전 출력 명령 위치에서
+ * 시작한다(실측 위치 피드백은 없음). 정지 후 출발은 smoothstep, 이동 중
+ * 재목표는 선형 추종이며 틱당 속도는 제한하되 가속도는 제한하지 않는다.
+ * 최초 호출(아직 위치를 모르는 상태)에는
  * 램프 없이 곧바로 `target`으로 스냅한다. `target`은 valid == 1이어야 하며,
  * 호출자는 robot_calibration_apply()가 위험 판정(0 반환)한 결과는 버리고
  * 마지막으로 승인된 target으로 계속 robot_calibration_step()을 호출해야 한다.

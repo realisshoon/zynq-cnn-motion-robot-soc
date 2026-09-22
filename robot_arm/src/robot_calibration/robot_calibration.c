@@ -11,6 +11,7 @@
 int robot_calibration_apply(const HumanJointTarget *input, JointCommand *output)
 {
     if (output == NULL) return 0;
+    output->valid = 0;
     if (!motion_control_validate_target(input)) return 0;
 
     motion_control_map_target(input, output);
@@ -66,9 +67,12 @@ void robot_calibration_set_target(RobotMotionState *state, const JointCommand *t
     float target_array[ROBOT_MOTION_JOINT_COUNT];
     float max_delta[ROBOT_MOTION_JOINT_COUNT];
     int total_ticks = 0;
+    int in_motion;
     int i;
 
     if (state == NULL || target == NULL) return;
+
+    in_motion = state->has_target && state->ticks_elapsed < state->stretched_ticks;
 
     joint_command_to_array(target, target_array);
     fill_max_delta_per_tick(max_delta);
@@ -105,11 +109,13 @@ void robot_calibration_set_target(RobotMotionState *state, const JointCommand *t
     memcpy(state->start, state->current, sizeof(state->start));
     memcpy(state->target, target_array, sizeof(state->target));
     memcpy(state->max_delta_per_tick, max_delta, sizeof(state->max_delta_per_tick));
-    /* 틱당 이동 모양은 motion_smoothing의 smoothstep 곡선이 담당하고,
-     * robot_calibration_step()에서는 (원래 값 그대로인) max_delta_per_tick으로
-     * motion_limits_step_toward()를 방어적 하드 clamp로만 사용한다. 위에서
-     * 계산한 total_ticks는 그중 "가장 느린 관절 기준 공통 소요 시간"이다. */
-    state->stretched_ticks = motion_smoothing_stretch_ticks(total_ticks);
+    /* 정지 상태에서 출발할 때는 smoothstep을 사용한다. 이동 중 재목표는
+     * 선형으로 따라간다: 매 입력 프레임마다 smoothstep의 속도 0부터 다시
+     * 시작하면 20Hz 입력/50Hz 제어에서 목표를 거의 따라가지 못한다.
+     * 두 경로 모두 공통 도착 시간과 틱당 속도 제한을 지킨다.
+     * 재목표 시 속도 연속성/가속도 제한까지 보장하는 것은 아니다. */
+    state->linear_retarget = in_motion;
+    state->stretched_ticks = in_motion ? total_ticks : motion_smoothing_stretch_ticks(total_ticks);
     state->ticks_elapsed = 0;
 }
 
@@ -133,7 +139,7 @@ void robot_calibration_step(RobotMotionState *state, JointCommand *output)
     }
 
     progress = (float)state->ticks_elapsed / (float)state->stretched_ticks;
-    eased = motion_smoothing_ease(progress);
+    eased = state->linear_retarget ? progress : motion_smoothing_ease(progress);
 
     for (i = 0; i < ROBOT_MOTION_JOINT_COUNT; i++) {
         float ideal = state->start[i] + (state->target[i] - state->start[i]) * eased;

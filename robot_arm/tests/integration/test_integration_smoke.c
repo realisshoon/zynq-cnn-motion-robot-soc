@@ -71,7 +71,7 @@ static unsigned main_log_boot, main_log_ticks;
 static int run_robot_main;
 static jmp_buf main_exit;
 static PoseUartParser parser;
-static const float max_delta_deg[JOINTS] = {3.0f, 3.0f, 4.0f, 5.0f, 5.0f};
+static const float max_delta_deg[JOINTS] = {0.6f, 0.6f, 0.6f, 0.6f, 0.6f};
 
 /* 통합 진입점의 호출 순서와 본문을 그대로 실행한다. */
 #define main robot_main
@@ -473,12 +473,13 @@ static void test_front_main(void)
     assert(ctx.targets_valid == main_valid && ctx.targets_valid >= 95U);
     assert(ctx.commands_accepted >= 95U && ctx.servo_errors == 0U);
     assert(ctx.ticks == 250U && ctx.servo_writes == ctx.ticks);
-    /* elbow 포화를 운동성 판정에 쓰지 않고 나머지 네 관절을 각각 검사한다. */
+    /* A2 bring-up: three calibrated axes move; uncalibrated wrists stay neutral. */
     for (i = 0; i < JOINTS; ++i) {
-        if (i != 2U) assert(trace.maximum[i] > trace.minimum[i]);
+        if (i < 3U) assert(trace.maximum[i] > trace.minimum[i]);
+        else assert(trace.minimum[i] == 1500U && trace.maximum[i] == 1500U);
     }
     print_stats("S3 replay", &ctx);
-    printf("S3 max_delta_us=%u,%u,%u,%u,%u limits_us=35,35,46,57,57\n",
+    printf("S3 max_delta_us=%u,%u,%u,%u,%u limits_us=8,8,8,8,8\n",
            trace.max_step[0], trace.max_step[1], trace.max_step[2],
            trace.max_step[3], trace.max_step[4]);
     printf("S3 pwm_ranges=%u..%u,%u..%u,%u..%u,%u..%u,%u..%u,%u..%u\n",
@@ -490,7 +491,7 @@ static void test_front_main(void)
 static void set_direct_target(AgentPipelineContext *ctx, float base)
 {
     /* S4/S7은 Agent2 경계 주입이다. 나머지 각도는 안전검사를 통과하는 굽힌 팔이다. */
-    const HumanJointTarget target = {base, -20.0f, 40.0f, -20.0f, 0.0f, 0.25f, 1U};
+    const HumanJointTarget target = {base, -60.0f, 150.0f, 0.0f, 0.0f, 0.25f, 1U};
     ctx->target = target;
     ctx->target_ready = 1U;
     assert(agent2_run(ctx) == 1);
@@ -504,22 +505,29 @@ static void test_first_ramp(void)
     float first_angle;
     script_count = 0U;
     start_pipeline(&ctx, &trace);
-    set_direct_target(&ctx, 55.0f);
-    assert(ctx.command.base_deg == 145.0f);
+    set_direct_target(&ctx, 0.0f); /* Forward 30deg, elbow flexion 30deg. */
+    assert(fabsf(ctx.command.base_deg - 120.0f) < 0.001f);
     assert_home(&ctx);
     checked_tick(&ctx, &trace);
     first_angle = ctx.output.base_deg;
-    assert(first_angle > 90.0f && first_angle <= 93.0f);
-    assert(ctx.pwm.base_pwm_us > 1500U && ctx.pwm.base_pwm_us <= 1535U);
+    assert(first_angle > 90.0f && first_angle <= 90.6f);
+    /* At this slower profile the first fractional microsecond can quantize away. */
+    assert(ctx.pwm.base_pwm_us >= 1500U && ctx.pwm.base_pwm_us <= 1507U);
     assert(ctx.output.gripper_norm == 0.25f && ctx.pwm.gripper_pwm_us == 1000U);
-    for (i = 1U; i < 100U; ++i) checked_tick(&ctx, &trace);
-    assert(ctx.output.base_deg == 145.0f && ctx.pwm.base_pwm_us == 2111U);
+    for (i = 1U; i < 200U; ++i) checked_tick(&ctx, &trace);
+    assert(fabsf(ctx.output.base_deg - 120.0f) < 0.001f && ctx.pwm.base_pwm_us == 1833U);
     printf("S4 first_base_deg=%.6f final_base_deg=%.1f max_base_delta_us=%u\n",
            first_angle, ctx.output.base_deg, trace.max_step[0]);
     print_stats("S4", &ctx);
 }
 
-static void test_side_rejected(void)
+/*
+ * 원래 이름은 test_side_rejected였다: 그때는 바닥충돌 검사가 z 부호를 반대로 계산해서
+ * 이 측면 자세 6프레임이 전부 FLOOR_COLLISION으로 거부됐다. 2026-09-22에 z 부호를
+ * 바로잡고 바닥충돌 검사 자체를 없앴다(사용자가 설치 높이/시연 범위로 대신 보장하기로
+ * 함, safety_check.c 참고). 지금은 이 6프레임이 전부 승인된다.
+ */
+static void test_side_accepted(void)
 {
     static const float side[6][12] = {
         {533.978f,299.440f,516.981f,231.975f,488.153f,271.493f,417.723f,284.086f,395.496f,287.197f,391.758f,282.566f},
@@ -546,22 +554,20 @@ static void test_side_rejected(void)
         add_frame(i * 50U, pose);
     }
     start_pipeline(&ctx, &trace);
-    /* 현재 임시 캘리브레이션 의존: 보정이 바뀌면 FLOOR 거부 기대도 바뀐다. */
     for (i = 0; i < 6U; ++i) {
         JointCommand mapped;
-        SafetyCheckFlags issues;
+        SafetyCheckFlags issues = SAFETY_CHECK_OK;
         advance_to(&ctx, &trace, (i + 1U) * 50U);
         assert(ctx.frames_in == i + 1U && ctx.targets_valid == i + 1U);
-        assert(ctx.commands_rejected == i + 1U && ctx.commands_accepted == 0U);
-        assert(ctx.retargets == 0U && !ctx.command_valid);
-        assert_home(&ctx);
+        assert(ctx.commands_accepted == i + 1U && ctx.commands_rejected == 0U);
+        assert(ctx.command_valid);
         motion_control_map_target(&ctx.target, &mapped);
         motion_control_apply_limits(&mapped);
         mapped.valid = 1U;
-        assert(safety_check_apply(&mapped, NULL, &issues) == 0);
-        assert((issues & SAFETY_CHECK_FLOOR_COLLISION) != 0U);
+        assert(safety_check_apply(&mapped, NULL, &issues) == 1);
+        assert(issues == SAFETY_CHECK_OK);
     }
-    print_stats("S5 FLOOR=6/6", &ctx);
+    print_stats("S5 side-view accepted=6/6", &ctx);
 }
 
 static unsigned test_dropout(void)
@@ -577,12 +583,13 @@ static unsigned test_dropout(void)
     /* pose_mapping의 major_all_fresh를 실패시켜 전체 타겟 HOLD를 유도한다. */
     missing.elbow.valid = 0U;
     script_count = 0U;
-    for (i = 0; i < 40U; ++i) add_frame(i * 50U, good);
-    for (i = 40U; i < 52U; ++i) add_frame(i * 50U, missing);
-    for (i = 52U; i < 92U; ++i) add_frame(i * 50U, front_pose(510.0f, 300.0f, 2.0f));
+    /* Allow the initial 30deg/s smooth ramp to settle before testing HOLD. */
+    for (i = 0; i < 100U; ++i) add_frame(i * 50U, good);
+    for (i = 100U; i < 112U; ++i) add_frame(i * 50U, missing);
+    for (i = 112U; i < 152U; ++i) add_frame(i * 50U, front_pose(510.0f, 300.0f, 2.0f));
     start_pipeline(&ctx, &trace);
-    advance_to(&ctx, &trace, 2000U);
-    assert(ctx.frames_in == 40U && ctx.commands_accepted == 40U);
+    advance_to(&ctx, &trace, 5000U);
+    assert(ctx.frames_in == 100U && ctx.commands_accepted == 100U);
     /* 정지 유지 판정의 전제: 이전에 승인된 램프가 이미 끝나 있어야 한다. */
     command_values(&ctx.output, output);
     command_values(&ctx.command, command);
@@ -595,7 +602,7 @@ static unsigned test_dropout(void)
     for (i = 1U; i <= 12U; ++i) {
         const uint32_t accepted = ctx.commands_accepted;
         const uint32_t rejected = ctx.commands_rejected;
-        advance_to(&ctx, &trace, 2000U + i * 50U);
+        advance_to(&ctx, &trace, 5000U + i * 50U);
         if (!ctx.target_ready && first_invalid_ms == 0U) first_invalid_ms = i * 50U;
         if (i <= 4U) {
             assert(ctx.target_ready == 1U);
@@ -614,14 +621,14 @@ static unsigned test_dropout(void)
            " first_invalid_age_ms=%u pwm_held=1\n",
            ctx.commands_accepted - accepted_before, first_invalid_ms);
     accepted_before = ctx.commands_accepted;
-    advance_to(&ctx, &trace, 4600U);
+    advance_to(&ctx, &trace, 7600U);
     assert(ctx.target_ready == 1U && ctx.commands_accepted == accepted_before + 40U);
     assert(ctx.retargets > retargets_before);
     assert(ctx.pwm.base_pwm_us != held.base_pwm_us ||
            ctx.pwm.shoulder_pwm_us != held.shoulder_pwm_us ||
            ctx.pwm.wrist_pitch_pwm_us != held.wrist_pitch_pwm_us ||
            ctx.pwm.wrist_roll_pwm_us != held.wrist_roll_pwm_us);
-    assert(ctx.frames_in == 92U && ctx.servo_errors == 0U);
+    assert(ctx.frames_in == 152U && ctx.servo_errors == 0U);
     print_stats("S6 200ms HOLD / 400..600ms invalid / recovery", &ctx);
     /* 관측값을 그대로 출력한다. 350=float 누적 오차로 경계 프레임이 일찍 무효, 400=정확한 경계. */
     printf("S6 HOLD boundary first_invalid_age_ms=%u (350 or 400 허용)\n", first_invalid_ms);
@@ -641,10 +648,12 @@ static void test_wrap(void)
     for (i = 0; i < 60U; ++i) checked_tick(&ctx, &trace);
     set_direct_target(&ctx, -179.0f);
     assert(ctx.target.base_deg == 181.0f && ctx.unwrap.base_deg == 181.0f);
-    assert(ctx.command.base_deg == 170.0f && ctx.retargets == 1U);
+    assert(fabsf(ctx.command.base_deg - 60.0038f) < 0.002f && ctx.retargets == 2U);
+    assert(ctx.command.shoulder_deg < 90.0f); /* Continuous crossing, no limit lock. */
     checked_tick(&ctx, &trace);
     set_direct_target(&ctx, 179.0f);
-    assert(ctx.target.base_deg == 179.0f && ctx.retargets == 1U);
+    assert(ctx.target.base_deg == 179.0f && ctx.retargets == 3U);
+    assert(ctx.command.shoulder_deg > 90.0f);
     checked_tick(&ctx, &trace);
     assert(ctx.commands_accepted == 3U && ctx.commands_rejected == 0U);
     print_stats("S7 raw=179,-179,179 unwrapped=179,181,179", &ctx);
@@ -659,7 +668,7 @@ int main(void)
     test_uart();
     test_front_main();
     test_first_ramp();
-    test_side_rejected();
+    test_side_accepted();
     dropout_first_invalid_ms = test_dropout();
     test_wrap();
     /* 명세상 350ms까지 HOLD이므로 50ms 간격에서 최초 무효는 400ms다. 다만 Agent1은

@@ -1,123 +1,101 @@
 #include <assert.h>
 #include <math.h>
+#include <stddef.h>
 #include <stdio.h>
-
 #include "robot_calibration/safety_check.h"
 
-#define POSITION_TOLERANCE_CM 0.001f
-
-static int nearly_equal(float actual, float expected)
+static void near(float a,float b) { assert(fabsf(a-b)<0.002f); }
+static JointCommand command(float b,float s,float e,float w)
 {
-    return fabsf(actual - expected) <= POSITION_TOLERANCE_CM;
+    JointCommand c={b,s,e,w,90,0.5f,1};
+    return c;
 }
-
-static JointCommand make_command(float shoulder_deg, float elbow_deg, float wrist_pitch_deg)
+static float length(RobotPoint3D a,RobotPoint3D b)
 {
-    JointCommand command = {
-        .base_deg = 90.0f,
-        .shoulder_deg = shoulder_deg,
-        .elbow_deg = elbow_deg,
-        .wrist_pitch_deg = wrist_pitch_deg,
-        .wrist_roll_deg = 90.0f,
-        .gripper_norm = 0.5f,
-        .valid = 1u,
-    };
-
-    return command;
+    return sqrtf((a.x_cm-b.x_cm)*(a.x_cm-b.x_cm)+
+                 (a.y_cm-b.y_cm)*(a.y_cm-b.y_cm)+
+                 (a.z_cm-b.z_cm)*(a.z_cm-b.z_cm));
 }
-
-static void test_forward_kinematics(void)
+static void test_known_poses(void)
 {
-    JointCommand command = make_command(90.0f, 90.0f, 90.0f);
-    RobotJointPositions2D positions;
-
-    assert(robot_forward_kinematics_2d(&command, &positions) == 1);
-    assert(nearly_equal(positions.shoulder.x_cm, 0.0f));
-    assert(nearly_equal(positions.shoulder.z_cm, 0.0f));
-    assert(nearly_equal(positions.elbow.x_cm, 0.0f));
-    assert(nearly_equal(positions.elbow.z_cm, 11.0f));
-    assert(nearly_equal(positions.wrist_pitch.x_cm, 0.0f));
-    assert(nearly_equal(positions.wrist_pitch.z_cm, 24.0f));
-    assert(nearly_equal(positions.tip.x_cm, 0.0f));
-    assert(nearly_equal(positions.tip.z_cm, 32.0f));
-
-    command = make_command(0.0f, 150.0f, 30.0f);
-    command.base_deg = 25.0f;
-    command.wrist_roll_deg = 160.0f;
-    assert(robot_forward_kinematics_2d(&command, &positions) == 1);
-    assert(nearly_equal(positions.elbow.x_cm, 11.0f));
-    assert(nearly_equal(positions.elbow.z_cm, 0.0f));
-    assert(nearly_equal(positions.wrist_pitch.x_cm, 17.5f));
-    assert(nearly_equal(positions.wrist_pitch.z_cm, 11.25833f));
-    assert(nearly_equal(positions.tip.x_cm, 25.5f));
-    assert(nearly_equal(positions.tip.z_cm, 11.25833f));
+    JointCommand c=command(90,90,90,90);
+    RobotJointPositions3D p;
+    RobotJointPositions2D projection;
+    assert(robot_forward_kinematics_3d(&c,&p));
+    near(p.tip.x_cm,0);near(p.tip.y_cm,0);near(p.tip.z_cm,-32);
+    near(p.elbow.z_cm,-11);near(p.wrist_pitch.z_cm,-24);
+    c=command(120,90,90,90);
+    assert(robot_forward_kinematics_3d(&c,&p));
+    near(p.tip.x_cm,0);near(p.tip.y_cm,16);near(p.tip.z_cm,-27.712813f);
+    c=command(90,120,90,90);
+    assert(robot_forward_kinematics_3d(&c,&p));
+    near(p.tip.x_cm,16);near(p.tip.y_cm,0);near(p.tip.z_cm,-27.712813f);
+    c=command(90,90,120,90);
+    assert(robot_forward_kinematics_3d(&c,&p));
+    near(p.elbow.y_cm,0);near(p.elbow.z_cm,-11);
+    near(p.tip.y_cm,10.5f);near(p.tip.z_cm,-29.186533f);
+    c=command(120,130,120,90);
+    assert(robot_forward_kinematics_3d(&c,&p));
+    near(p.elbow.x_cm,7.070664f);
+    near(p.elbow.y_cm,4.213244f);
+    near(p.elbow.z_cm,-7.297553f);
+    assert(robot_forward_kinematics_2d(&c,&projection));
+    near(projection.elbow.x_cm,p.elbow.y_cm);
+    near(projection.elbow.z_cm,p.elbow.z_cm);
 }
-
-static void test_safe_pose(void)
+static void test_link_lengths_and_rotations(void)
 {
-    JointCommand command = make_command(45.0f, 140.0f, 40.0f);
-    RobotJointPositions2D positions;
-    SafetyCheckFlags issues = UINT32_MAX;
-
-    assert(safety_check_apply(&command, &positions, &issues) == 1);
-    assert(issues == SAFETY_CHECK_OK);
-    assert(positions.elbow.z_cm > 0.0f);
-    assert(positions.wrist_pitch.z_cm > 0.0f);
-    assert(positions.tip.z_cm > 0.0f);
+    RobotJointPositions3D p,ref;
+    SafetyCheckFlags flags,expected;
+    JointCommand c=command(90,90,160,160);
+    int accepted=safety_check_apply(&c,NULL,&expected);
+    assert(robot_forward_kinematics_3d(&c,&ref));
+    for(int b=20;b<=160;b+=10) for(int s=20;s<=160;s+=10) {
+        c.base_deg=(float)b;c.shoulder_deg=(float)s;
+        assert(robot_forward_kinematics_3d(&c,&p));
+        near(length(p.shoulder,p.elbow),11);
+        near(length(p.elbow,p.wrist_pitch),13);
+        near(length(p.wrist_pitch,p.tip),8);
+        near(length(p.shoulder,p.tip),length(ref.shoulder,ref.tip));
+        assert(safety_check_apply(&c,NULL,&flags)==accepted);
+        assert(flags==expected); /* Rigid rotation does not change self-clearance. */
+    }
 }
-
-static void test_self_collision(void)
+static void test_straight_and_collisions(void)
 {
-    JointCommand command = make_command(20.0f, 246.0f, 90.0f);
-    SafetyCheckFlags issues;
-
-    assert(safety_check_apply(&command, NULL, &issues) == 0);
-    assert((issues & SAFETY_CHECK_SELF_COLLISION) != 0u);
-    assert((issues & SAFETY_CHECK_FLOOR_COLLISION) == 0u);
+    RobotJointPositions3D p;
+    SafetyCheckFlags flags=UINT32_MAX;
+    JointCommand c=command(90,90,90,90);
+    assert(safety_check_apply(&c,NULL,&flags)); assert(flags==0);
+    /* Pure lateral straight arm has a collapsed side projection, but is safe.
+     * Direct FK/safety exercise beyond configured servo limits is intentional. */
+    c.shoulder_deg=180;
+    assert(safety_check_apply(&c,NULL,&flags)); assert(flags==0);
+    assert(robot_forward_kinematics_3d(&c,&p));
+    near(p.tip.x_cm,32);near(p.tip.z_cm,0);
+    c=command(120,130,246,90);
+    assert(!safety_check_apply(&c,NULL,&flags));
+    assert(flags==SAFETY_CHECK_SELF_COLLISION);
+    /* Interior angles still exceed 25deg here; terminal link returns across
+     * the upper link. This exercises actual 3D segment collision, not angle gate. */
+    c=command(125,135,230,230);
+    assert(!safety_check_apply(&c,NULL,&flags));
+    assert(flags==SAFETY_CHECK_SELF_COLLISION);
+    c=command(90,90,90,90); c.valid=0;
+    assert(!safety_check_apply(&c,NULL,&flags));assert(flags==SAFETY_CHECK_INVALID_COMMAND);
+    c.valid=1;c.base_deg=NAN;
+    assert(!safety_check_apply(&c,NULL,&flags));assert(flags==SAFETY_CHECK_INVALID_COMMAND);
+    assert(!robot_forward_kinematics_3d(&c,&p));
+    assert(!robot_forward_kinematics_3d(NULL,&p));
+    assert(!robot_forward_kinematics_3d(&c,NULL));
+    assert(!robot_forward_kinematics_2d(&c,NULL));
+    assert(!safety_check_apply(NULL,NULL,&flags));assert(flags==SAFETY_CHECK_INVALID_COMMAND);
 }
-
-static void test_floor_collision(void)
-{
-    JointCommand command = make_command(20.0f, 10.0f, 90.0f);
-    SafetyCheckFlags issues;
-
-    assert(safety_check_apply(&command, NULL, &issues) == 0);
-    assert((issues & SAFETY_CHECK_FLOOR_COLLISION) != 0u);
-}
-
-static void test_fully_extended_singularity(void)
-{
-    JointCommand command = make_command(45.0f, 90.0f, 90.0f);
-    SafetyCheckFlags issues;
-
-    assert(safety_check_apply(&command, NULL, &issues) == 0);
-    assert((issues & SAFETY_CHECK_NEAR_SINGULARITY) != 0u);
-    assert((issues & SAFETY_CHECK_REACH_BOUNDARY) != 0u);
-    assert((issues & SAFETY_CHECK_SELF_COLLISION) == 0u);
-}
-
-static void test_invalid_command(void)
-{
-    JointCommand command = make_command(45.0f, 140.0f, 40.0f);
-    SafetyCheckFlags issues;
-
-    command.valid = 0u;
-    assert(safety_check_apply(&command, NULL, &issues) == 0);
-    assert(issues == SAFETY_CHECK_INVALID_COMMAND);
-
-    assert(safety_check_apply(NULL, NULL, &issues) == 0);
-    assert(issues == SAFETY_CHECK_INVALID_COMMAND);
-}
-
 int main(void)
 {
-    test_forward_kinematics();
-    test_safe_pose();
-    test_self_collision();
-    test_floor_collision();
-    test_fully_extended_singularity();
-    test_invalid_command();
-
-    puts("test_safety_check: all tests passed");
+    test_known_poses();
+    test_link_lengths_and_rotations();
+    test_straight_and_collisions();
+    puts("test_safety_check: PASS (3D geometry, straight arms, self-collision)");
     return 0;
 }
