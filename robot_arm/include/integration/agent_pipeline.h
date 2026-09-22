@@ -8,6 +8,17 @@
 #include "robot_calibration/motion_control.h"
 #include "robot_calibration/robot_calibration.h"
 
+#ifdef ROBOT_TRACE
+/* [TRACE] agent2_run이 이번 프레임에 한 일. UART 로그(integration/trace.h)의 A2 줄이 읽는다. */
+typedef enum {
+    A2_RESULT_NONE = 0,          /* 실행하지 않음(이번 프레임에 Agent1 타겟이 없음) */
+    A2_RESULT_NEW,               /* 새 목표를 승인하고 재계획함 */
+    A2_RESULT_SAME,              /* 직전과 같은 명령이라 재계획하지 않음 */
+    A2_RESULT_REJECT_VALIDATE,   /* 입력 검증 실패 */
+    A2_RESULT_REJECT_SAFETY      /* 안전검사 거부 */
+} Agent2Result;
+#endif
+
 /*
  * Agent1 -> Agent2 -> Agent3 연결용 얇은 wrapper.
  * 각 Agent의 내부 소스는 수정하지 않고 기존 공개 API만 호출한다.
@@ -45,6 +56,13 @@ typedef struct {
     uint32_t ticks;
     uint32_t servo_writes;
     uint32_t servo_errors;
+
+#ifdef ROBOT_TRACE
+    /* [TRACE] UART 로그(integration/trace.h)용 기록. 파이프라인 동작에는 쓰지 않는다. */
+    int8_t a1_rc;              /* agent1_stage_run 반환값: 1 새 타겟, 0 HOLD, -1 타겟 없음 */
+    uint8_t a2_result;         /* Agent2Result: 이번 프레임의 agent2_run 결과 */
+    JointCommand a2_mapped;    /* 이번 프레임에 매핑된 명령. 안전검사에서 거부되면 valid=0 */
+#endif
 } AgentPipelineContext;
 
 /*
