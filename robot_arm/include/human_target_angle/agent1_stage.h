@@ -45,6 +45,7 @@ const HumanJointTarget *agent1_stage_output(void);
 /* 마지막 Agent1 output의 valid 여부 */
 int agent1_stage_output_valid(void);
 
+#ifdef ROBOT_TRACE
 /*
  * 디버그/로그 전용: Agent1 내부 상태(PoseMappingContext)를 읽기 전용으로 조회한다.
  * - 3D 재구성 결과(shoulder_l_3d 등)와 target_age_sec를 UART 로그로 뽑을 때 쓴다.
@@ -53,6 +54,7 @@ int agent1_stage_output_valid(void);
  * - 내용은 다음 agent1_stage_run() 호출 때 바뀐다.
  */
 const PoseMappingContext *agent1_stage_debug_context(void);
+#endif
 
 /*
  * Wrist Roll zero calibration wrapper.

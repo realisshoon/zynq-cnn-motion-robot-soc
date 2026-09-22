@@ -29,7 +29,7 @@ import bisect
 import csv
 import math
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import cv2
 import matplotlib
@@ -78,6 +78,20 @@ class Result3DFrame:
     wrist_pitch_deg: float
     wrist_roll_deg: float
     gripper: float
+    forearm_yaw_deg: Optional[float] = None
+    forearm_pitch_deg: Optional[float] = None
+    table_axes: Optional[tuple] = None
+    table_calibrated: int = 0
+    yaw_observable: int = 0
+    hand_fresh: int = 0
+
+
+def angle_summary(fr):
+    if fr.forearm_yaw_deg is not None:
+        return (f"Forearm Yaw={fr.forearm_yaw_deg:.1f}  "
+                f"Forearm Pitch={fr.forearm_pitch_deg:.1f}")
+    return (f"LEGACY base={fr.base_deg:.1f} shoulder={fr.shoulder_deg:.1f} "
+            f"elbow(inner)={fr.elbow_deg:.1f}")
 
 
 def load_pose2d_csv(path: str) -> List[Pose2DFrame]:
@@ -107,33 +121,44 @@ def load_pose2d_csv(path: str) -> List[Pose2DFrame]:
 def load_result_csv(path: str) -> List[Result3DFrame]:
     out = []
     with open(path, "r", newline="", encoding="utf-8") as f:
-        for row in csv.reader(f):
-            if not row:
-                continue
-            if row[0].strip().lower() in ("frame", "frame_id"):
-                continue
-            v = [x.strip() for x in row]
-            if len(v) < 30:
-                continue
+        reader = csv.DictReader(f)
+        fields = set(reader.fieldnames or [])
+        forearm = "forearm_yaw_deg" in fields
+        required = {"frame_id", "time_sec", "update_ret", "target_valid",
+                    "major_fresh", "finger_fresh", "wrist_pitch_deg",
+                    "wrist_roll_deg", "gripper_norm"}
+        required |= ({"forearm_yaw_deg", "forearm_pitch_deg", "table_calibrated",
+                      "yaw_observable", "hand_fresh"} if forearm else
+                     {"base_deg", "shoulder_deg", "elbow_deg"})
+        for name in ("shoulder_l", "shoulder_r", "elbow", "wrist", "finger1", "finger2"):
+            required |= {name+"_x3d", name+"_y3d", name+"_z"}
+        if forearm:
+            required |= {f"table_{a}_{b}" for a in "xyz" for b in "xyz"}
+        if not required <= fields:
+            raise ValueError(f"Unsupported Agent1 CSV; missing columns: {sorted(required-fields)}")
+        for row in reader:
+            def point(name):
+                return tuple(float(row[name+s]) for s in ("_x3d", "_y3d", "_z"))
             out.append(Result3DFrame(
-                frame_id=int(float(v[0])),
-                time_sec=float(v[1]),
-                update_ret=int(float(v[2])),
-                target_valid=int(float(v[3])),
-                major_fresh=int(float(v[4])),
-                finger_fresh=int(float(v[5])),
-                shoulder_l=(float(v[6]), float(v[7]), float(v[8])),
-                shoulder_r=(float(v[9]), float(v[10]), float(v[11])),
-                elbow=(float(v[12]), float(v[13]), float(v[14])),
-                wrist=(float(v[15]), float(v[16]), float(v[17])),
-                finger1=(float(v[18]), float(v[19]), float(v[20])),
-                finger2=(float(v[21]), float(v[22]), float(v[23])),
-                base_deg=float(v[24]),
-                shoulder_deg=float(v[25]),
-                elbow_deg=float(v[26]),
-                wrist_pitch_deg=float(v[27]),
-                wrist_roll_deg=float(v[28]),
-                gripper=float(v[29]),
+                frame_id=int(row["frame_id"]), time_sec=float(row["time_sec"]),
+                update_ret=int(row["update_ret"]), target_valid=int(row["target_valid"]),
+                major_fresh=int(row["major_fresh"]), finger_fresh=int(row["finger_fresh"]),
+                shoulder_l=point("shoulder_l"), shoulder_r=point("shoulder_r"),
+                elbow=point("elbow"), wrist=point("wrist"),
+                finger1=point("finger1"), finger2=point("finger2"),
+                base_deg=float(row.get("base_deg", "nan")),
+                shoulder_deg=float(row.get("shoulder_deg", "nan")),
+                elbow_deg=float(row.get("elbow_deg", "nan")),
+                wrist_pitch_deg=float(row["wrist_pitch_deg"]),
+                wrist_roll_deg=float(row["wrist_roll_deg"]),
+                gripper=float(row["gripper_norm"]),
+                forearm_yaw_deg=float(row["forearm_yaw_deg"]) if forearm else None,
+                forearm_pitch_deg=float(row["forearm_pitch_deg"]) if forearm else None,
+                table_axes=tuple(tuple(float(row[f"table_{a}_{b}"]) for b in "xyz")
+                                 for a in "xyz") if forearm else None,
+                table_calibrated=int(row.get("table_calibrated", 0)),
+                yaw_observable=int(row.get("yaw_observable", 0)),
+                hand_fresh=int(row.get("hand_fresh", 0)),
             ))
     out.sort(key=lambda x: x.time_sec)
     return out
@@ -318,6 +343,21 @@ def render_3d_panel(fr: Result3DFrame,
                 [pa[2], pb[2]],
                 linewidth=2.6, color=c, alpha=alpha)
 
+    if fr.table_axes is not None:
+        origin = pts["E"]
+        length = max(0.1, math.dist(fr.elbow, fr.wrist) * 0.65)
+        for name, axis, color in zip("XYZ", fr.table_axes, ("red", "green", "blue")):
+            vector = (axis[0]*length, axis[2]*length, axis[1]*length)
+            ax.quiver(*origin, *vector, color=color, alpha=alpha, arrow_length_ratio=0.18)
+            end = tuple(a+b for a, b in zip(origin, vector))
+            ax.text(*end, f"Table {name}", color=color, fontsize=8)
+        vector = tuple(b-a for a, b in zip(origin, pts["W"]))
+        ax.quiver(*origin, *vector, color="purple", alpha=alpha, arrow_length_ratio=0.18)
+        ax.text2D(0.02, 0.83,
+                  ("TABLE: supplied calibration" if fr.table_calibrated else "TABLE: DEMO / NOT CALIBRATED")
+                  + f"\nyaw observable={fr.yaw_observable} hand fresh={fr.hand_fresh}",
+                  transform=ax.transAxes, fontsize=8, color="purple")
+
     colors = {
         "SL": "tab:blue", "SR": "tab:blue",
         "E": "tab:orange", "W": "tab:orange",
@@ -363,10 +403,9 @@ def render_3d_panel(fr: Result3DFrame,
     fig.suptitle(
         f"frame={fr.frame_id}  t={fr.time_sec:.3f}s  [{status}]"
         f"     GRIP={int(fr.gripper >= 0.5)} ({gstate})\n"
-        f"base={fr.base_deg:.1f}  shoulder={fr.shoulder_deg:.1f}  "
-        f"elbow={fr.elbow_deg:.1f}  pitch={fr.wrist_pitch_deg:.1f}  "
-        f"roll={fr.wrist_roll_deg:.1f}",
-        fontsize=12, y=0.972
+        + angle_summary(fr) + "\n"
+        + f"Wrist Pitch={fr.wrist_pitch_deg:.1f}  Wrist Roll={fr.wrist_roll_deg:.1f}",
+        fontsize=10, y=0.982
     )
 
     table_lines = [
@@ -503,7 +542,7 @@ def main():
             info = [
                 f"video t={t:.3f}s   csv frame={fr.frame_id} t={fr.time_sec:.3f}s",
                 f"ret={fr.update_ret} valid={fr.target_valid} major={fr.major_fresh} finger={fr.finger_fresh}",
-                f"base={fr.base_deg:.2f} shoulder={fr.shoulder_deg:.2f} elbow={fr.elbow_deg:.2f}",
+                angle_summary(fr),
                 f"pitch={fr.wrist_pitch_deg:.2f} roll={fr.wrist_roll_deg:.2f}",
             ]
             y = 20

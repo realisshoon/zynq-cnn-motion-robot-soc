@@ -18,7 +18,9 @@ Keys:
 
 import argparse
 import csv
+import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -39,6 +41,33 @@ except ImportError as exc:
         "send_pose_uart.py를 찾을 수 없습니다.\n"
         "이 파일을 pc/send_pose_uart.py와 같은 폴더에 두세요."
     ) from exc
+
+
+class TeeWriter:
+    """Write console output to the terminal and a UTF-8 log file."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, text):
+        for stream in self.streams:
+            stream.write(text)
+        return len(text)
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
+def make_log_path(log_dir: str) -> Path:
+    directory = Path(log_dir).expanduser()
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise SystemExit(f"로그 폴더를 만들 수 없습니다: {directory}: {exc}") from exc
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    return directory / f"uart_debug_{timestamp}.log"
 
 
 def _to_float(value: object) -> Optional[float]:
@@ -192,13 +221,18 @@ def main():
     ap.add_argument("--port", required=True, help="Windows: COM5, Linux: /dev/ttyUSB0")
     ap.add_argument("--csv", required=True, help="HumanPose2D CSV file")
     ap.add_argument("--video", required=True, help="Video shown while pose rows are sent")
-    ap.add_argument("--baud", type=int, default=115200)
+    ap.add_argument("--baud", type=int, default=921600)
     ap.add_argument("--hz", type=float, default=20.0)
     ap.add_argument("--loop", action="store_true")
     ap.add_argument("--no-board-text", action="store_true")
     ap.add_argument("--start-frame-id", type=int, default=1)
     ap.add_argument("--window-width", type=int, default=960,
                     help="Display width. 0 keeps original size")
+    ap.add_argument(
+        "--log-dir",
+        default=str(Path.home() / "Downloads" / "로그 파일"),
+        help="Debug log directory (default: ~/Downloads/로그 파일)",
+    )
     args = ap.parse_args()
 
     if serial is None:
@@ -219,6 +253,17 @@ def main():
     csv_times = load_csv_times(args.csv, len(poses), args.hz)
     video = VideoReader(args.video)
 
+    log_path = make_log_path(args.log_dir)
+    try:
+        log_file = open(log_path, "x", encoding="utf-8", newline="")
+    except OSError as exc:
+        video.close()
+        raise SystemExit(f"로그 파일을 열 수 없습니다: {log_path}: {exc}") from exc
+
+    console = sys.stdout
+    sys.stdout = TeeWriter(console, log_file)
+
+    print(f"[INFO] debug log={log_path}")
     print(f"[INFO] rows={len(poses)}, port={args.port}, baud={args.baud}, rate={args.hz:.3f}Hz")
     print(f"[INFO] packet={uart_sender.PACKET_SIZE}B, video={video.width}x{video.height} @ {video.fps:.3f}fps")
     print("[INFO] video + UART start together. Q or ESC = stop")
@@ -290,6 +335,12 @@ def main():
     finally:
         video.close()
         cv2.destroyAllWindows()
+        try:
+            print(f"[OK] debug log saved: {log_path}")
+            sys.stdout.flush()
+        finally:
+            sys.stdout = console
+            log_file.close()
 
     print("[OK] transmission finished")
 

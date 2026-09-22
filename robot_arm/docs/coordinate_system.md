@@ -1,5 +1,8 @@
 # Coordinate System / Agent1 → Agent2 계약
 
+> 이 문서의 BodyFrame/6축 계약은 legacy 경로용입니다.
+> 새 5축 TableFrame 계약은 [agent1_forearm.md](agent1_forearm.md)를 사용하세요.
+
 ## 입력 영상과 복원 좌표
 
 - 영상 pixel: +X 오른쪽, +Y 아래쪽.

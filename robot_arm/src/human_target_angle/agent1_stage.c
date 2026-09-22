@@ -53,11 +53,12 @@ int agent1_stage_output_valid(void)
            (g_agent1_output.valid != 0U);
 }
 
+#ifdef ROBOT_TRACE
 const PoseMappingContext *agent1_stage_debug_context(void)
 {
     return &g_agent1_ctx;
 }
-
+#endif
 
 
 int agent1_stage_start_roll_zero_calibration(void)
