@@ -8,10 +8,10 @@
  * 실수는 %f 없이 정수 연산으로 만든 고정소수점 텍스트다(각도 소수 1자리, 그리퍼 2자리, Point3D 3자리).
  * 나눗셈은 전부 상수 나눗셈이다(Cortex-A9에는 정수 나눗셈 명령이 없다).
  *
- *   A1  agent1_run 직후(프레임마다)  fid,t_ms,dur_us,dt_ms,pv,vm,rc,ov,base,sh,el,wp,wr,grip
+ *   A1  agent1_run 직후(프레임마다)  fid,t_ms,dur_us,dt_ms,pv,vm,rc,ov,er,ep,wp,wr,grip
  *   P3  A1 바로 뒤(Agent1 내부)      fid,pm,fl,age_ms, 6점 x,y,z (sl, sr, e, w, f1, f2)
- *   A2  agent2_run 직후              fid,t_ms,dur_us,st,fg, 타겟(unwrap 후) 5개, 매핑된 명령 6개
- *   TK  제어 틱마다                  tick,t_ms,dur_us, 출력 6개, PWM 6개, rem,w,er
+ *   A2  agent2_run 직후              fid,t_ms,dur_us,st,fg, 타겟(unwrap 후) 4개, 매핑된 명령 5개
+ *   TK  제어 틱마다                  tick,t_ms,dur_us, 출력 5개, PWM 5개, rem,w,er
  *   SM  1초마다                      t_ms,fr,tv,acc,rej,rt,tk,sw,se,ovr,crc,fmt,rng,ow,drop,hi
  *   EV  상태가 바뀔 때만             t_ms,code,arg
  *
@@ -28,8 +28,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "human_target_angle/agent1_stage.h"
-#include "robot_calibration/safety_check.h"
+#include "human_target_angle/agent1_forearm_stage.h"
+#include "robot_calibration/forearm_safety_check.h"
 
 /* ---- 설정값 ---- */
 #define TRACE_RING_SIZE         8192U       /* 2의 거듭제곱이어야 한다(인덱스를 마스크로 자른다) */
@@ -45,10 +45,10 @@ enum { TRACE_STATE_UNKNOWN = 0, TRACE_STATE_OK = 1, TRACE_STATE_BAD = 2 };
 
 /* 컬럼 정의. 아래 레코드 작성 코드와 항상 같이 고친다(테스트가 컬럼 수를 비교한다). */
 static const char *const k_schema[] = {
-    "#A1,fid,t_ms,dur_us,dt_ms,pv,vm,rc,ov,base,sh,el,wp,wr,grip",
+    "#A1,fid,t_ms,dur_us,dt_ms,pv,vm,rc,ov,er,ep,wp,wr,grip",
     "#P3,fid,pm,fl,age_ms,slx,sly,slz,srx,sry,srz,ex,ey,ez,wx,wy,wz,f1x,f1y,f1z,f2x,f2y,f2z",
-    "#A2,fid,t_ms,dur_us,st,fg,ub,ush,ue,uwp,uwr,cb,csh,ce,cwp,cwr,cg",
-    "#TK,tick,t_ms,dur_us,b,sh,e,wp,wr,g,pb,psh,pe,pwp,pwr,pg,rem,w,er",
+    "#A2,fid,t_ms,dur_us,st,fg,uer,uep,uwp,uwr,cer,cep,cwp,cwr,cg",
+    "#TK,tick,t_ms,dur_us,er,ep,wp,wr,g,per,pep,pwp,pwr,pg,rem,w,err",
     "#SM,t_ms,fr,tv,acc,rej,rt,tk,sw,se,ovr,crc,fmt,rng,ow,drop,hi",
     "#EV,t_ms,code,arg"
 };
@@ -321,14 +321,13 @@ static void emit_a1_line(const AgentPipelineContext *ctx, uint32_t t_ms, uint32_
     f_i32(&l, ctx->a1_rc);
     f_u32(&l, ctx->target_ready);
     if (ctx->target_ready != 0U) {
-        f_fx(&l, ctx->target.base_deg, 1U);
-        f_fx(&l, ctx->target.shoulder_deg, 1U);
-        f_fx(&l, ctx->target.elbow_deg, 1U);
+        f_fx(&l, ctx->target.elbow_roll_deg, 1U);
+        f_fx(&l, ctx->target.elbow_pitch_deg, 1U);
         f_fx(&l, ctx->target.wrist_pitch_deg, 1U);
         f_fx(&l, ctx->target.wrist_roll_deg, 1U);
         f_fx(&l, ctx->target.gripper_norm, 2U);
     } else {
-        f_empty(&l, 6U);
+        f_empty(&l, 5U);
     }
     line_end(&l);
 }
@@ -340,15 +339,19 @@ static void put_point3(TraceLine *l, const Point3D *p)
     f_fx(l, p->z, 3U);
 }
 
-/* Agent1 내부의 Point3D 6점. agent1_stage_debug_context()가 돌려주는 const 포인터로만 읽는다. */
+/* Agent1 내부의 Point3D 6점. agent1_forearm_stage_debug_context()가 돌려주는
+ * const 포인터(ForearmMappingContext)로만 읽는다. 점 자체는 그 안의
+ * PoseMappingContext(.pose)가 legacy와 같은 이름으로 들고 있다. */
 static void emit_p3_line(uint32_t fid)
 {
-    const PoseMappingContext *c = agent1_stage_debug_context();
+    const ForearmMappingContext *fc = agent1_forearm_stage_debug_context();
+    const PoseMappingContext *c;
     TraceLine l;
     uint32_t pm;
     uint32_t fl;
 
-    if (c == NULL) return;
+    if (fc == NULL) return;
+    c = &fc->pose;
 
     pm = bit_of(c->shoulder_l_3d.valid, 0U) | bit_of(c->shoulder_r_3d.valid, 1U) |
          bit_of(c->elbow_3d.valid, 2U) | bit_of(c->wrist_3d.valid, 3U) |
@@ -407,20 +410,18 @@ static void emit_a2_line(const AgentPipelineContext *ctx, uint32_t t_ms, uint32_
     f_hex(&l, flags);
     if (has_cmd != 0U) {
         /* unwrap이 제자리에서 고친 뒤의 타겟 */
-        f_fx(&l, ctx->target.base_deg, 1U);
-        f_fx(&l, ctx->target.shoulder_deg, 1U);
-        f_fx(&l, ctx->target.elbow_deg, 1U);
+        f_fx(&l, ctx->target.elbow_roll_deg, 1U);
+        f_fx(&l, ctx->target.elbow_pitch_deg, 1U);
         f_fx(&l, ctx->target.wrist_pitch_deg, 1U);
         f_fx(&l, ctx->target.wrist_roll_deg, 1U);
         /* 이번 프레임에 매핑된 명령(거부됐으면 거부된 값) */
-        f_fx(&l, ctx->a2_mapped.base_deg, 1U);
-        f_fx(&l, ctx->a2_mapped.shoulder_deg, 1U);
-        f_fx(&l, ctx->a2_mapped.elbow_deg, 1U);
+        f_fx(&l, ctx->a2_mapped.elbow_roll_deg, 1U);
+        f_fx(&l, ctx->a2_mapped.elbow_pitch_deg, 1U);
         f_fx(&l, ctx->a2_mapped.wrist_pitch_deg, 1U);
         f_fx(&l, ctx->a2_mapped.wrist_roll_deg, 1U);
         f_fx(&l, ctx->a2_mapped.gripper_norm, 2U);
     } else {
-        f_empty(&l, 11U);
+        f_empty(&l, 9U);
     }
     line_end(&l);
 }
@@ -448,16 +449,17 @@ void trace_a2(const AgentPipelineContext *ctx)
 
     if (ctx->a2_result == A2_RESULT_REJECT_SAFETY) {
         /*
-         * robot_calibration_apply()는 안전검사 flags를 버린다(NULL을 넘긴다).
+         * forearm_calibration_apply()는 안전검사 flags를 버린다(NULL을 넘긴다).
          * 거부된 명령은 valid=0이라 그대로 넣으면 INVALID_COMMAND만 나오므로,
-         * 복사본의 valid를 1로 바꿔 공개 함수 safety_check_apply()를 한 번 더 불러 사유를 얻는다.
-         * safety_check.c는 상태 변수가 없어서 같은 입력이면 같은 결과다.
+         * 복사본의 valid를 1로 바꿔 공개 함수 forearm_safety_check_apply()를
+         * 한 번 더 불러 사유를 얻는다. forearm_safety_check.c는 상태 변수가
+         * 없어서 같은 입력이면 같은 결과다.
          */
-        JointCommand copy = ctx->a2_mapped;
-        SafetyCheckFlags f = SAFETY_CHECK_OK;
+        ForearmJointCommand copy = ctx->a2_mapped;
+        ForearmSafetyCheckFlags f = FOREARM_SAFETY_CHECK_OK;
 
         copy.valid = 1U;
-        (void)safety_check_apply(&copy, NULL, &f);
+        (void)forearm_safety_check_apply(&copy, &f);
         flags = (uint32_t)f;
     }
 
@@ -474,12 +476,12 @@ void trace_a2(const AgentPipelineContext *ctx)
 }
 
 /* 램프가 목표까지 남은 각도(관절 중 가장 큰 값) */
-static float ramp_remaining(const RobotMotionState *m)
+static float ramp_remaining(const ForearmMotionState *m)
 {
     float worst = 0.0f;
     unsigned i;
 
-    for (i = 0U; i < (unsigned)ROBOT_MOTION_JOINT_COUNT; ++i) {
+    for (i = 0U; i < (unsigned)FOREARM_MOTION_JOINT_COUNT; ++i) {
         float d = m->target[i] - m->current[i];
 
         if (d < 0.0f) d = -d;
@@ -503,18 +505,16 @@ void trace_tick(const AgentPipelineContext *ctx)
     f_u32(&l, t_ms);
     f_u32(&l, us_now - s_mark_us);
     if (ctx->output.valid != 0U) {
-        f_fx(&l, ctx->output.base_deg, 1U);
-        f_fx(&l, ctx->output.shoulder_deg, 1U);
-        f_fx(&l, ctx->output.elbow_deg, 1U);
+        f_fx(&l, ctx->output.elbow_roll_deg, 1U);
+        f_fx(&l, ctx->output.elbow_pitch_deg, 1U);
         f_fx(&l, ctx->output.wrist_pitch_deg, 1U);
         f_fx(&l, ctx->output.wrist_roll_deg, 1U);
         f_fx(&l, ctx->output.gripper_norm, 2U);
     } else {
-        f_empty(&l, 6U);
+        f_empty(&l, 5U);
     }
-    f_u32(&l, ctx->pwm.base_pwm_us);
-    f_u32(&l, ctx->pwm.shoulder_pwm_us);
-    f_u32(&l, ctx->pwm.elbow_pwm_us);
+    f_u32(&l, ctx->pwm.elbow_roll_pwm_us);
+    f_u32(&l, ctx->pwm.elbow_pitch_pwm_us);
     f_u32(&l, ctx->pwm.wrist_pitch_pwm_us);
     f_u32(&l, ctx->pwm.wrist_roll_pwm_us);
     f_u32(&l, ctx->pwm.gripper_pwm_us);
