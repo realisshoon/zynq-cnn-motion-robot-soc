@@ -526,13 +526,14 @@ static void test_a2(void)
     assert(agent2_run(&ctx) == 1);
     trace_a2(&ctx);
 
-    /* R 포맷/이벤트 경계 주입: [20,160] 안에서는 기하 거부가 불가능하다.
+    /* R 포맷/이벤트 경계 주입: [20,160] 안에서는 테이블 충돌이 불가능하다.
      * 범위 밖 명령으로 테이블 충돌 사유 재계산만 검사한다. 파이프라인에
-     * 정상 입력을 넣어 거부된 것으로 취급하지 않는다. */
+     * 정상 입력을 넣어 거부된 것으로 취급하지 않는다. elbow_pitch=-13이면
+     * wrist.z=-5.399로 테이블(-5cm) 아래다(직접 실행으로 확인). */
     ctx.pose.frame_id = 102U;
     exp_cmd = (ForearmJointCommand){
-        .elbow_roll_deg = 90.0f, .elbow_pitch_deg = 0.0f,
-        .wrist_pitch_deg = -20.0f, .wrist_roll_deg = 90.0f,
+        .elbow_roll_deg = 90.0f, .elbow_pitch_deg = -13.0f,
+        .wrist_pitch_deg = 90.0f, .wrist_roll_deg = 90.0f,
         .gripper_norm = 0.5f, .valid = 0U
     };
     ctx.a2_mapped = exp_cmd;

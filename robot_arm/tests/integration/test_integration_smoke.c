@@ -666,14 +666,19 @@ static void test_wrap(void)
     unsigned i;
     script_count = 0U;
     start_pipeline(&ctx, &trace);
-    /* 좌표 대신 ctx.target에 직접 주입하여 양방향 경계 통과를 검증한다. */
-    set_direct_target(&ctx, 179.0f, 179.0f, -179.0f);
+    /* 좌표 대신 ctx.target에 직접 주입하여 양방향 경계 통과를 검증한다.
+     * 2026-09-22: wrist_pitch=90=90도 굽힘 기준으로 바뀌면서, elbow_roll과
+     * 같이 179도로 클램프(->160)하면 자기충돌(wrist_pitch>155)에 걸린다.
+     * 이 시나리오는 elbow_roll/wrist_roll의 wrap 경계 통과가 핵심이라
+     * wrist_pitch는 안전한 고정값(0, wrap 없음)으로 분리했다 -- wrist_pitch
+     * 자체의 wrap은 test_forearm_calibration.c의 test_unwrap이 이미 다룬다. */
+    set_direct_target(&ctx, 179.0f, 0.0f, -179.0f);
     assert(ctx.target.elbow_roll_deg == 179.0f);
-    assert(ctx.target.wrist_pitch_deg == 179.0f && ctx.target.wrist_roll_deg == -179.0f);
+    assert(ctx.target.wrist_pitch_deg == 0.0f && ctx.target.wrist_roll_deg == -179.0f);
     for (i = 0; i < 60U; ++i) checked_tick(&ctx, &trace);
-    set_direct_target(&ctx, -179.0f, -179.0f, 179.0f);
+    set_direct_target(&ctx, -179.0f, 0.0f, 179.0f);
     assert(ctx.target.elbow_roll_deg == 181.0f && ctx.unwrap.yaw_deg == 181.0f);
-    assert(ctx.target.wrist_pitch_deg == 181.0f && ctx.unwrap.wrist_pitch_deg == 181.0f);
+    assert(ctx.target.wrist_pitch_deg == 0.0f);
     assert(ctx.target.wrist_roll_deg == -181.0f && ctx.unwrap.wrist_roll_deg == -181.0f);
     assert(ctx.target.elbow_pitch_deg == -60.0f); /* pitch는 unwrap 대상이 아니다. */
     assert(ctx.retargets == 1U); /* 풀린 각도도 같은 한계값으로 클램프되므로 재계획하지 않는다. */
@@ -681,13 +686,13 @@ static void test_wrap(void)
            ctx.target.elbow_roll_deg, ctx.target.wrist_pitch_deg, ctx.target.wrist_roll_deg,
            ctx.target.elbow_pitch_deg, (unsigned)ctx.retargets);
     checked_tick(&ctx, &trace);
-    set_direct_target(&ctx, 179.0f, 179.0f, -179.0f);
+    set_direct_target(&ctx, 179.0f, 0.0f, -179.0f);
     assert(ctx.target.elbow_roll_deg == 179.0f && ctx.unwrap.yaw_deg == 179.0f);
-    assert(ctx.target.wrist_pitch_deg == 179.0f && ctx.unwrap.wrist_pitch_deg == 179.0f);
+    assert(ctx.target.wrist_pitch_deg == 0.0f);
     assert(ctx.target.wrist_roll_deg == -179.0f && ctx.unwrap.wrist_roll_deg == -179.0f);
     assert(ctx.target.elbow_pitch_deg == -60.0f && ctx.retargets == 1U);
     {
-        const float expected[JOINTS] = {160.0f, 30.0f, 160.0f, 20.0f};
+        const float expected[JOINTS] = {160.0f, 30.0f, 90.0f, 20.0f};
         float command[JOINTS];
         joints(&ctx.command, command);
         for (i = 0; i < JOINTS; ++i) assert(command[i] == expected[i]);

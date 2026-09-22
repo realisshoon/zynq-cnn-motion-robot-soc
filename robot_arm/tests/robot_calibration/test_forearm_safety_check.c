@@ -23,9 +23,13 @@ static float length(RobotPoint3D a, RobotPoint3D b)
                  (a.z_cm-b.z_cm)*(a.z_cm-b.z_cm));
 }
 
-/* 2026-09-22 사용자 확인: elbow_pitch=90(중립)은 전완이 지면과 수직으로
- * 서는(똑바로 위) 자세. wrist는 pitch 먼저 굽히고 roll이 그 결과를
- * 전완 축 주위로 돌린다. 아래 기대값은 이 규약으로 다시 계산한 것이다. */
+/* 2026-09-22 사용자 확인:
+ * - elbow_pitch=90(중립)은 전완이 지면과 수직으로 서는(똑바로 위) 자세.
+ * - wrist_pitch=90(중립)은 완전히 편 자세(0도)가 아니라 전완 기준 90도
+ *   굽은 자세다(완전히 펴두면 하드웨어가 덜덜거려서). wrist_pitch만 다른
+ *   관절과 달리 0도가 "완전히 폄" 기준이다(servo=0 -> 굽힘 0).
+ * - wrist는 pitch 먼저 굽히고 roll이 그 결과를 전완 축 주위로 돌린다.
+ * 아래 기대값은 이 규약으로 다시 계산한 것이다. */
 static void test_known_poses(void)
 {
     ForearmJointCommand c = command(90, 90, 90, 90);
@@ -34,26 +38,31 @@ static void test_known_poses(void)
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
     near(p.elbow.x_cm, 0); near(p.elbow.y_cm, 0); near(p.elbow.z_cm, 0);
     near(p.wrist.x_cm, 0); near(p.wrist.y_cm, 0); near(p.wrist.z_cm, 24); /* 똑바로 위 */
-    near(p.tip.x_cm, 0); near(p.tip.y_cm, 0); near(p.tip.z_cm, 34);
+    near(p.tip.x_cm, 0); near(p.tip.y_cm, 10); near(p.tip.z_cm, 24); /* wp=90=90도 굽힘 */
 
     c = command(90, 180, 90, 90); /* elbow_pitch +90: 수평(roll=90 방위, +Y) */
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
     near(p.wrist.x_cm, 0); near(p.wrist.y_cm, 24); near(p.wrist.z_cm, 0);
+    near(p.tip.x_cm, 0); near(p.tip.y_cm, 24); near(p.tip.z_cm, -10);
 
     /* 수평(pitch+90)에서 roll을 더 돌리면(+90) +Z RH 규칙대로 +Y -> -X. */
     c = command(180, 180, 90, 90);
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
     near(p.wrist.x_cm, -24); near(p.wrist.y_cm, 0); near(p.wrist.z_cm, 0);
 
-    c = command(90, 90, 180, 90); /* wrist_pitch +90, roll 중립: 굽힘은 +Y쪽(수평) */
+    c = command(90, 90, 180, 90); /* wrist_pitch=180(완전히 접힘), roll 중립 */
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
-    near(p.tip.x_cm, 0); near(p.tip.y_cm, 10); near(p.tip.z_cm, 24);
+    near(p.tip.x_cm, 0); near(p.tip.y_cm, 0); near(p.tip.z_cm, 14);
 
-    c = command(90, 90, 180, 180); /* wrist_pitch +90 뒤 wrist_roll +90: 굽힘 평면이 옆으로 회전 */
+    c = command(90, 90, 180, 180); /* wp=180 뒤 wroll+90: 완전 접힘이라 축 위라 roll 무관 */
+    assert(forearm_robot_forward_kinematics_3d(&c, &p));
+    near(p.tip.x_cm, 0); near(p.tip.y_cm, 0); near(p.tip.z_cm, 14);
+
+    c = command(90, 90, 90, 180); /* wroll+90, wp=90(90도 굽음): 굽힘 평면이 옆으로 회전 */
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
     near(p.tip.x_cm, -10); near(p.tip.y_cm, 0); near(p.tip.z_cm, 24);
 
-    c = command(90, 90, 90, 180); /* wrist_roll만 돌리고 안 굽히면 중심선은 안 움직인다 */
+    c = command(90, 90, 0, 90); /* wp=0: 완전히 폄 */
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
     near(p.tip.x_cm, 0); near(p.tip.y_cm, 0); near(p.tip.z_cm, 34);
 }
@@ -99,8 +108,10 @@ static void test_independent_rotation_composition(void)
         ForearmJointCommand c = command(90+q,90+p,90+w,90+r);
         ForearmJointPositions3D actual;
         RobotPoint3D forearm_dir = rotate(rotate((RobotPoint3D){0,0,1}, x, (float)-p), z, (float)q);
+        /* wrist_pitch만 기준이 0도(완전히 폄)라 서보값(90+w)을 그대로 반대
+         * 부호로 돌린다 -- 다른 세 관절은 90도가 기준이라 오프셋을 뺀 값을 쓴다. */
         RobotPoint3D hand_dir = rotate(rotate(rotate(rotate((RobotPoint3D){0,0,1},
-            x, (float)-w), z, (float)r), x, (float)-p), z, (float)q);
+            x, -(90.0f+(float)w)), z, (float)r), x, (float)-p), z, (float)q);
         RobotPoint3D wrist = {24.0f*forearm_dir.x_cm, 24.0f*forearm_dir.y_cm, 24.0f*forearm_dir.z_cm};
         RobotPoint3D hand = {10.0f*hand_dir.x_cm, 10.0f*hand_dir.y_cm, 10.0f*hand_dir.z_cm};
         assert(forearm_robot_forward_kinematics_3d(&c,&actual));
@@ -117,11 +128,14 @@ static void test_independent_rotation_composition(void)
 static void test_self_collision(void)
 {
     ForearmSafetyCheckFlags flags = UINT32_MAX;
-    /* wrist_pitch가 90에서 아주 많이 벗어나 내각이 25도 미만(기계적 간섭 우려).
-     * joint_interior_angle()은 servo 값만 보므로 elbow_pitch 좌표계 변경과 무관. */
-    ForearmJointCommand c = command(90, 90, 90 - (180 - 25) - 1, 90);
+    /* wrist_pitch=0이 완전히 폄 기준이라 내각은 180-wp다(wp가 클수록 더
+     * 접힘). 25도 미만(=wp>155)이면 기계적 간섭 우려 -- [20,160] 클램프
+     * 안에서 실제로 도달 가능하다(wp=156에서 실행 확인, 155는 아직 안전). */
+    ForearmJointCommand c = command(90, 90, 156.0f, 90);
     assert(!forearm_safety_check_apply(&c, &flags));
     assert(flags & FOREARM_SAFETY_CHECK_SELF_COLLISION);
+    c.wrist_pitch_deg = 155.0f;
+    assert(forearm_safety_check_apply(&c, &flags));
 
     /* 정상 범위 내 자세는 자기충돌이 없어야 한다. */
     c = command(90, 90, 90, 90);
@@ -140,17 +154,15 @@ static void test_table_collision(void)
     assert(!forearm_safety_check_apply(&c, &flags));
     assert(flags & FOREARM_SAFETY_CHECK_TABLE_COLLISION);
 
-    /* 손목은 테이블 위(수평, wrist.z=0)지만 손만 굽혀 테이블을 뚫는 경우:
-     * roll=0,pitch=0,wrist_roll=90(중립)에서 tip.z=10*sin(wp_rad),
-     * wp_rad=(wp_deg-90). 경계 wp_deg=60(tip.z=-5.0000 정확히, 계산으로 확인). */
-    c = command(0, 0, 59.0f, 90);
+    /* 손목은 테이블 위(wrist.z=4.17)지만 손만 굽혀 테이블을 뚫는 경우:
+     * roll=0,pitch=170,wrist_roll=90(중립)에서 wp를 스윕해 실행으로 경계를
+     * 찾았다 -- wp=76 안전(tip.z=-4.97), wp=77 충돌(tip.z=-5.04). */
+    c = command(0, 170, 77.0f, 90);
     assert(!forearm_safety_check_apply(&c, &flags));
     assert(flags == FOREARM_SAFETY_CHECK_TABLE_COLLISION);
-    c.wrist_pitch_deg = 61.0f;
+    c.wrist_pitch_deg = 76.0f;
     assert(forearm_safety_check_apply(&c, &flags));
-    c.wrist_pitch_deg = 60.0f;
-    assert(!forearm_safety_check_apply(&c, &flags));
-    assert(flags == FOREARM_SAFETY_CHECK_TABLE_COLLISION);
+    c.wrist_pitch_deg = 77.0f;
     {
         ForearmJointPositions3D p;
         assert(forearm_robot_forward_kinematics_3d(&c, &p));
