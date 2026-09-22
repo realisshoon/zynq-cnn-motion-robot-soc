@@ -78,18 +78,19 @@ class Result3DFrame:
     wrist_pitch_deg: float
     wrist_roll_deg: float
     gripper: float
-    forearm_yaw_deg: Optional[float] = None
-    forearm_pitch_deg: Optional[float] = None
-    table_axes: Optional[tuple] = None
-    table_calibrated: int = 0
-    yaw_observable: int = 0
+    elbow_roll_deg: Optional[float] = None
+    elbow_pitch_deg: Optional[float] = None
+    body_axes: Optional[tuple] = None
+    body_frame_valid: int = 0
+    elbow_roll_observable: int = 0
     hand_fresh: int = 0
+    active_arm: int = 1
 
 
 def angle_summary(fr):
-    if fr.forearm_yaw_deg is not None:
-        return (f"Forearm Yaw={fr.forearm_yaw_deg:.1f}  "
-                f"Forearm Pitch={fr.forearm_pitch_deg:.1f}")
+    if fr.elbow_roll_deg is not None:
+        return (f"Human Elbow Roll={fr.elbow_roll_deg:.1f}  "
+                f"Elbow Pitch={fr.elbow_pitch_deg:.1f}")
     return (f"LEGACY base={fr.base_deg:.1f} shoulder={fr.shoulder_deg:.1f} "
             f"elbow(inner)={fr.elbow_deg:.1f}")
 
@@ -123,17 +124,19 @@ def load_result_csv(path: str) -> List[Result3DFrame]:
     with open(path, "r", newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         fields = set(reader.fieldnames or [])
-        forearm = "forearm_yaw_deg" in fields
+        if "forearm_yaw_deg" in fields:
+            raise ValueError("Obsolete fixed-frame CSV. Regenerate it with the current test_pose_csv.")
+        forearm = "elbow_roll_deg" in fields
         required = {"frame_id", "time_sec", "update_ret", "target_valid",
                     "major_fresh", "finger_fresh", "wrist_pitch_deg",
                     "wrist_roll_deg", "gripper_norm"}
-        required |= ({"forearm_yaw_deg", "forearm_pitch_deg", "table_calibrated",
-                      "yaw_observable", "hand_fresh"} if forearm else
+        required |= ({"elbow_roll_deg", "elbow_pitch_deg", "body_frame_valid",
+                      "elbow_roll_observable", "hand_fresh"} if forearm else
                      {"base_deg", "shoulder_deg", "elbow_deg"})
         for name in ("shoulder_l", "shoulder_r", "elbow", "wrist", "finger1", "finger2"):
             required |= {name+"_x3d", name+"_y3d", name+"_z"}
         if forearm:
-            required |= {f"table_{a}_{b}" for a in "xyz" for b in "xyz"}
+            required |= {f"body_{a}_{b}" for a in "xyz" for b in "xyz"}
         if not required <= fields:
             raise ValueError(f"Unsupported Agent1 CSV; missing columns: {sorted(required-fields)}")
         for row in reader:
@@ -152,13 +155,14 @@ def load_result_csv(path: str) -> List[Result3DFrame]:
                 wrist_pitch_deg=float(row["wrist_pitch_deg"]),
                 wrist_roll_deg=float(row["wrist_roll_deg"]),
                 gripper=float(row["gripper_norm"]),
-                forearm_yaw_deg=float(row["forearm_yaw_deg"]) if forearm else None,
-                forearm_pitch_deg=float(row["forearm_pitch_deg"]) if forearm else None,
-                table_axes=tuple(tuple(float(row[f"table_{a}_{b}"]) for b in "xyz")
+                elbow_roll_deg=float(row["elbow_roll_deg"]) if forearm else None,
+                elbow_pitch_deg=float(row["elbow_pitch_deg"]) if forearm else None,
+                body_axes=tuple(tuple(float(row[f"body_{a}_{b}"]) for b in "xyz")
                                  for a in "xyz") if forearm else None,
-                table_calibrated=int(row.get("table_calibrated", 0)),
-                yaw_observable=int(row.get("yaw_observable", 0)),
+                body_frame_valid=int(row.get("body_frame_valid", 0)),
+                elbow_roll_observable=int(row.get("elbow_roll_observable", 0)),
                 hand_fresh=int(row.get("hand_fresh", 0)),
+                active_arm=int(row.get("active_arm", 1)),
             ))
     out.sort(key=lambda x: x.time_sec)
     return out
@@ -330,7 +334,7 @@ def render_3d_panel(fr: Result3DFrame,
 
     segments = [
         ("SL", "SR", "tab:blue"),
-        ("SR", "E", "tab:orange"),
+        ("SR" if fr.active_arm else "SL", "E", "tab:orange"),
         ("E", "W", "tab:orange"),
         ("W", "F1", "tab:green"),
         ("W", "F2", "tab:green"),
@@ -343,19 +347,19 @@ def render_3d_panel(fr: Result3DFrame,
                 [pa[2], pb[2]],
                 linewidth=2.6, color=c, alpha=alpha)
 
-    if fr.table_axes is not None:
+    if fr.body_axes is not None and fr.body_frame_valid:
         origin = pts["E"]
         length = max(0.1, math.dist(fr.elbow, fr.wrist) * 0.65)
-        for name, axis, color in zip("XYZ", fr.table_axes, ("red", "green", "blue")):
+        for name, axis, color in zip("XYZ", fr.body_axes, ("red", "green", "blue")):
             vector = (axis[0]*length, axis[2]*length, axis[1]*length)
             ax.quiver(*origin, *vector, color=color, alpha=alpha, arrow_length_ratio=0.18)
             end = tuple(a+b for a, b in zip(origin, vector))
-            ax.text(*end, f"Table {name}", color=color, fontsize=8)
+            ax.text(*end, f"Body {name}", color=color, fontsize=8)
         vector = tuple(b-a for a, b in zip(origin, pts["W"]))
         ax.quiver(*origin, *vector, color="purple", alpha=alpha, arrow_length_ratio=0.18)
         ax.text2D(0.02, 0.83,
-                  ("TABLE: supplied calibration" if fr.table_calibrated else "TABLE: DEMO / NOT CALIBRATED")
-                  + f"\nyaw observable={fr.yaw_observable} hand fresh={fr.hand_fresh}",
+                  "HUMAN BODY FRAME (shoulder-derived)"
+                  + f"\nelbow roll observable={fr.elbow_roll_observable} hand fresh={fr.hand_fresh}",
                   transform=ax.transAxes, fontsize=8, color="purple")
 
     colors = {

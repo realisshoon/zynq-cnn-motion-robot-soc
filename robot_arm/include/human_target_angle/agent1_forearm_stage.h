@@ -6,7 +6,7 @@ extern "C" {
 #endif
 /* Explicit five-axis integration entry point. Legacy agent1_stage_* remains
  * six-axis until Agent2/3 migrate; there is no implicit semantic adapter. */
-int agent1_forearm_stage_init(Point3D up, Point3D forward, uint8_t calibrated);
+int agent1_forearm_stage_init(void);
 int agent1_forearm_stage_run(const HumanPose2D *pose, PoseArmSide side, float dt);
 const HumanForearmTarget *agent1_forearm_stage_output(void);
 int agent1_forearm_stage_start_roll_zero_calibration(void);
