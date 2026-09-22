@@ -43,6 +43,20 @@ def main():
         ("test_axis_replay", pipeline + uart + ["tests/robot_calibration/test_axis_replay.c"], [],
          ["etc/uart_pose_stream.bin", str(output / "axis_replay.csv")]),
     ]
+    # 새 5축(팔꿈치부터 시작하는 수평 설치) 모듈. legacy a1/a2 목록은 건드리지
+    # 않고, forearm_mapping.c만 얹은 별도 목록으로 링크한다 -- 기존 테스트
+    # 케이스의 소스 목록/동작에 영향이 없게 하기 위해서다.
+    forearm_a1 = a1 + ["src/human_target_angle/forearm_mapping.c"]
+    forearm_a2 = [f"src/robot_calibration/{name}.c" for name in (
+        "forearm_calibration", "forearm_calibration_config", "forearm_motion_control",
+        "forearm_safety_check", "motion_limits", "motion_smoothing")]
+    cases += [
+        ("test_forearm_calibration", forearm_a2 + ["tests/robot_calibration/test_forearm_calibration.c"], [], []),
+        ("test_forearm_safety_check", ["src/robot_calibration/forearm_safety_check.c",
+         "tests/robot_calibration/test_forearm_safety_check.c"], [], []),
+        ("test_forearm_replay", forearm_a1 + forearm_a2 + ["tests/robot_calibration/test_forearm_replay.c"], [],
+         ["etc/example_pose2d_1280x720_20hz.csv"]),
+    ]
     flags = [compiler, "-std=c99", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Iinclude", "-Iconfig"]
     failed = []
     for name, sources, extra, args in cases:
