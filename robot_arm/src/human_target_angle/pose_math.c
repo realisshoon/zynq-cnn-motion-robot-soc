@@ -104,7 +104,7 @@ int pm_vnormalize(Vec3 *v)
     if (v == NULL) return -1;
 
     n = pm_vlen(*v);
-    if (n < PM_EPS) return -1;
+    if (!isfinite(n) || n < PM_EPS) return -1;
 
     v->x /= n;
     v->y /= n;
@@ -140,12 +140,27 @@ float pm_distance_2d(Point2D a, Point2D b)
 }
 
 /*
- * 양 어깨로 사람 Body Coordinate를 만든다.
- *
- * Body X : Left Shoulder -> Right Shoulder
- * Body Y : 영상의 위쪽을 X와 직교화한 방향
- * Body Z : X x Y, 카메라 forward와 같은 쪽으로 부호 통일
+ * X is anatomical left -> right; Y is projected camera up; Z = X x Y.
+ * Forcing Z toward camera +Z would reverse Y for front-facing people.
+ * Near vertical X, projected up is ill-conditioned. Report failure so the
+ * public API uses its bounded target HOLD/invalid policy, not an arbitrary Y.
+ * 0.01 = sin(angle to camera up), approximately a 0.57 degree exclusion cone.
+ * At the pole, up semantics and continuous Y cannot both be guaranteed.
  */
+static int complete_body_frame(Vec3 x, Vec3 *y, Vec3 *z)
+{
+    const Vec3 up = {0.0f, 1.0f, 0.0f, 1U};
+    *y = pm_project_perpendicular(up, x);
+    if (pm_vlen(*y) < PM_BODY_UP_MIN_PROJECTION || pm_vnormalize(y) != 0) {
+        return -1;
+    }
+    *z = pm_vcross(x, *y);
+    if (pm_vnormalize(z) != 0) return -1;
+    *y = pm_vcross(*z, x);
+    return pm_vnormalize(y);
+}
+
+/* Stateless construction uses the same convention as the filtered frame. */
 int pm_build_body_frame(
     Point3D shoulder_l,
     Point3D shoulder_r,
@@ -154,29 +169,12 @@ int pm_build_body_frame(
     Vec3 *body_z
 )
 {
-    Vec3 camera_up = pm_vec3(0.0f, 1.0f, 0.0f);
-    Vec3 camera_forward = pm_vec3(0.0f, 0.0f, 1.0f);
-
     if (body_x == NULL || body_y == NULL || body_z == NULL) return -1;
 
     *body_x = pm_vsub(shoulder_r, shoulder_l);
     if (pm_vnormalize(body_x) != 0) return -1;
 
-    *body_y = pm_project_perpendicular(camera_up, *body_x);
-    if (pm_vnormalize(body_y) != 0) return -1;
-
-    *body_z = pm_vcross(*body_x, *body_y);
-    if (pm_vnormalize(body_z) != 0) return -1;
-
-    if (pm_vdot(*body_z, camera_forward) < 0.0f) {
-        *body_z = pm_vscale(*body_z, -1.0f);
-    }
-
-    /* 수치 오차를 줄이기 위해 Y축을 한 번 더 직교화한다. */
-    *body_y = pm_vcross(*body_z, *body_x);
-    if (pm_vnormalize(body_y) != 0) return -1;
-
-    return 0;
+    return complete_body_frame(*body_x, body_y, body_z);
 }
 
 /*
@@ -185,14 +183,12 @@ int pm_build_body_frame(
  * 중요한 점:
  * - 측면에서는 두 Shoulder가 영상에서 거의 겹쳐 body axis가 민감해질 수 있다.
  * - 한 frame의 이상한 Shoulder 때문에 Base/Roll 기준축이 크게 튀는 것을 줄인다.
- * - frame을 hard reject하지 않고 반영량(alpha)만 낮추므로 lock-out을 만들지 않는다.
+ * - 관측 신뢰도는 alpha로 반영한다. 정의 불가능한 축은 상위 HOLD로 보낸다.
  */
 int pm_update_stable_body_frame(PoseMappingContext *ctx, float dt_filter_sec)
 {
     Vec3 raw_x, raw_y, raw_z;
     Vec3 filtered_x;
-    Vec3 camera_up = pm_vec3(0.0f, 1.0f, 0.0f);
-    Vec3 camera_forward = pm_vec3(0.0f, 0.0f, 1.0f);
     Vec3 new_y, new_z;
     float shoulder_span_px;
     float reliability = 1.0f;
@@ -257,28 +253,13 @@ int pm_update_stable_body_frame(PoseMappingContext *ctx, float dt_filter_sec)
     );
 
     if (pm_vnormalize(&filtered_x) != 0) {
-        /* 새 값이 퇴화하면 마지막 정상 body frame을 유지한다. */
-        return 0;
+        /* Keep the last frame, but do not report a fresh target. */
+        return -1;
     }
 
     /* filtered X축을 기준으로 Y/Z를 다시 직교화한다. */
-    new_y = pm_project_perpendicular(camera_up, filtered_x);
-    if (pm_vnormalize(&new_y) != 0) {
-        return 0;
-    }
-
-    new_z = pm_vcross(filtered_x, new_y);
-    if (pm_vnormalize(&new_z) != 0) {
-        return 0;
-    }
-
-    if (pm_vdot(new_z, camera_forward) < 0.0f) {
-        new_z = pm_vscale(new_z, -1.0f);
-    }
-
-    new_y = pm_vcross(new_z, filtered_x);
-    if (pm_vnormalize(&new_y) != 0) {
-        return 0;
+    if (complete_body_frame(filtered_x, &new_y, &new_z) != 0) {
+        return -1;
     }
 
     ctx->body_x_axis = filtered_x;

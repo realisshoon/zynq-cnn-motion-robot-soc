@@ -10,6 +10,7 @@
 #define PM_RAD_TO_DEG  (180.0f / PM_PI_F)
 #define PM_DEG_TO_RAD  (PM_PI_F / 180.0f)
 #define PM_EPS         1.0e-6f
+#define PM_BODY_UP_MIN_PROJECTION 0.01f
 
 typedef Point3D Vec3;
 

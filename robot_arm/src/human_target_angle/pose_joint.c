@@ -47,7 +47,7 @@ int pm_calculate_major_angles(
     uy = pm_vdot(upper_n, body_y);
     uz = pm_vdot(upper_n, body_z);
 
-    /* 사람 몸 기준 Upper Arm의 좌우/앞뒤 방향 */
+    /* Body +Z is zero; positive turns toward Body +X, not screen-right. */
     base_deg = atan2f(ux, uz) * PM_RAD_TO_DEG;
 
     /* Upper Arm의 위/아래 elevation */

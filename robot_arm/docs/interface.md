@@ -2,7 +2,9 @@
 
 ## Project Mode
 
-Initial implementation uses a single human arm in a 2D plane.
+The initial 2D-only mode uses a single human arm in a plane.
+The current Agent1 implementation also estimates base yaw and wrist roll.
+Its definitive angle contract is in [coordinate_system.md](coordinate_system.md).
 
 Dynamic joints:
 
@@ -16,10 +18,13 @@ Fixed joints in 2D mode:
 - Base Yaw = neutral
 - Wrist Roll = neutral
 
-## Camera Coordinate
+## Input Image Coordinate (pixels, not reconstructed 3D)
 
 - +X: right
 - +Y: down
+
+Agent1 reconstructed camera 3D uses +Y up and +Z away from the camera.
+See the linked body-frame and angle definitions before mapping to robot angles.
 
 ## Robot 2D Coordinate
 
