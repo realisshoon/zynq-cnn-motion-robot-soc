@@ -7,6 +7,10 @@
 #include "robot_calibration/robot_calibration_config.h"
 #include "robot_calibration/motion_control.h"
 
+#define DEG_TO_RAD 0.01745329251994329577f
+#define RAD_TO_DEG 57.29577951308232088f
+#define DIRECTION_EPSILON 0.000001f
+
 // 이 파일 안에서만 쓰는, 즉 application에서 사용하지 않는 함수는 static이며 header에 포함하지 않는다.
 // 결국 함수간, 모듈간 인터페이스가 된다.
 // 각 raw data에 configuration data를 곱한다.
@@ -28,8 +32,9 @@ static float clamp_value(float value, float min_value, float max_value)
 // -180~180 범위로 wrap된 각도를 다시 -180~180 범위로 접어넣는다.
 static float wrap_to_180(float deg)
 {
-    while (deg > 180.0f) deg -= 360.0f;
-    while (deg < -180.0f) deg += 360.0f;
+    deg = fmodf(deg, 360.0f);
+    if (deg > 180.0f) deg -= 360.0f;
+    if (deg < -180.0f) deg += 360.0f;
     return deg;
 }
 
@@ -67,6 +72,9 @@ int motion_control_validate_target(const HumanJointTarget *target)
     if(!isfinite(target->wrist_pitch_deg)) return 0;
     if(!isfinite(target->wrist_roll_deg)) return 0;
     if(!isfinite(target->gripper_norm)) return 0;
+    if(target->shoulder_deg < -90.0f || target->shoulder_deg > 90.0f) return 0;
+    if(target->elbow_deg < 0.0f || target->elbow_deg > 180.0f) return 0;
+    if(target->gripper_norm < 0.0f || target->gripper_norm > 1.0f) return 0;
     // else valid
     return 1;
 }
@@ -76,12 +84,45 @@ int motion_control_validate_target(const HumanJointTarget *target)
 // 보정 없이 그대로 복사만 한다.
 void motion_control_map_target(const HumanJointTarget *input, JointCommand *output)
 {
-    output->base_deg = map_joint_angle(input->base_deg, &robot_calibration_config.base);
-    output->shoulder_deg = map_joint_angle(input->shoulder_deg, &robot_calibration_config.shoulder);
+    float azimuth, elevation, horizontal;
+    float right, up, forward;
+    float flexion_deg, abduction_deg;
+
+    if (input == NULL || output == NULL) return;
+
+    /* A1 supplies spherical angles, not the two robot shoulder rotations.
+     * Recover Body (+X right, +Y up, +Z reference-forward). Body +Z remains
+     * A1's shoulder-derived reference; monocular reconstruction is not a
+     * measurement of the person's actual torso forward direction.
+     *
+     * Robot joint order: base flexion, then local shoulder abduction.
+     * u = (sin(a), -cos(a)*cos(b), cos(a)*sin(b)) in A1 Body coordinates.
+     * Choose a in [-90,90]; b is immaterial at pure lateral elevation.
+     * Canonicalize azimuth before trig: the integration unwrap state may
+     * contain several turns, but a finite-range servo must not accumulate them.
+     */
+    azimuth = wrap_to_180(input->base_deg) * DEG_TO_RAD;
+    elevation = input->shoulder_deg * DEG_TO_RAD;
+    horizontal = cosf(elevation);
+    if (fabsf(horizontal) < DIRECTION_EPSILON) horizontal = 0.0f;
+    right = horizontal * sinf(azimuth);
+    up = sinf(elevation);
+    forward = horizontal * cosf(azimuth);
+    abduction_deg = atan2f(right, hypotf(up, forward)) * RAD_TO_DEG;
+    flexion_deg = hypotf(up, forward) < DIRECTION_EPSILON
+        ? 0.0f : atan2f(forward, -up) * RAD_TO_DEG;
+
+    output->base_deg = map_joint_angle(flexion_deg, &robot_calibration_config.base);
+    output->shoulder_deg = map_joint_angle(abduction_deg, &robot_calibration_config.shoulder);
+    /* A1 elbow is an interior angle: 180 straight -> servo 90.
+     * The configured -1 scale direction and +270 offset give 270 - interior. */
     output->elbow_deg = map_joint_angle(input->elbow_deg, &robot_calibration_config.elbow);
-    output->wrist_pitch_deg = map_joint_angle(input->wrist_pitch_deg, &robot_calibration_config.wrist_pitch);
-    output->wrist_roll_deg = map_joint_angle(input->wrist_roll_deg, &robot_calibration_config.wrist_roll);
+    /* Wrist scales are zero for the initial three-joint test. Their physical
+     * directions/zero references have not been calibrated. Gripper is separate. */
+    output->wrist_pitch_deg = map_joint_angle(wrap_to_180(input->wrist_pitch_deg), &robot_calibration_config.wrist_pitch);
+    output->wrist_roll_deg = map_joint_angle(wrap_to_180(input->wrist_roll_deg), &robot_calibration_config.wrist_roll);
     output->gripper_norm = input->gripper_norm;
+    output->valid = input->valid;
 }
 // limit 적용 함수
 // gripper_norm은 그대로 전달하는 값이라 clamp 대상에서 제외한다.

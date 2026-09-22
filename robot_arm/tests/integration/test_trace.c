@@ -508,7 +508,6 @@ static void test_a2(void)
 {
     AgentPipelineContext ctx;
     HumanJointTarget safe;
-    HumanJointTarget unsafe;
     JointCommand exp_cmd;
     JointCommand copy;
     SafetyCheckFlags expect = SAFETY_CHECK_OK;
@@ -516,7 +515,6 @@ static void test_a2(void)
     char want[16];
 
     assert(find_target(1, &safe));
-    assert(find_target(0, &unsafe));
     reset_all();
     pipeline_init(&ctx);
     trace_init();
@@ -543,13 +541,15 @@ static void test_a2(void)
     assert(agent2_run(&ctx) == 1);
     trace_a2(&ctx);
 
-    /* R: 안전검사 거부. 사유 flags는 공개 함수를 valid=1로 다시 불러 얻는다. */
+    /* R formatter/event fixture. With calibrated elbows, 20..160 limits and
+     * neutral wrists, the old straight-arm rejection is intentionally gone.
+     * Inject a rejected command at the trace boundary; actual geometric
+     * rejection is exercised separately by test_safety_check. */
     ctx.pose.frame_id = 102U;
-    ctx.target = unsafe;
-    assert(agent2_run(&ctx) == 0);
-    assert(ctx.a2_result == A2_RESULT_REJECT_SAFETY);
+    exp_cmd = (JointCommand){90,90,246,90,90,0.5f,0};
+    ctx.a2_mapped = exp_cmd;
+    ctx.a2_result = A2_RESULT_REJECT_SAFETY;
     assert(ctx.a2_mapped.valid == 0U);    /* 거부되면 valid만 0이고 각도는 남는다 */
-    (void)robot_calibration_apply(&unsafe, &exp_cmd);
     copy = exp_cmd;
     copy.valid = 1U;
     (void)safety_check_apply(&copy, NULL, &expect);
@@ -567,8 +567,6 @@ static void test_a2(void)
 
     /* R 한 번 더: 같은 상태라 이벤트가 또 나오면 안 된다 */
     ctx.pose.frame_id = 103U;
-    ctx.target = unsafe;
-    assert(agent2_run(&ctx) == 0);
     trace_a2(&ctx);
 
     /* V: 입력 검증 실패 */
