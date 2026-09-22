@@ -64,6 +64,31 @@ module weight_bram_swap_fsm (
         end
     endfunction
 
+    function [10:0] mul_batches_groups;
+        input [3:0] batches;
+        input [6:0] groups;
+        reg [10:0] g;
+        begin
+            g = {4'd0, groups};
+            case (batches)
+                4'd0:  mul_batches_groups = 11'd0;
+                4'd1:  mul_batches_groups = g;
+                4'd2:  mul_batches_groups = g << 1;
+                4'd3:  mul_batches_groups = (g << 1) + g;
+                4'd4:  mul_batches_groups = g << 2;
+                4'd5:  mul_batches_groups = (g << 2) + g;
+                4'd6:  mul_batches_groups = (g << 2) + (g << 1);
+                4'd7:  mul_batches_groups = (g << 3) - g;
+                4'd8:  mul_batches_groups = g << 3;
+                4'd9:  mul_batches_groups = (g << 3) + g;
+                4'd10: mul_batches_groups = (g << 3) + (g << 1);
+                4'd11: mul_batches_groups = (g << 3) + (g << 1) + g;
+                4'd12: mul_batches_groups = (g << 3) + (g << 2);
+                default: mul_batches_groups = 11'd0;
+            endcase
+        end
+    endfunction
+
     localparam [2:0] STATE_IDLE   = 3'd0;
     localparam [2:0] STATE_CHECK  = 3'd1;
     localparam [2:0] STATE_LOAD   = 3'd2;
@@ -81,6 +106,9 @@ module weight_bram_swap_fsm (
     reg [19:0] byte_count;
     reg [19:0] expected_weight_bytes;
     reg [19:0] expected_param_bytes;
+    reg [19:0] expected_param_offset;
+    reg [19:0] expected_dma_bytes;
+    reg [10:0] expected_pw_word_count;
 
     reg conv0_storage_valid;
     reg dw_storage_valid;
@@ -142,44 +170,63 @@ module weight_bram_swap_fsm (
 
     wire [9:0] desc_in_batches = ({1'b0, desc_cin} + 10'd31) >> 5;
     wire [9:0] desc_out_groups = ({1'b0, desc_cout} + 10'd3) >> 2;
-    wire [19:0] calc_dw_weight_bytes =
-        ({10'd0, desc_in_batches} << 8) + ({10'd0, desc_in_batches} << 5);
-    wire [19:0] calc_pw_word_count =
-        mul10x10_no_dsp(desc_in_batches, desc_out_groups);
-    wire [19:0] calc_pw_weight_bytes = calc_pw_word_count << 7;
-    wire [19:0] calc_dw_param_bytes = {11'd0, desc_cout} << 3;
-    wire [19:0] calc_pw_param_bytes = {10'd0, desc_out_groups} << 5;
 
-    reg [19:0] calc_weight_bytes;
-    reg [19:0] calc_param_bytes;
-    reg [19:0] calc_param_offset;
-    reg [19:0] calc_dma_bytes;
+    /* Predecode descriptor-invariant geometry on the load-accept edge.  CHECK
+       then compares registered boundaries rather than placing all arithmetic
+       in the state/fault control cone. */
+    wire [1:0] load_kind = load_desc[`CFG_KIND_MSB:`CFG_KIND_LSB];
+    wire [8:0] load_cin = load_desc[`CFG_CIN_MSB:`CFG_CIN_LSB];
+    wire [8:0] load_cout = load_desc[`CFG_COUT_MSB:`CFG_COUT_LSB];
+    wire [9:0] load_in_batches = ({1'b0, load_cin} + 10'd31) >> 5;
+    wire [9:0] load_out_groups = ({1'b0, load_cout} + 10'd3) >> 2;
+    wire [10:0] load_pw_word_count =
+        mul_batches_groups(load_in_batches[3:0], load_out_groups[6:0]);
+    wire [19:0] load_dw_weight_bytes =
+        ({10'd0, load_in_batches} << 8) +
+        ({10'd0, load_in_batches} << 5);
+    wire [19:0] load_pw_weight_bytes =
+        {2'd0, load_pw_word_count, 7'd0};
+    wire [19:0] load_dw_param_bytes = {11'd0, load_cout} << 3;
+    wire [19:0] load_pw_param_bytes = {10'd0, load_out_groups} << 5;
+
+    wire [7:0] load_dw_nine_batches =
+        {4'd0, load_in_batches[3:0]} +
+        ({4'd0, load_in_batches[3:0]} << 3);
+    wire [7:0] load_dw_param_offset_units =
+        (load_dw_nine_batches + 8'd1) >> 1;
+    wire [9:0] load_dw_param_units = ({1'b0, load_cout} + 10'd7) >> 3;
+    wire [10:0] load_dw_dma_units =
+        {3'd0, load_dw_param_offset_units} + {1'b0, load_dw_param_units};
+    wire [19:0] load_dw_param_offset =
+        {6'd0, load_dw_param_offset_units, 6'd0};
+    wire [19:0] load_dw_dma_bytes = {3'd0, load_dw_dma_units, 6'd0};
+
+    wire [7:0] load_pw_param_units =
+        ({1'b0, load_out_groups[6:0]} + 8'd1) >> 1;
+    wire [11:0] load_pw_dma_units =
+        {load_pw_word_count, 1'b0} + {4'd0, load_pw_param_units};
+    wire [19:0] load_pw_dma_bytes = {2'd0, load_pw_dma_units, 6'd0};
+
+    wire [19:0] load_calc_weight_bytes =
+        (load_kind == `CNN_KIND_CONV0) ? CONV0_WEIGHT_BYTES :
+        (load_kind == `CNN_KIND_DEPTHWISE) ? load_dw_weight_bytes :
+        (load_kind == `CNN_KIND_POINTWISE) ? load_pw_weight_bytes : 20'd0;
+    wire [19:0] load_calc_param_bytes =
+        (load_kind == `CNN_KIND_CONV0) ? CONV0_PARAM_BYTES :
+        (load_kind == `CNN_KIND_DEPTHWISE) ? load_dw_param_bytes :
+        (load_kind == `CNN_KIND_POINTWISE) ? load_pw_param_bytes : 20'd0;
+    wire [19:0] load_calc_param_offset =
+        (load_kind == `CNN_KIND_CONV0) ? CONV0_WEIGHT_BYTES :
+        (load_kind == `CNN_KIND_DEPTHWISE) ? load_dw_param_offset :
+        (load_kind == `CNN_KIND_POINTWISE) ? load_pw_weight_bytes : 20'd0;
+    wire [19:0] load_calc_dma_bytes =
+        (load_kind == `CNN_KIND_CONV0) ? 20'd960 :
+        (load_kind == `CNN_KIND_DEPTHWISE) ? load_dw_dma_bytes :
+        (load_kind == `CNN_KIND_POINTWISE) ? load_pw_dma_bytes : 20'd0;
+
     reg desc_error;
 
     always @(*) begin
-        calc_weight_bytes = 20'd0;
-        calc_param_bytes = 20'd0;
-        case (desc_kind)
-            `CNN_KIND_CONV0: begin
-                calc_weight_bytes = CONV0_WEIGHT_BYTES;
-                calc_param_bytes = CONV0_PARAM_BYTES;
-            end
-            `CNN_KIND_DEPTHWISE: begin
-                calc_weight_bytes = calc_dw_weight_bytes;
-                calc_param_bytes = calc_dw_param_bytes;
-            end
-            `CNN_KIND_POINTWISE: begin
-                calc_weight_bytes = calc_pw_weight_bytes;
-                calc_param_bytes = calc_pw_param_bytes;
-            end
-            default: begin
-                calc_weight_bytes = 20'd0;
-                calc_param_bytes = 20'd0;
-            end
-        endcase
-        calc_param_offset = (calc_weight_bytes + 20'd63) & 20'hfffc0;
-        calc_dma_bytes = (calc_param_offset + calc_param_bytes + 20'd63) & 20'hfffc0;
-
         desc_error = 1'b0;
         if (desc_op_id >= `CNN_OPS)
             desc_error = 1'b1;
@@ -189,9 +236,9 @@ module weight_bram_swap_fsm (
             (desc_kind != `CNN_KIND_DEPTHWISE) &&
             (desc_kind != `CNN_KIND_POINTWISE))
             desc_error = 1'b1;
-        if ({2'b00, desc_param_offset} != calc_param_offset)
+        if ({2'b00, desc_param_offset} != expected_param_offset)
             desc_error = 1'b1;
-        if (desc_dma_bytes != calc_dma_bytes)
+        if (desc_dma_bytes != expected_dma_bytes)
             desc_error = 1'b1;
         case (desc_kind)
             `CNN_KIND_CONV0: begin
@@ -211,7 +258,7 @@ module weight_bram_swap_fsm (
                     (desc_cin == 9'd0) || (desc_cin > 9'd384) ||
                     (desc_cout == 9'd0) || (desc_cout > 9'd384) ||
                     (desc_in_batches > 10'd12) || (desc_out_groups > 10'd96) ||
-                    (calc_pw_word_count > 20'd1152))
+                    (expected_pw_word_count > 11'd1152))
                     desc_error = 1'b1;
             end
             default: desc_error = 1'b1;
@@ -272,13 +319,13 @@ module weight_bram_swap_fsm (
 
     wire [20:0] dma_next_count = {1'b0, byte_count} + 21'd8;
     wire dma_wrong_keep = dma_accept && (s_dma_keep != 8'hff);
-    wire dma_count_overflow = dma_accept && (dma_next_count > {1'b0, desc_dma_bytes});
+    wire dma_count_overflow = dma_accept && (dma_next_count > {1'b0, expected_dma_bytes});
     wire dma_early_last = dma_accept && s_dma_last &&
-                          (dma_next_count != {1'b0, desc_dma_bytes});
+                          (dma_next_count != {1'b0, expected_dma_bytes});
     wire dma_missing_last = dma_accept && !s_dma_last &&
-                            (dma_next_count == {1'b0, desc_dma_bytes});
-    wire dma_in_param = (byte_count >= {2'b00, desc_param_offset}) &&
-                        (byte_count < ({2'b00, desc_param_offset} +
+                            (dma_next_count == {1'b0, expected_dma_bytes});
+    wire dma_in_param = (byte_count >= expected_param_offset) &&
+                        (byte_count < (expected_param_offset +
                                        expected_param_bytes));
     wire dma_bias_error = dma_accept && dma_in_param &&
                           (s_dma_data[31:24] != (s_dma_data[23] ? 8'hff : 8'h00));
@@ -286,13 +333,13 @@ module weight_bram_swap_fsm (
     wire dma_error = dma_wrong_keep | dma_count_overflow | dma_early_last |
                      dma_missing_last | dma_bias_error | dma_m_error;
     wire dma_final_good = dma_accept && !dma_error && s_dma_last &&
-                          (dma_next_count == {1'b0, desc_dma_bytes});
+                          (dma_next_count == {1'b0, expected_dma_bytes});
 
     wire dma_in_weight = (byte_count < expected_weight_bytes);
     wire dma_write_enable = dma_accept && !dma_error &&
                             (dma_in_weight || dma_in_param);
     wire [14:0] weight_word64 = byte_count[17:3];
-    wire [8:0] param_word64 = byte_count[11:3] - desc_param_offset[11:3];
+    wire [8:0] param_word64 = byte_count[11:3] - expected_param_offset[11:3];
 
     always @(posedge clk) begin
         if (!rst_n) begin
@@ -303,6 +350,9 @@ module weight_bram_swap_fsm (
             byte_count <= 20'd0;
             expected_weight_bytes <= 20'd0;
             expected_param_bytes <= 20'd0;
+            expected_param_offset <= 20'd0;
+            expected_dma_bytes <= 20'd0;
+            expected_pw_word_count <= 11'd0;
             conv0_storage_valid <= 1'b0;
             dw_storage_valid <= 1'b0;
             pw_storage_valid <= 1'b0;
@@ -362,8 +412,10 @@ module weight_bram_swap_fsm (
                 dw_p_rsp_valid <= 1'b0;
             end
 
-            if (pw_req_accept && !pw_addr_error) begin
-                pw_rsp_valid <= 1'b1;
+            /* Issue the BRAM data read from the accepted request alone.  Address
+               validation still gates the public response and raises the same
+               sticky fault, but no longer feeds every PW BRAM enable pin. */
+            if (pw_req_accept) begin
                 pw_rsp_data <= {pw_w_bank15[pw_req_addr], pw_w_bank14[pw_req_addr],
                                 pw_w_bank13[pw_req_addr], pw_w_bank12[pw_req_addr],
                                 pw_w_bank11[pw_req_addr], pw_w_bank10[pw_req_addr],
@@ -372,6 +424,10 @@ module weight_bram_swap_fsm (
                                 pw_w_bank5[pw_req_addr],  pw_w_bank4[pw_req_addr],
                                 pw_w_bank3[pw_req_addr],  pw_w_bank2[pw_req_addr],
                                 pw_w_bank1[pw_req_addr],  pw_w_bank0[pw_req_addr]};
+            end
+
+            if (pw_req_accept && !pw_addr_error) begin
+                pw_rsp_valid <= 1'b1;
                 pw_rsp_params <= {pw_param_bank3[pw_req_group],
                                   pw_param_bank2[pw_req_group],
                                   pw_param_bank1[pw_req_group],
@@ -389,6 +445,11 @@ module weight_bram_swap_fsm (
                         if (load_accept) begin
                             desc_reg <= load_desc;
                             byte_count <= 20'd0;
+                            expected_weight_bytes <= load_calc_weight_bytes;
+                            expected_param_bytes <= load_calc_param_bytes;
+                            expected_param_offset <= load_calc_param_offset;
+                            expected_dma_bytes <= load_calc_dma_bytes;
+                            expected_pw_word_count <= load_pw_word_count;
                             case (load_desc[`CFG_KIND_MSB:`CFG_KIND_LSB])
                                 `CNN_KIND_CONV0: conv0_storage_valid <= 1'b0;
                                 `CNN_KIND_DEPTHWISE: dw_storage_valid <= 1'b0;
@@ -404,9 +465,6 @@ module weight_bram_swap_fsm (
                             fault <= 1'b1;
                             state <= STATE_FAULT;
                         end else begin
-                            expected_weight_bytes <= calc_weight_bytes;
-                            expected_param_bytes <= calc_param_bytes;
-                            byte_count <= 20'd0;
                             state <= STATE_LOAD;
                         end
                     end

@@ -1,8 +1,7 @@
 `timescale 1ns / 1ps
 
-// CNN_ACCELERATOR_TOP PARTIAL STRUCTURAL INTEGRATION BASELINE
-// Six released units are real RTL; six units are canonical stubs.
-// This source is not a full functional or timing sign-off artifact.
+// CNN_ACCELERATOR_TOP REAL12 STRUCTURAL INTEGRATION
+// Twelve released child units are approved real RTL; no stubs are present.
 module cnn_accelerator_top (
     input wire clk,
     input wire rst_n,
@@ -256,9 +255,14 @@ module cnn_accelerator_top (
     wire [255:0] pw_rsp_params;
     wire [6:0] pw_req_group;
 
-    wire fm_body_from_input = (fm_cfg_desc[4:0] == 5'd0);
-    wire pw_head_select = (pw_cfg_desc[4:0] >= 5'd27);
-    wire fm_read_to_head = (fm_cfg_desc[4:0] >= 5'd27);
+    reg fm_body_from_input_reg;
+    reg fm_read_to_head_reg;
+    reg pw_head_select_reg;
+    wire fm_cfg_fire = fm_cfg_valid && fm_cfg_ready;
+    wire pw_cfg_fire = pw_cfg_valid && pw_cfg_ready;
+    wire fm_body_from_input = fm_body_from_input_reg;
+    wire fm_read_to_head = fm_read_to_head_reg;
+    wire pw_head_select = pw_head_select_reg;
 
     assign fm_body_data  = fm_body_from_input ? input_body_data  : pw_value_data;
     assign fm_body_valid = fm_body_from_input ? input_body_valid :
@@ -297,6 +301,21 @@ module cnn_accelerator_top (
 
     assign core_rst_n = rst_n && !soft_reset_pulse;
     assign irq = irq_enable && (done_pending || error_pending);
+
+    always @(posedge clk) begin
+        if (!core_rst_n) begin
+            fm_body_from_input_reg <= 1'b0;
+            fm_read_to_head_reg <= 1'b0;
+            pw_head_select_reg <= 1'b0;
+        end else begin
+            if (fm_cfg_fire) begin
+                fm_body_from_input_reg <= (fm_cfg_desc[4:0] == 5'd0);
+                fm_read_to_head_reg <= (fm_cfg_desc[4:0] >= 5'd27);
+            end
+            if (pw_cfg_fire)
+                pw_head_select_reg <= (pw_cfg_desc[4:0] >= 5'd27);
+        end
+    end
 
     reg aw_hold;
     reg [11:0] awaddr_hold;
@@ -889,7 +908,7 @@ module cnn_accelerator_top (
         .tap_accept(down_tap_accept),
         .tap_last(down_tap_last)
     );
-    argmax_threshold u_argmax_threshold (
+    argmax_offset_select u_argmax_offset_select (
         .clk(clk),
         .rst_n(core_rst_n),
         .cfg_valid(arg_cfg_valid),
