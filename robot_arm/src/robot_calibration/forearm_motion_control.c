@@ -51,14 +51,14 @@ int forearm_motion_control_validate_target(const HumanForearmTarget *target)
 {
     if (target == NULL) return 0;
     if (target->valid == 0U) return 0;
-    if (!isfinite(target->forearm_yaw_deg)) return 0;
-    if (!isfinite(target->forearm_pitch_deg)) return 0;
+    if (!isfinite(target->elbow_roll_deg)) return 0;
+    if (!isfinite(target->elbow_pitch_deg)) return 0;
     if (!isfinite(target->wrist_pitch_deg)) return 0;
     if (!isfinite(target->wrist_roll_deg)) return 0;
     if (!isfinite(target->gripper_norm)) return 0;
-    /* forearm_pitch_deg는 A1 계약상 [-90,90], wrap 없음. */
-    if (target->forearm_pitch_deg < -90.0f - FOREARM_PITCH_RANGE_EPSILON ||
-        target->forearm_pitch_deg > 90.0f + FOREARM_PITCH_RANGE_EPSILON) return 0;
+    /* elbow_pitch_deg는 A1 계약상 [-90,90], wrap 없음. */
+    if (target->elbow_pitch_deg < -90.0f - FOREARM_PITCH_RANGE_EPSILON ||
+        target->elbow_pitch_deg > 90.0f + FOREARM_PITCH_RANGE_EPSILON) return 0;
     if (target->gripper_norm < 0.0f || target->gripper_norm > 1.0f) return 0;
     return 1;
 }
@@ -67,8 +67,8 @@ void forearm_motion_control_map_target(const HumanForearmTarget *input, ForearmJ
 {
     if (input == NULL || output == NULL) return;
 
-    output->elbow_roll_deg = map_joint_angle(input->forearm_yaw_deg, &forearm_calibration_config.elbow_roll);
-    output->elbow_pitch_deg = map_joint_angle(input->forearm_pitch_deg, &forearm_calibration_config.elbow_pitch);
+    output->elbow_roll_deg = map_joint_angle(input->elbow_roll_deg, &forearm_calibration_config.elbow_roll);
+    output->elbow_pitch_deg = map_joint_angle(input->elbow_pitch_deg, &forearm_calibration_config.elbow_pitch);
     output->wrist_pitch_deg = map_joint_angle(input->wrist_pitch_deg, &forearm_calibration_config.wrist_pitch);
     output->wrist_roll_deg = map_joint_angle(input->wrist_roll_deg, &forearm_calibration_config.wrist_roll);
     output->gripper_norm = input->gripper_norm;
@@ -94,11 +94,11 @@ void forearm_motion_control_unwrap_target(ForearmAngleUnwrapState *state, HumanF
 {
     if (state == NULL || target == NULL) return;
 
-    target->forearm_yaw_deg = unwrap_angle(target->forearm_yaw_deg, state->yaw_deg, state->has_reference);
+    target->elbow_roll_deg = unwrap_angle(target->elbow_roll_deg, state->yaw_deg, state->has_reference);
     target->wrist_pitch_deg = unwrap_angle(target->wrist_pitch_deg, state->wrist_pitch_deg, state->has_reference);
     target->wrist_roll_deg = unwrap_angle(target->wrist_roll_deg, state->wrist_roll_deg, state->has_reference);
 
-    state->yaw_deg = target->forearm_yaw_deg;
+    state->yaw_deg = target->elbow_roll_deg;
     state->wrist_pitch_deg = target->wrist_pitch_deg;
     state->wrist_roll_deg = target->wrist_roll_deg;
     state->has_reference = 1;

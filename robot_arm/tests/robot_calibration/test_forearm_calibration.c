@@ -13,16 +13,15 @@ static void near(float actual, float expected)
 static HumanForearmTarget target(float yaw, float pitch, float wp, float wr, float grip)
 {
     HumanForearmTarget t;
-    t.forearm_yaw_deg = yaw;
-    t.forearm_pitch_deg = pitch;
+    t.elbow_roll_deg = yaw;
+    t.elbow_pitch_deg = pitch;
     t.wrist_pitch_deg = wp;
     t.wrist_roll_deg = wr;
     t.gripper_norm = grip;
     t.frame_id = 1;
     t.valid = 1;
-    t.yaw_observable = 1;
+    t.elbow_roll_observable = 1;
     t.hand_fresh = 1;
-    t.calibrated = 0;
     return t;
 }
 
@@ -41,7 +40,7 @@ static void test_validate(void)
     assert(!forearm_motion_control_validate_target(NULL));
     t.valid = 0; assert(!forearm_motion_control_validate_target(&t));
     t.valid = 1;
-    t.forearm_yaw_deg = NAN; assert(!forearm_motion_control_validate_target(&t));
+    t.elbow_roll_deg = NAN; assert(!forearm_motion_control_validate_target(&t));
     t = target(0, 91, 0, 0, 0.5f); assert(!forearm_motion_control_validate_target(&t));
     t = target(0, -91, 0, 0, 0.5f); assert(!forearm_motion_control_validate_target(&t));
     t = target(0, 90, 0, 0, 0.5f); assert(forearm_motion_control_validate_target(&t)); /* 경계값 */
@@ -52,7 +51,7 @@ static void test_validate(void)
     for (int i=0; i<5; i++) {
         float *fields[5];
         t=target(0,0,0,0,0.5f);
-        fields[0]=&t.forearm_yaw_deg; fields[1]=&t.forearm_pitch_deg;
+        fields[0]=&t.elbow_roll_deg; fields[1]=&t.elbow_pitch_deg;
         fields[2]=&t.wrist_pitch_deg; fields[3]=&t.wrist_roll_deg;
         fields[4]=&t.gripper_norm;
         *fields[i]=INFINITY;
@@ -132,16 +131,16 @@ static void test_unwrap(void)
 
     forearm_motion_control_unwrap_state_init(&state);
     forearm_motion_control_unwrap_target(&state, &t);
-    near(t.forearm_yaw_deg, 179);
+    near(t.elbow_roll_deg, 179);
 
     t = target(-179, 0, 0, 0, 0.5f);
     forearm_motion_control_unwrap_target(&state, &t);
-    near(t.forearm_yaw_deg, 181); /* 최단 회전으로 풀면 -179가 아니라 181 */
+    near(t.elbow_roll_deg, 181); /* 최단 회전으로 풀면 -179가 아니라 181 */
 
     /* 직전까지 state.wrist_pitch_deg/wrist_roll_deg는 0(두 호출 모두 입력 0).
      * -1250 -> wrap_to_180 -> -170 (기준 0에서 최단회전). 602.5 -> 242.5 ->
      * wrap_to_180 -> -117.5. */
-    t.forearm_yaw_deg += 720;
+    t.elbow_roll_deg += 720;
     t.wrist_pitch_deg = -1250;
     t.wrist_roll_deg = 602.5f;
     forearm_motion_control_unwrap_target(&state, &t);

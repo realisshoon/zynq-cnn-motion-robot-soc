@@ -2,21 +2,9 @@
  * 통합 스모크 테스트 (호스트, mock 서보 드라이버).
  * UART 패킷 -> Agent1 -> Agent2 -> Agent3 -> servo_hal(mock 로그)까지 검증한다.
  *
- * 빌드/실행 (robot_arm/ 에서, SERVO_PWM_DRIVER_USE_XILINX는 정의하지 않는다):
- *   gcc -std=c99 -Wall -Wextra -Wpedantic -Iinclude -Iconfig \
- *     src/human_target_angle/agent1_stage.c src/human_target_angle/pose_hand.c \
- *     src/human_target_angle/pose_joint.c src/human_target_angle/pose_mapping.c \
- *     src/human_target_angle/pose_math.c src/human_target_angle/pose_reconstruction.c \
- *     src/human_target_angle/pose_tracking.c \
- *     src/robot_calibration/motion_control.c src/robot_calibration/motion_limits.c \
- *     src/robot_calibration/motion_smoothing.c src/robot_calibration/robot_calibration.c \
- *     src/robot_calibration/robot_calibration_config.c src/robot_calibration/safety_check.c \
- *     src/output_controller/output_control.c src/output_controller/servo_config.c \
- *     src/output_controller/servo_control.c src/output_controller/servo_hal.c \
- *     src/drivers/servo_pwm_driver.c src/uart_pose/uart_pose_protocol.c \
- *     src/integration/agent_pipeline.c tests/integration/test_integration_smoke.c \
- *     -lm -o <출력경로>
- * (human_target_angle/main_integration_shape.c는 자체 main이 있어 제외한다.)
+ * 빌드/실행 (robot_arm/ 에서):
+ *   python tests/robot_calibration/run_tests.py
+ * 새 forearm 소스 목록과 -Werror 설정은 위 러너를 따른다.
  */
 
 /* MinGW의 SEH 스택 해제 경로 대신 순수 C 점프를 쓴다.
@@ -37,17 +25,17 @@
 #include "integration/agent_pipeline.h"
 #include "integration/input_pose.h"
 #include "integration/platform.h"
-#include "human_target_angle/agent1_stage.h"
+#include "human_target_angle/agent1_forearm_stage.h"
 #include "drivers/servo_pwm_driver.h"
 #include "output_controller/servo_hal.h"
-#include "robot_calibration/safety_check.h"
+#include "robot_calibration/forearm_safety_check.h"
 #include "uart_pose/uart_pose_protocol.h"
 
 #ifdef NDEBUG
 #error "이 테스트는 assert가 활성화된 빌드가 필요합니다."
 #endif
 
-enum { SCRIPT_CAPACITY = 256, CHANNELS = 6, JOINTS = 5 };
+enum { SCRIPT_CAPACITY = 256, CHANNELS = SERVO_COUNT, JOINTS = FOREARM_MOTION_JOINT_COUNT, POSE_POINTS = 6 };
 
 typedef struct {
     unsigned at_ms;
@@ -71,7 +59,7 @@ static unsigned main_log_boot, main_log_ticks;
 static int run_robot_main;
 static jmp_buf main_exit;
 static PoseUartParser parser;
-static const float max_delta_deg[JOINTS] = {0.6f, 0.6f, 0.6f, 0.6f, 0.6f};
+static const float max_delta_deg[JOINTS] = {0.6f, 0.6f, 0.6f, 0.6f};
 
 /* 통합 진입점의 호출 순서와 본문을 그대로 실행한다. */
 #define main robot_main
@@ -80,22 +68,25 @@ static const float max_delta_deg[JOINTS] = {0.6f, 0.6f, 0.6f, 0.6f, 0.6f};
 
 static void pwm_values(const ServoPwmCommand *pwm, uint16_t values[CHANNELS])
 {
-    values[0] = pwm->base_pwm_us;
-    values[1] = pwm->shoulder_pwm_us;
-    values[2] = pwm->elbow_pwm_us;
-    values[3] = pwm->wrist_pitch_pwm_us;
-    values[4] = pwm->wrist_roll_pwm_us;
-    values[5] = pwm->gripper_pwm_us;
+    values[0] = pwm->elbow_roll_pwm_us;
+    values[1] = pwm->elbow_pitch_pwm_us;
+    values[2] = pwm->wrist_pitch_pwm_us;
+    values[3] = pwm->wrist_roll_pwm_us;
+    values[4] = pwm->gripper_pwm_us;
 }
 
-static void command_values(const JointCommand *cmd, float values[CHANNELS])
+static void joints(const ForearmJointCommand *cmd, float values[JOINTS])
 {
-    values[0] = cmd->base_deg;
-    values[1] = cmd->shoulder_deg;
-    values[2] = cmd->elbow_deg;
-    values[3] = cmd->wrist_pitch_deg;
-    values[4] = cmd->wrist_roll_deg;
-    values[5] = cmd->gripper_norm;
+    values[0] = cmd->elbow_roll_deg;
+    values[1] = cmd->elbow_pitch_deg;
+    values[2] = cmd->wrist_pitch_deg;
+    values[3] = cmd->wrist_roll_deg;
+}
+
+static void command_values(const ForearmJointCommand *cmd, float values[CHANNELS])
+{
+    joints(cmd, values);
+    values[JOINTS] = cmd->gripper_norm;
 }
 
 static void assert_same_pwm(const ServoPwmCommand *a, const ServoPwmCommand *b)
@@ -118,7 +109,7 @@ static void assert_home(const AgentPipelineContext *ctx)
         assert(values[i] == 1500U);
         assert(angles[i] == 90.0f);
     }
-    assert(values[5] == 1500U && angles[5] == 0.5f);
+    assert(values[JOINTS] == 1500U && angles[JOINTS] == 0.5f);
     assert(ctx->output.valid && ctx->servo_errors == 0U);
 }
 
@@ -139,13 +130,13 @@ static void servo_log_clear(void)
 
 /*
  * 쓰기 로그를 순서대로 검사한 뒤 비운다.
- * boot=1이면 부팅 순서(shadow 6개 -> UPDATE -> ENABLE), 0이면 한 틱(shadow 6개 -> UPDATE)이다.
+ * boot=1이면 부팅 순서(shadow 5개 -> UPDATE -> ENABLE), 0이면 한 틱(shadow 5개 -> UPDATE)이다.
  * expected가 NULL이면 값은 PWM 유효 범위만 확인한다.
  */
 static void servo_log_check(const ServoPwmCommand *expected, int boot)
 {
-    static const uint32_t offsets[8] = {0x00U, 0x04U, 0x08U, 0x0CU, 0x10U, 0x14U, 0x1CU, 0x18U};
-    const unsigned count = boot ? 8U : 7U;
+    static const uint32_t offsets[7] = {0x00U, 0x04U, 0x08U, 0x0CU, 0x10U, 0x1CU, 0x18U};
+    const unsigned count = boot ? 7U : 6U;
     ServoPwmDriverMockWrite entry;
     uint16_t values[CHANNELS] = {0};
     unsigned i;
@@ -154,7 +145,7 @@ static void servo_log_check(const ServoPwmCommand *expected, int boot)
     for (i = 0; i < count; ++i) {
         assert(servo_pwm_driver_mock_get_log(i, &entry) == 1);
         assert(entry.offset == offsets[i]);
-        if (i < 6U) {
+        if (i < CHANNELS) {
             if (expected != NULL) assert(entry.value == values[i]);
             else assert(entry.value >= 500U && entry.value <= 2500U);
         } else {
@@ -247,7 +238,7 @@ static void put_u16_le(uint8_t *destination, uint16_t value)
 
 static void encode_packet(const HumanPose2D *pose, uint8_t packet[POSE_UART_PACKET_SIZE])
 {
-    const Point2D points[CHANNELS] = {pose->finger1, pose->finger2, pose->elbow,
+    const Point2D points[POSE_POINTS] = {pose->finger1, pose->finger2, pose->elbow,
                                     pose->wrist, pose->shoulder_l, pose->shoulder_r};
     unsigned i;
     memset(packet, 0, POSE_UART_PACKET_SIZE);
@@ -257,7 +248,7 @@ static void encode_packet(const HumanPose2D *pose, uint8_t packet[POSE_UART_PACK
     packet[3] = 30U;
     for (i = 0; i < 4U; ++i) packet[4U + i] = (uint8_t)(pose->frame_id >> (8U * i));
     packet[8] = pose->valid;
-    for (i = 0; i < CHANNELS; ++i) {
+    for (i = 0; i < POSE_POINTS; ++i) {
         if (points[i].valid) packet[9] |= (uint8_t)(1U << i);
         put_u16_le(&packet[10U + 4U * i], (uint16_t)points[i].x);
         put_u16_le(&packet[12U + 4U * i], (uint16_t)points[i].y);
@@ -267,13 +258,13 @@ static void encode_packet(const HumanPose2D *pose, uint8_t packet[POSE_UART_PACK
 
 static void assert_decoded_pose(const HumanPose2D *actual, const HumanPose2D *expected)
 {
-    const Point2D a[CHANNELS] = {actual->finger1, actual->finger2, actual->elbow,
+    const Point2D a[POSE_POINTS] = {actual->finger1, actual->finger2, actual->elbow,
                                 actual->wrist, actual->shoulder_l, actual->shoulder_r};
-    const Point2D e[CHANNELS] = {expected->finger1, expected->finger2, expected->elbow,
+    const Point2D e[POSE_POINTS] = {expected->finger1, expected->finger2, expected->elbow,
                                 expected->wrist, expected->shoulder_l, expected->shoulder_r};
     unsigned i;
     assert(actual->frame_id == expected->frame_id && actual->valid == expected->valid);
-    for (i = 0; i < CHANNELS; ++i) {
+    for (i = 0; i < POSE_POINTS; ++i) {
         assert(a[i].x == e[i].x && a[i].y == e[i].y);
         assert(a[i].valid == (uint8_t)(expected->valid && e[i].valid));
     }
@@ -340,7 +331,7 @@ int platform_tick_due(void)
 {
     /* robot_main 경로: 직전 틱의 서보 쓰기 순서를 검증하고 로그를 비운다(부팅 로그는 첫 호출에서 1회). */
     if (run_robot_main && servo_pwm_driver_mock_get_log_count() != 0U) {
-        const int boot = servo_pwm_driver_mock_get_log_count() == 8U;
+        const int boot = servo_pwm_driver_mock_get_log_count() == 7U;
         servo_log_check(NULL, boot);
         if (boot) ++main_log_boot; else ++main_log_ticks;
     }
@@ -348,7 +339,7 @@ int platform_tick_due(void)
     if (run_robot_main && observed_frames < delivered) {
         assert(observed_frames + 1U == delivered);
         ++observed_frames;
-        if (agent1_stage_output_valid()) ++observed_valid;
+        if (agent1_forearm_stage_output()->valid) ++observed_valid;
     }
     ++sim_ms;
     /* 250번째 틱의 Agent2/3 호출이 끝난 다음 폴링에서 탈출한다. */
@@ -400,7 +391,7 @@ static void test_boot(void)
     start_pipeline(&ctx, &trace);
     assert(ctx.frames_in == 0U && ctx.ticks == 0U && ctx.servo_writes == 0U);
     assert(!ctx.target_ready && !ctx.command_valid);
-    print_stats("S1 home=1500x6 boot_log=shadow6,UPDATE,ENABLE", &ctx);
+    print_stats("S1 home=1500x5 boot_log=shadow5,UPDATE,ENABLE", &ctx);
 }
 
 static void test_uart(void)
@@ -426,6 +417,8 @@ static void test_uart(void)
     assert(parser.packets_ok == 9U && parser.crc_errors == 1U);
     assert(parser.format_errors == 0U && parser.range_errors == 0U);
     assert(ctx.frames_in == 9U && ctx.pose.frame_id == script[9].pose.frame_id);
+    assert(ctx.targets_valid == 9U && ctx.commands_accepted == 9U);
+    assert(ctx.commands_rejected == 0U && ctx.retargets == 1U);
     assert(!input_pose_ready() && !input_pose_take(&unused_pose, &unused_dt));
     print_stats("S2 packets_ok=9 crc_errors=1 noise_recovery=3", &ctx);
 }
@@ -455,11 +448,11 @@ static void test_front_main(void)
     assert(platform_calls == 1U && input_calls == 1U);
     assert(due_ticks == 250U && sim_ms == 5001U);
     assert(arrivals == 100U && delivered == 100U && observed_frames == 100U);
-    assert(observed_valid >= 95U && parser.packets_ok == 100U);
+    assert(observed_valid == 100U && parser.packets_ok == 100U);
     assert(parser.crc_errors == 0U && parser.range_errors == 0U);
     main_valid = observed_valid;
     for (i = 0; i < 100U; ++i) assert(main_frame_ms[i] == script[i].at_ms);
-    /* 실제 main 루프에서도 부팅 1회와 250틱 모두 shadow 6개 -> UPDATE 순서로 쓰였는지 로그로 확인한다. */
+    /* 실제 main 루프에서도 부팅 1회와 250틱 모두 shadow 5개 -> UPDATE 순서로 쓰였는지 로그로 확인한다. */
     assert(main_log_boot == 1U && main_log_ticks == 250U);
     printf("S3 robot_main PASS frames=%u valid=%u ticks=%u packets_ok=%" PRIu32
            " servo_log(boot=%u ticks=%u)\n",
@@ -470,28 +463,39 @@ static void test_front_main(void)
     start_pipeline(&ctx, &trace);
     advance_to(&ctx, &trace, 5000U);
     assert(ctx.frames_in == 100U && ctx.frames_in == delivered);
-    assert(ctx.targets_valid == main_valid && ctx.targets_valid >= 95U);
-    assert(ctx.commands_accepted >= 95U && ctx.servo_errors == 0U);
+    assert(ctx.targets_valid == main_valid && ctx.targets_valid == 100U);
+    assert(ctx.commands_accepted == 100U && ctx.servo_errors == 0U);
     assert(ctx.ticks == 250U && ctx.servo_writes == ctx.ticks);
-    /* A2 bring-up: three calibrated axes move; uncalibrated wrists stay neutral. */
-    for (i = 0; i < JOINTS; ++i) {
-        if (i < 3U) assert(trace.maximum[i] > trace.minimum[i]);
-        else assert(trace.minimum[i] == 1500U && trace.maximum[i] == 1500U);
+    /* 호스트 재생 실측값. 네 관절 모두 움직이며 손목도 scale=1이다. */
+    {
+        const uint16_t minimum[CHANNELS] = {1500U, 1229U, 1466U, 722U, 1500U};
+        const uint16_t maximum[CHANNELS] = {1635U, 1500U, 1504U, 1500U, 2500U};
+        const unsigned max_step[JOINTS] = {2U, 3U, 2U, 7U};
+        for (i = 0; i < CHANNELS; ++i) {
+            assert(trace.minimum[i] == minimum[i] && trace.maximum[i] == maximum[i]);
+            if (i < JOINTS) assert(trace.max_step[i] == max_step[i]);
+        }
     }
+    assert(ctx.commands_rejected == 0U && ctx.retargets == 91U);
     print_stats("S3 replay", &ctx);
-    printf("S3 max_delta_us=%u,%u,%u,%u,%u limits_us=8,8,8,8,8\n",
+    printf("S3 max_delta_us=%u,%u,%u,%u limits_us=8,8,8,8\n",
            trace.max_step[0], trace.max_step[1], trace.max_step[2],
-           trace.max_step[3], trace.max_step[4]);
-    printf("S3 pwm_ranges=%u..%u,%u..%u,%u..%u,%u..%u,%u..%u,%u..%u\n",
+           trace.max_step[3]);
+    printf("S3 pwm_ranges=%u..%u,%u..%u,%u..%u,%u..%u,%u..%u\n",
            trace.minimum[0], trace.maximum[0], trace.minimum[1], trace.maximum[1],
            trace.minimum[2], trace.maximum[2], trace.minimum[3], trace.maximum[3],
-           trace.minimum[4], trace.maximum[4], trace.minimum[5], trace.maximum[5]);
+           trace.minimum[4], trace.maximum[4]);
 }
 
-static void set_direct_target(AgentPipelineContext *ctx, float base)
+static void set_direct_target(AgentPipelineContext *ctx, float elbow_roll,
+                              float wrist_pitch, float wrist_roll)
 {
-    /* S4/S7은 Agent2 경계 주입이다. 나머지 각도는 안전검사를 통과하는 굽힌 팔이다. */
-    const HumanJointTarget target = {base, -60.0f, 150.0f, 0.0f, 0.0f, 0.25f, 1U};
+    const HumanForearmTarget target = {
+        .elbow_roll_deg = elbow_roll, .elbow_pitch_deg = -60.0f,
+        .wrist_pitch_deg = wrist_pitch, .wrist_roll_deg = wrist_roll,
+        .gripper_norm = 0.25f, .valid = 1U,
+        .elbow_roll_observable = 1U, .hand_fresh = 1U
+    };
     ctx->target = target;
     ctx->target_ready = 1U;
     assert(agent2_run(ctx) == 1);
@@ -505,28 +509,46 @@ static void test_first_ramp(void)
     float first_angle;
     script_count = 0U;
     start_pipeline(&ctx, &trace);
-    set_direct_target(&ctx, 0.0f); /* Forward 30deg, elbow flexion 30deg. */
-    assert(fabsf(ctx.command.base_deg - 120.0f) < 0.001f);
+    set_direct_target(&ctx, 30.0f, 20.0f, -30.0f);
+    assert(fabsf(ctx.command.elbow_roll_deg - 120.0f) < 0.001f);
     assert_home(&ctx);
     checked_tick(&ctx, &trace);
-    first_angle = ctx.output.base_deg;
+    first_angle = ctx.output.elbow_roll_deg;
+    printf("S4 first_joints_deg=%.6f,%.6f,%.6f,%.6f\n",
+           ctx.output.elbow_roll_deg, ctx.output.elbow_pitch_deg,
+           ctx.output.wrist_pitch_deg, ctx.output.wrist_roll_deg);
+    {
+        const float expected[JOINTS] = {90.003983f, 89.992035f, 90.002655f, 89.996017f};
+        float actual[JOINTS];
+        joints(&ctx.output, actual);
+        for (i = 0; i < JOINTS; ++i) assert(fabsf(actual[i] - expected[i]) < 0.00001f);
+    }
     assert(first_angle > 90.0f && first_angle <= 90.6f);
     /* At this slower profile the first fractional microsecond can quantize away. */
-    assert(ctx.pwm.base_pwm_us >= 1500U && ctx.pwm.base_pwm_us <= 1507U);
+    assert(ctx.pwm.elbow_roll_pwm_us >= 1500U && ctx.pwm.elbow_roll_pwm_us <= 1507U);
     assert(ctx.output.gripper_norm == 0.25f && ctx.pwm.gripper_pwm_us == 1000U);
     for (i = 1U; i < 200U; ++i) checked_tick(&ctx, &trace);
-    assert(fabsf(ctx.output.base_deg - 120.0f) < 0.001f && ctx.pwm.base_pwm_us == 1833U);
-    printf("S4 first_base_deg=%.6f final_base_deg=%.1f max_base_delta_us=%u\n",
-           first_angle, ctx.output.base_deg, trace.max_step[0]);
+    assert(fabsf(ctx.output.elbow_roll_deg - 120.0f) < 0.001f && ctx.pwm.elbow_roll_pwm_us == 1833U);
+    {
+        const float expected[JOINTS] = {120.0f, 30.0f, 110.0f, 60.0f};
+        float output[JOINTS], command[JOINTS];
+        joints(&ctx.output, output);
+        joints(&ctx.command, command);
+        for (i = 0; i < JOINTS; ++i) {
+            assert(command[i] == expected[i]);
+            assert(output[i] == command[i]);
+        }
+    }
+    printf("S4 final_joints_deg=%.1f,%.1f,%.1f,%.1f\n",
+           ctx.output.elbow_roll_deg, ctx.output.elbow_pitch_deg,
+           ctx.output.wrist_pitch_deg, ctx.output.wrist_roll_deg);
+    assert(trace.max_step[0] == 4U);
+    printf("S4 first_elbow_roll_deg=%.6f final_elbow_roll_deg=%.1f max_elbow_roll_delta_us=%u\n",
+           first_angle, ctx.output.elbow_roll_deg, trace.max_step[0]);
     print_stats("S4", &ctx);
 }
 
-/*
- * 원래 이름은 test_side_rejected였다: 그때는 바닥충돌 검사가 z 부호를 반대로 계산해서
- * 이 측면 자세 6프레임이 전부 FLOOR_COLLISION으로 거부됐다. 2026-09-22에 z 부호를
- * 바로잡고 바닥충돌 검사 자체를 없앴다(사용자가 설치 높이/시연 범위로 대신 보장하기로
- * 함, safety_check.c 참고). 지금은 이 6프레임이 전부 승인된다.
- */
+/* 측면 입력 6프레임: 현재 [20,160] 범위에서는 테이블/자기충돌 없이 승인된다. */
 static void test_side_accepted(void)
 {
     static const float side[6][12] = {
@@ -555,17 +577,17 @@ static void test_side_accepted(void)
     }
     start_pipeline(&ctx, &trace);
     for (i = 0; i < 6U; ++i) {
-        JointCommand mapped;
-        SafetyCheckFlags issues = SAFETY_CHECK_OK;
+        ForearmJointCommand mapped;
+        ForearmSafetyCheckFlags issues = FOREARM_SAFETY_CHECK_OK;
         advance_to(&ctx, &trace, (i + 1U) * 50U);
         assert(ctx.frames_in == i + 1U && ctx.targets_valid == i + 1U);
         assert(ctx.commands_accepted == i + 1U && ctx.commands_rejected == 0U);
         assert(ctx.command_valid);
-        motion_control_map_target(&ctx.target, &mapped);
-        motion_control_apply_limits(&mapped);
+        forearm_motion_control_map_target(&ctx.target, &mapped);
+        forearm_motion_control_apply_limits(&mapped);
         mapped.valid = 1U;
-        assert(safety_check_apply(&mapped, NULL, &issues) == 1);
-        assert(issues == SAFETY_CHECK_OK);
+        assert(forearm_safety_check_apply(&mapped, &issues) == 1);
+        assert(issues == FOREARM_SAFETY_CHECK_OK);
     }
     print_stats("S5 side-view accepted=6/6", &ctx);
 }
@@ -617,6 +639,7 @@ static unsigned test_dropout(void)
         assert(ctx.retargets == retargets_before);
         assert_same_pwm(&ctx.pwm, &held);
     }
+    assert(ctx.commands_accepted - accepted_before == 6U);
     printf("S6 dropout short_accepted=4 short_retargets=0 total_hold=%" PRIu32
            " first_invalid_age_ms=%u pwm_held=1\n",
            ctx.commands_accepted - accepted_before, first_invalid_ms);
@@ -624,14 +647,15 @@ static unsigned test_dropout(void)
     advance_to(&ctx, &trace, 7600U);
     assert(ctx.target_ready == 1U && ctx.commands_accepted == accepted_before + 40U);
     assert(ctx.retargets > retargets_before);
-    assert(ctx.pwm.base_pwm_us != held.base_pwm_us ||
-           ctx.pwm.shoulder_pwm_us != held.shoulder_pwm_us ||
+    assert(ctx.pwm.elbow_roll_pwm_us != held.elbow_roll_pwm_us ||
+           ctx.pwm.elbow_pitch_pwm_us != held.elbow_pitch_pwm_us ||
            ctx.pwm.wrist_pitch_pwm_us != held.wrist_pitch_pwm_us ||
            ctx.pwm.wrist_roll_pwm_us != held.wrist_roll_pwm_us);
     assert(ctx.frames_in == 152U && ctx.servo_errors == 0U);
+    assert(ctx.targets_valid == 146U && ctx.commands_accepted == 146U);
+    assert(ctx.commands_rejected == 0U && ctx.retargets == 39U);
     print_stats("S6 200ms HOLD / 400..600ms invalid / recovery", &ctx);
-    /* 관측값을 그대로 출력한다. 350=float 누적 오차로 경계 프레임이 일찍 무효, 400=정확한 경계. */
-    printf("S6 HOLD boundary first_invalid_age_ms=%u (350 or 400 허용)\n", first_invalid_ms);
+    printf("S6 HOLD boundary first_invalid_age_ms=%u\n", first_invalid_ms);
     return first_invalid_ms;
 }
 
@@ -643,17 +667,35 @@ static void test_wrap(void)
     script_count = 0U;
     start_pipeline(&ctx, &trace);
     /* 좌표 대신 ctx.target에 직접 주입하여 양방향 경계 통과를 검증한다. */
-    set_direct_target(&ctx, 179.0f);
-    assert(ctx.target.base_deg == 179.0f);
+    set_direct_target(&ctx, 179.0f, 179.0f, -179.0f);
+    assert(ctx.target.elbow_roll_deg == 179.0f);
+    assert(ctx.target.wrist_pitch_deg == 179.0f && ctx.target.wrist_roll_deg == -179.0f);
     for (i = 0; i < 60U; ++i) checked_tick(&ctx, &trace);
-    set_direct_target(&ctx, -179.0f);
-    assert(ctx.target.base_deg == 181.0f && ctx.unwrap.base_deg == 181.0f);
-    assert(fabsf(ctx.command.base_deg - 60.0038f) < 0.002f && ctx.retargets == 2U);
-    assert(ctx.command.shoulder_deg < 90.0f); /* Continuous crossing, no limit lock. */
+    set_direct_target(&ctx, -179.0f, -179.0f, 179.0f);
+    assert(ctx.target.elbow_roll_deg == 181.0f && ctx.unwrap.yaw_deg == 181.0f);
+    assert(ctx.target.wrist_pitch_deg == 181.0f && ctx.unwrap.wrist_pitch_deg == 181.0f);
+    assert(ctx.target.wrist_roll_deg == -181.0f && ctx.unwrap.wrist_roll_deg == -181.0f);
+    assert(ctx.target.elbow_pitch_deg == -60.0f); /* pitch는 unwrap 대상이 아니다. */
+    assert(ctx.retargets == 1U); /* 풀린 각도도 같은 한계값으로 클램프되므로 재계획하지 않는다. */
+    printf("S7 crossing_unwrapped=%.1f,%.1f,%.1f pitch=%.1f retargets=%u\n",
+           ctx.target.elbow_roll_deg, ctx.target.wrist_pitch_deg, ctx.target.wrist_roll_deg,
+           ctx.target.elbow_pitch_deg, (unsigned)ctx.retargets);
     checked_tick(&ctx, &trace);
-    set_direct_target(&ctx, 179.0f);
-    assert(ctx.target.base_deg == 179.0f && ctx.retargets == 3U);
-    assert(ctx.command.shoulder_deg > 90.0f);
+    set_direct_target(&ctx, 179.0f, 179.0f, -179.0f);
+    assert(ctx.target.elbow_roll_deg == 179.0f && ctx.unwrap.yaw_deg == 179.0f);
+    assert(ctx.target.wrist_pitch_deg == 179.0f && ctx.unwrap.wrist_pitch_deg == 179.0f);
+    assert(ctx.target.wrist_roll_deg == -179.0f && ctx.unwrap.wrist_roll_deg == -179.0f);
+    assert(ctx.target.elbow_pitch_deg == -60.0f && ctx.retargets == 1U);
+    {
+        const float expected[JOINTS] = {160.0f, 30.0f, 160.0f, 20.0f};
+        float command[JOINTS];
+        joints(&ctx.command, command);
+        for (i = 0; i < JOINTS; ++i) assert(command[i] == expected[i]);
+    }
+    printf("S7 wrists_unwrapped=%.1f,%.1f command=%.1f,%.1f,%.1f,%.1f\n",
+           ctx.target.wrist_pitch_deg, ctx.target.wrist_roll_deg,
+           ctx.command.elbow_roll_deg, ctx.command.elbow_pitch_deg,
+           ctx.command.wrist_pitch_deg, ctx.command.wrist_roll_deg);
     checked_tick(&ctx, &trace);
     assert(ctx.commands_accepted == 3U && ctx.commands_rejected == 0U);
     print_stats("S7 raw=179,-179,179 unwrapped=179,181,179", &ctx);
@@ -671,12 +713,8 @@ int main(void)
     test_side_accepted();
     dropout_first_invalid_ms = test_dropout();
     test_wrap();
-    /* 명세상 350ms까지 HOLD이므로 50ms 간격에서 최초 무효는 400ms다. 다만 Agent1은
-     * target_age_sec에 dt(0.05f)를 float로 누적해서, 7번 더한 0.350000024가
-     * PM_TARGET_HOLD_SEC(0.35f = 0.349999994)를 넘어 350ms 프레임이 한 프레임 일찍
-     * 무효가 된다. 경계에서 1프레임 차이는 오차로 보고 350/400ms를 모두 허용한다.
-     * (Agent1 담당자에게는 관측 사항으로만 전달한다.) */
-    assert(dropout_first_invalid_ms == 350U || dropout_first_invalid_ms == 400U);
+    /* 새 Agent1 실측: 0.05f 누적값이 HOLD 경계를 넘어 350ms에서 무효가 된다. */
+    assert(dropout_first_invalid_ms == 350U);
     puts("All integration smoke scenarios PASS");
     return 0;
 }
