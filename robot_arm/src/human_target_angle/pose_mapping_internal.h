@@ -62,6 +62,11 @@ int pm_calculate_major_angles(PoseMappingContext *ctx,
                               HumanJointTarget *out);
 
 /* pose_hand.c */
+/* Optional forearm-local roll reference; NULL preserves legacy BodyFrame. */
+int pm_calculate_hand_with_reference(PoseMappingContext *ctx,
+                                     float shoulder_span_px, float dt_age_sec,
+                                     float dt_filter_sec, const Vec3 *reference,
+                                     HumanJointTarget *out);
 int pm_calculate_hand_angles_and_gripper(PoseMappingContext *ctx,
                                          float shoulder_span_px,
                                          float dt_age_sec,

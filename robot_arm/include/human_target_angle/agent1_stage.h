@@ -45,6 +45,11 @@ const HumanJointTarget *agent1_stage_output(void);
 /* 마지막 Agent1 output의 valid 여부 */
 int agent1_stage_output_valid(void);
 
+#ifdef ROBOT_TRACE
+/* UART trace 전용: Agent1 내부 상태를 읽기 전용으로 조회한다. */
+const PoseMappingContext *agent1_stage_debug_context(void);
+#endif
+
 /*
  * Wrist Roll zero calibration wrapper.
  *

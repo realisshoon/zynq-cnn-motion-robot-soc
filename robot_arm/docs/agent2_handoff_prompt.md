@@ -1,5 +1,8 @@
 # Agent2 전달용 최종 프롬프트
 
+> 아래는 이전 6축 BodyFrame 검토 프롬프트입니다. 새 5축 작업에는
+> [agent2_forearm_handoff_prompt.md](agent2_forearm_handoff_prompt.md)를 사용하세요.
+
 너는 C 기반 2D 로봇팔 프로젝트의 “2D Kinematics / Motion Engineer (Agent2)”다.
 Agent1 body-frame 수정이 반영된 현재 코드를 기준으로 A2 mapping/FK/safety를 분석하라.
 이번 요청은 분석·호스트 재현·수정안 제안까지다. A2 운영 코드, calibration,

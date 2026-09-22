@@ -33,6 +33,8 @@ add_library(human_target_angle STATIC
     src/human_target_angle/pose_reconstruction.c
     src/human_target_angle/pose_joint.c
     src/human_target_angle/pose_hand.c
+    src/human_target_angle/forearm_mapping.c
+    src/human_target_angle/agent1_forearm_stage.c
 )
 configure_robot_target(human_target_angle)
 
@@ -81,6 +83,37 @@ target_include_directories(test_uart_agent1_pc
 # Agent 2 : Robot Calibration / Motion
 # 팀원 영역 - 기존 설정 유지
 # ============================================================
+option(AGENT1_ONLY "Build Agent1 tests without Agent2/3 application dependencies" OFF)
+if(AGENT1_ONLY)
+    enable_testing()
+    foreach(name pose_mapping body_frame forearm pose_csv pose_visual)
+        add_executable(test_${name} tests/human_target_angle/test_${name}.c)
+        configure_robot_target(test_${name})
+        target_link_libraries(test_${name} PRIVATE human_target_angle uart_pose_protocol_pc)
+    endforeach()
+    foreach(name pose_mapping body_frame forearm)
+        add_test(NAME ${name} COMMAND test_${name})
+    endforeach()
+    add_test(NAME forearm_uart COMMAND test_forearm ${CMAKE_CURRENT_SOURCE_DIR}/etc/uart_pose_stream.bin)
+    add_test(NAME forearm_csv COMMAND test_pose_csv
+        ${CMAKE_CURRENT_SOURCE_DIR}/etc/example_pose2d_1280x720_20hz.csv
+        ${CMAKE_CURRENT_BINARY_DIR}/forearm_result.csv --demo-table)
+    add_executable(test_agent1_trace tests/human_target_angle/test_agent1_trace.c
+        src/human_target_angle/agent1_stage.c src/human_target_angle/agent1_forearm_stage.c)
+    configure_robot_target(test_agent1_trace)
+    target_compile_definitions(test_agent1_trace PRIVATE ROBOT_TRACE)
+    target_link_libraries(test_agent1_trace PRIVATE human_target_angle)
+    add_test(NAME agent1_trace COMMAND test_agent1_trace)
+    find_package(Python3 COMPONENTS Interpreter)
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME forearm_replay_stats COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tools/analyze_forearm_replay.py
+            ${CMAKE_CURRENT_BINARY_DIR}/forearm_result.csv --expect-frames 522)
+        set_tests_properties(forearm_replay_stats PROPERTIES DEPENDS forearm_csv)
+    endif()
+    return()
+endif()
+
 add_library(robot_calibration STATIC
     src/robot_calibration/kinematics_2d.c
     src/robot_calibration/motion_control.c
