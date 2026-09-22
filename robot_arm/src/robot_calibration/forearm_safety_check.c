@@ -76,9 +76,12 @@ static float point_segment_distance(RobotPoint3D p, RobotPoint3D a, RobotPoint3D
     return distance(p, along(a, v, t));
 }
 
-static float joint_interior_angle(float servo_angle_deg)
+/* straight_ref_deg = 이 관절이 "완전히 펴진(굽힘 0)" 서보 각도. 그 기준에서
+ * 얼마나 굽었는지를 180도(완전히 폄)에서 뺀 "내각"으로 돌려준다(0도에
+ * 가까울수록 완전히 접힘). */
+static float joint_interior_angle(float servo_angle_deg, float straight_ref_deg)
 {
-    float bend = fabsf(fmodf(servo_angle_deg - 90.0f, 360.0f));
+    float bend = fabsf(fmodf(servo_angle_deg - straight_ref_deg, 360.0f));
     if (bend > 180.0f) bend = 360.0f - bend;
     return 180.0f - bend;
 }
@@ -123,11 +126,16 @@ int forearm_robot_forward_kinematics_3d(const ForearmJointCommand *c, ForearmJoi
      * 손목은 사용자 확인(2026-09-22): wrist_pitch(굽힘)가 먼저 적용된 뒤
      * wrist_roll(비틀림)이 전완 축 주위로 그 결과를 돌린다 -- 기구학적으로
      * 더 안정적이라는 판단. 이전(roll먼저) 모델과 반대 순서다.
+     * wrist_pitch=90(중립)은 사용자 확인(2026-09-22): 완전히 편 자세(0도
+     * 굽힘)가 아니라 전완 방향 기준으로 90도 굽은 자세다 -- 완전히 펴두면
+     * 하드웨어가 덜덜거려서 안정적인 굽힌 자세를 idle로 잡았다. 그래서
+     * wrist_pitch만 다른 관절과 달리 -90 기준이 아니라 0을 기준으로 삼는다
+     * (servo=0 -> 0도 굽힘/완전히 폄, servo=90 -> 90도 굽힘).
      */
     roll = (fmodf(c->elbow_roll_deg, 360.0f) - 90.0f) * DEG_TO_RAD;
     pitch = (fmodf(c->elbow_pitch_deg, 360.0f) - 90.0f) * DEG_TO_RAD;
     wroll = (fmodf(c->wrist_roll_deg, 360.0f) - 90.0f) * DEG_TO_RAD;
-    wpitch = (fmodf(c->wrist_pitch_deg, 360.0f) - 90.0f) * DEG_TO_RAD;
+    wpitch = fmodf(c->wrist_pitch_deg, 360.0f) * DEG_TO_RAD;
 
     /* Neutral is robot +Y: Table +X -> robot +Y, Table +Y -> robot -X.
      * Rz(+yaw) sends +Y toward -X, not +X. Both frames are right-handed. */
@@ -154,7 +162,9 @@ int forearm_robot_forward_kinematics_3d(const ForearmJointCommand *c, ForearmJoi
 
 static int has_self_collision(const ForearmJointCommand *command, const ForearmJointPositions3D *p)
 {
-    if (joint_interior_angle(command->wrist_pitch_deg) < MIN_WRIST_INTERIOR_DEG) return 1;
+    /* wrist_pitch는 0도가 완전히 폄 기준이다(위 FK 주석 참고) -- 다른
+     * 관절처럼 90도가 기준이 아니다. */
+    if (joint_interior_angle(command->wrist_pitch_deg, 0.0f) < MIN_WRIST_INTERIOR_DEG) return 1;
     /* elbow(원점)-손 구간만 확인한다: 전완 구간은 원점에서 바로 시작해
      * point_segment_distance가 항상 0에 가까워 의미가 없다(인접 링크). */
     if (point_segment_distance(p->elbow, p->wrist, p->tip) < BASE_CLEARANCE_CM) return 1;

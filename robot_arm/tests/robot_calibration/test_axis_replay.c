@@ -62,7 +62,11 @@ int main(int argc,char **argv)
             unsigned frame_time=frames*50;
             while(next_tick<=frame_time) { tick(&ctx,&max_step);next_tick+=20; }
             assert(agent1_run(&ctx,&pose,0.05f)); raw=ctx.target;
-            assert(agent2_run(&ctx));
+            /* 2026-09-22: wrist_pitch=90=90도 굽힘으로 바뀌면서 자기충돌
+             * (wrist_pitch>155)이 [20,160] 범위 안에서 도달 가능해져
+             * 일부 프레임이 거부될 수 있다 -- 매 프레임 승인을 더 이상
+             * 강제하지 않는다. 거부되면 ctx.command는 직전 승인값 그대로다. */
+            agent2_run(&ctx);
             joints(&ctx.command,values);
             for(int i=0;i<4;i++) {
                 assert(values[i]>=20 && values[i]<=160);
@@ -80,10 +84,12 @@ int main(int argc,char **argv)
     fclose(f);if(csv)fclose(csv);
     assert(frames==522 && parser.packets_ok==522);
     assert(parser.crc_errors==0 && parser.format_errors==0 && parser.range_errors==0);
-    /* [20,160] 클램프 범위에서는 테이블/자기충돌 둘 다 도달 불가능하다
-     * (test_forearm_calibration.c의 test_clamped_envelope_never_reaches_table
-     * 참고) -- 그래서 전부 승인될 것으로 예상하고 실행해서 확인했다. */
-    assert(ctx.commands_accepted==522 && ctx.commands_rejected==0);
+    /* [20,160] 범위에서 테이블충돌은 여전히 도달 불가능하지만(위 참고),
+     * wrist_pitch=90=90도 굽힘 기준으로 바뀌면서 자기충돌(wrist_pitch>155)은
+     * 도달 가능해졌다 -- 실행해서 실제 승인/거부 수를 확인했다. */
+    printf("commands_accepted=%u commands_rejected=%u\n",
+        (unsigned)ctx.commands_accepted, (unsigned)ctx.commands_rejected);
+    assert(ctx.commands_accepted==481 && ctx.commands_rejected==41);
     /* Drain the remaining ramp; motion must settle, not only accept targets. */
     for(unsigned i=0;i<400;i++) tick(&ctx,&max_step);
     assert(fabsf(ctx.output.elbow_roll_deg-ctx.command.elbow_roll_deg)<0.001f);
