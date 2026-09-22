@@ -3,29 +3,13 @@
 #include <stddef.h>
 
 
-/*
- * ============================================================
- * AXI Register Map
- * ============================================================
- *
- * Software Joint      AXI Offset     RTL Name
- *
- * BASE                0x00           SHOULDER
- * SHOULDER            0x04           SHOULDER_ROLL
- * ELBOW               0x08           ELBOW
- * WRIST_PITCH         0x0C           WRIST
- * WRIST_ROLL          0x10           WRIST_ROLL
- * GRIPPER             0x14           GRIPPER
- * CONTROL             0x18
- * UPDATE              0x1C
- */
-
-#define SERVO_PWM_BASE_OFFSET          0x00U
-#define SERVO_PWM_SHOULDER_OFFSET      0x04U
-#define SERVO_PWM_ELBOW_OFFSET         0x08U
-#define SERVO_PWM_WRIST_PITCH_OFFSET   0x0CU
-#define SERVO_PWM_WRIST_ROLL_OFFSET    0x10U
-#define SERVO_PWM_GRIPPER_OFFSET       0x14U
+/* Fixed six-channel AXI IP. Five logical servos use CH0..CH4.
+ * CH5 at 0x14 is unused and never written. CONTROL/UPDATE must not move. */
+#define SERVO_PWM_ELBOW_ROLL_OFFSET    0x00U
+#define SERVO_PWM_ELBOW_PITCH_OFFSET   0x04U
+#define SERVO_PWM_WRIST_PITCH_OFFSET   0x08U
+#define SERVO_PWM_WRIST_ROLL_OFFSET    0x0CU
+#define SERVO_PWM_GRIPPER_OFFSET       0x10U
 
 #define SERVO_PWM_CONTROL_OFFSET       0x18U
 #define SERVO_PWM_UPDATE_OFFSET        0x1CU
@@ -297,26 +281,18 @@ int servo_pwm_driver_write_channel(
 
     switch (channel) {
 
-        case SERVO_PWM_DRIVER_BASE:
+        case SERVO_PWM_DRIVER_ELBOW_ROLL:
 
             offset =
-                SERVO_PWM_BASE_OFFSET;
+                SERVO_PWM_ELBOW_ROLL_OFFSET;
 
             break;
 
 
-        case SERVO_PWM_DRIVER_SHOULDER:
+        case SERVO_PWM_DRIVER_ELBOW_PITCH:
 
             offset =
-                SERVO_PWM_SHOULDER_OFFSET;
-
-            break;
-
-
-        case SERVO_PWM_DRIVER_ELBOW:
-
-            offset =
-                SERVO_PWM_ELBOW_OFFSET;
+                SERVO_PWM_ELBOW_PITCH_OFFSET;
 
             break;
 
