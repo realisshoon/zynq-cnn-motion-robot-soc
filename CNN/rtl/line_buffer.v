@@ -107,9 +107,15 @@ module line_buffer (
         ({1'b0, in_row} < cfg_hin) && ({1'b0, in_col} < cfg_win) &&
         (in_batch < num_batches) && (accepted_input_beats < expected_input_beats);
 
-    wire [9:0] bottom_y = center_y + 10'd1;
-    wire [8:0] fill_target = (bottom_y >= {1'b0, cfg_hin}) ?
-                            cfg_hin - 9'd1 : bottom_y[8:0];
+    // N1: keep the source-row fill target aligned with center_y in a local
+    // register.  The ready/progress cone consumes only this invariant value;
+    // the next clamp is evaluated solely on a center-row advance edge.
+    reg [8:0] fill_target;
+    wire [9:0] center_y_next = center_y + {8'd0, cfg_stride};
+    wire [9:0] bottom_y_next = center_y_next + 10'd1;
+    wire [8:0] fill_target_next =
+        (bottom_y_next >= {1'b0, cfg_hin}) ?
+        cfg_hin - 9'd1 : bottom_y_next[8:0];
     reg [1:0] ky, kx;
     always @* begin
         case (issue_tap)
@@ -288,6 +294,7 @@ module line_buffer (
             slot_row0 <= 8'd0; slot_row1 <= 8'd0; slot_row2 <= 8'd0;
             issue_oy <= 8'd0; issue_ox <= 8'd0;
             center_y <= 10'd0; center_x <= 10'd0;
+            fill_target <= 9'd0;
             slot1_base <= 10'd0; slot2_base <= 10'd0;
             x_left_base <= 14'd0; x_center_base <= 14'd0;
             x_right_base <= 14'd0; stride_batch_step <= 5'd0;
@@ -317,6 +324,8 @@ module line_buffer (
                     slot_valid <= 3'd0;
                     issue_oy <= 8'd0; issue_ox <= 8'd0;
                     center_y <= 10'd0; center_x <= 10'd0;
+                    fill_target <= (10'd1 >= {1'b0, cfg_desc[17:9]}) ?
+                        cfg_desc[17:9] - 9'd1 : 9'd1;
                     x_left_base <= 14'd0 - {10'd0, desc_batches[3:0]};
                     x_center_base <= 14'd0;
                     x_right_base <= {10'd0, desc_batches[3:0]};
@@ -392,7 +401,8 @@ module line_buffer (
                         end else begin
                             issue_oy <= issue_oy + 8'd1;
                             issue_ox <= 8'd0;
-                            center_y <= center_y + {8'd0, cfg_stride};
+                            center_y <= center_y_next;
+                            fill_target <= fill_target_next;
                             center_x <= 10'd0;
                             x_left_base <= 14'd0 - {10'd0, num_batches};
                             x_center_base <= 14'd0;
