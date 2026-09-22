@@ -51,10 +51,19 @@ static void update_roll_zero_calibration(
 }
 
 int pm_calculate_hand_angles_and_gripper(
+    PoseMappingContext *ctx, float shoulder_span_px, float dt_age_sec,
+    float dt_filter_sec, HumanJointTarget *out)
+{
+    return pm_calculate_hand_with_reference(ctx, shoulder_span_px, dt_age_sec,
+                                            dt_filter_sec, NULL, out);
+}
+
+int pm_calculate_hand_with_reference(
     PoseMappingContext *ctx,
     float shoulder_span_px,
     float dt_age_sec,
     float dt_filter_sec,
+    const Vec3 *reference,
     HumanJointTarget *out
 )
 {
@@ -80,8 +89,9 @@ int pm_calculate_hand_angles_and_gripper(
 
     if (ctx == NULL || out == NULL || shoulder_span_px <= PM_EPS) return -1;
 
-    /* Major angle 단계에서 갱신한 동일한 안정화 Body frame을 공유한다. */
-    if (pm_get_stable_body_frame(ctx, &body_x, &body_y, &body_z) != 0) {
+    /* Legacy shares the stabilized BodyFrame. Forearm mode supplies its own
+     * reference and never requires or updates BodyFrame. */
+    if (!reference && pm_get_stable_body_frame(ctx, &body_x, &body_y, &body_z) != 0) {
         return -1;
     }
 
@@ -104,8 +114,9 @@ int pm_calculate_hand_angles_and_gripper(
     pitch_axis = pm_project_perpendicular(finger_span_n, forearm_n);
 
     if (pm_vnormalize(&pitch_axis) != 0) {
-        /* Finger span이 불안정한 경우 Body Z를 이용한 fallback */
-        pitch_axis = pm_vcross(body_z, forearm_n);
+        /* Legacy Body Z / new forearm-local reference fallback. Degenerate
+         * hand planes still fail the quality checks below (caller HOLD). */
+        pitch_axis = pm_vcross(reference ? *reference : body_z, forearm_n);
         if (pm_vnormalize(&pitch_axis) != 0) return -1;
     }
 
@@ -158,16 +169,16 @@ int pm_calculate_hand_angles_and_gripper(
     ctx->prev_hand_normal = hand_normal_proj;
     ctx->prev_hand_normal_valid = 1U;
 
-    /* Camera-up-based Body Y supplies roll zero (X, then Z fallback). */
-    reference_normal = pm_project_perpendicular(body_y, forearm_n);
+    /* Explicit forearm reference, or legacy Body Y (X, then Z fallback). */
+    reference_normal = pm_project_perpendicular(reference ? *reference : body_y, forearm_n);
     reference_quality = pm_vlen(reference_normal);
 
-    if (reference_quality < PM_MIN_REFERENCE_QUALITY) {
+    if (!reference && reference_quality < PM_MIN_REFERENCE_QUALITY) {
         reference_normal = pm_project_perpendicular(body_x, forearm_n);
         reference_quality = pm_vlen(reference_normal);
     }
 
-    if (reference_quality < PM_MIN_REFERENCE_QUALITY) {
+    if (!reference && reference_quality < PM_MIN_REFERENCE_QUALITY) {
         reference_normal = pm_project_perpendicular(body_z, forearm_n);
         reference_quality = pm_vlen(reference_normal);
     }
