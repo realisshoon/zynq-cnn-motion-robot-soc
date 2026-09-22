@@ -3,7 +3,10 @@
 
 #include "common/robot_types.h"
 
-// 하나의 관절에 대한 보정
+/* Servo = input * scale * direction + zero_offset_deg.
+ * base/shoulder inputs are flexion/abduction AFTER spherical decomposition;
+ * elbow input is A1's interior angle; wrist scale=0 locks neutral for bring-up.
+ * These are command mappings, not the servo zero/sign definitions used by FK. */
 typedef struct {
     float scale; // 사람 관절 움직임의 크기 조정
     int direction; // 회전 방향 반전, 1 또는 -1

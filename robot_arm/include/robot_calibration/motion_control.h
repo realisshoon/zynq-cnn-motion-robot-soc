@@ -4,6 +4,8 @@
 #include "common/robot_types.h"
 
 int motion_control_validate_target(const HumanJointTarget *target);
+/* A1 spherical direction -> serial base flexion / shoulder abduction, then
+ * servo calibration. Elbow maps its interior angle separately. No clamping here. */
 void motion_control_map_target(const HumanJointTarget *input, JointCommand *output);
 void motion_control_apply_limits(JointCommand *command);
 
@@ -19,6 +21,8 @@ void motion_control_apply_limits(JointCommand *command);
  * 넘겨야 한다(유효하지 않은 값을 넘기면 NaN 등이 상태에 그대로 누적된다).
  * robot_calibration_apply()보다 먼저, 매 HumanJointTarget 수신 시 1회
  * 호출한다.
+ * 이 API/상태는 기존 통합 호출과 trace 호환을 위해 유지한다. 새 mapping은
+ * 누적 방위각을 주기적인 방향으로 복원하므로 여러 회전이 서보 포화를 만들지 않는다.
  */
 typedef struct {
     float base_deg;
