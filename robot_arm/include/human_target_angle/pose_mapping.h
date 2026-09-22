@@ -54,6 +54,9 @@ typedef struct {
 
     /*
      * 안정화된 Human Body Coordinate.
+     * X = anatomical left shoulder -> right shoulder (time-filtered).
+     * Y = camera up projected perpendicular to X; Z = X cross Y.
+     * Z is NOT forced toward camera +Z. See docs/coordinate_system.md.
      * 측면 자세에서 한쪽 Shoulder landmark가 흔들려도 Base/Roll 기준축이
      * 한 frame 만에 크게 뒤집히지 않도록 3D shoulder axis를 시간 필터링한다.
      */
