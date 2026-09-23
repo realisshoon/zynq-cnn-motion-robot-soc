@@ -37,7 +37,7 @@ def main():
     forearm_a1 = a1 + ["src/human_target_angle/forearm_mapping.c"]
     forearm_a2 = [f"src/robot_calibration/{name}.c" for name in (
         "forearm_calibration", "forearm_calibration_config", "forearm_motion_control",
-        "forearm_safety_check", "motion_limits", "motion_smoothing")]
+        "forearm_safety_check", "motion")]
     # 2026-09-22: agent_pipeline.c가 Agent1의 agent1_forearm_stage_*와 Agent3의
     # 새 ForearmJointCommand 기반 output_control/servo_control로 옮겨가서,
     # legacy a2(motion_control 등)로는 더 이상 링크되지 않는다. a3 파일 경로는

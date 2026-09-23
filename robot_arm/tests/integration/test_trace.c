@@ -620,8 +620,8 @@ static void test_tick_sm_ev(void)
     ctx.pwm.wrist_roll_pwm_us = 1600U;
     ctx.pwm.gripper_pwm_us = 1550U;
     ctx.motion.has_target = 1;
-    ctx.motion.target[0] = 93.2f;
-    ctx.motion.current[0] = 90.0f;
+    ctx.motion.axes[0].target = 93.2;
+    ctx.motion.axes[0].q = 90.0;
     ctx.servo_writes = 5U;
     g_time_us = 5000U;
     trace_mark();
@@ -808,7 +808,7 @@ static void test_pipeline_flow(void)
     drain();
 
     assert(s_dropped == 0U);
-    assert(s_hi == 322U);                    /* 새 레코드로 실행한 최대 사용량 */
+    assert(s_hi == 323U);                    /* 새 레코드로 실행한 최대 사용량(motion.c 도입 후 재측정) */
     assert(count_lines("A1,") == frames && count_lines("P3,") == frames && count_lines("A2,") == frames);
     assert(count_lines("TK,") == ticks);
     assert(count_lines("SM,") >= 2U);
