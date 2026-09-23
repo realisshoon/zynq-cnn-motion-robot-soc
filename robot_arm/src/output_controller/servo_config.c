@@ -31,7 +31,9 @@ static const ServoConfig servo_configs[SERVO_COUNT] = {
 
         .min_us     = 500U,
         .center_us  = 1500U,
-        .max_us     = 2500U
+        .max_us     = 2500U,
+
+        .startup_us = 2500U
     },
 
 
@@ -47,7 +49,9 @@ static const ServoConfig servo_configs[SERVO_COUNT] = {
 
         .min_us     = 500U,
         .center_us  = 1500U,
-        .max_us     = 2500U
+        .max_us     = 2500U,
+
+        .startup_us = 1500U
     },
 
 
@@ -63,7 +67,9 @@ static const ServoConfig servo_configs[SERVO_COUNT] = {
 
         .min_us     = 500U,
         .center_us  = 1500U,
-        .max_us     = 2500U
+        .max_us     = 2500U,
+
+        .startup_us = 1500U
     },
 
 
@@ -79,7 +85,9 @@ static const ServoConfig servo_configs[SERVO_COUNT] = {
 
         .min_us     = 500U,
         .center_us  = 1500U,
-        .max_us     = 2500U
+        .max_us     = 2500U,
+
+        .startup_us = 1500U
     },
 
 
@@ -99,7 +107,9 @@ static const ServoConfig servo_configs[SERVO_COUNT] = {
 
         .min_us     = 500U,
         .center_us  = 1500U,
-        .max_us     = 2500U
+        .max_us     = 2500U,
+
+        .startup_us = 1500U
     }
 };
 

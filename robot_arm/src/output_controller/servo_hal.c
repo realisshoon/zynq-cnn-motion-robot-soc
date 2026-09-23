@@ -32,15 +32,15 @@ int servo_hal_apply(const ServoPwmCommand *cmd)
 
 int servo_hal_startup(void)
 {
-    uint16_t centers[SERVO_COUNT];
+    uint16_t startup[SERVO_COUNT];
     unsigned i;
     for (i = 0; i < SERVO_COUNT; ++i) {
         const ServoConfig *config = servo_config_get((ServoChannel)i);
         if (config == NULL) return 0;
-        centers[i] = config->center_us;
+        startup[i] = config->startup_us;
     }
     const ServoPwmCommand cmd = {
-        centers[0], centers[1], centers[2], centers[3], centers[4]
+        startup[0], startup[1], startup[2], startup[3], startup[4]
     };
     if (!servo_hal_apply(&cmd)) return 0;
     return servo_hal_enable();
