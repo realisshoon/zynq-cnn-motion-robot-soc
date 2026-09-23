@@ -55,6 +55,9 @@ typedef struct {
     uint16_t center_us;
     uint16_t max_us;
 
+    /* Initial/IDLE PWM. Independent of the angle calibration center. */
+    uint16_t startup_us;
+
 } ServoConfig;
 
 
