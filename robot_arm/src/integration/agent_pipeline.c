@@ -31,10 +31,10 @@
  * (5채널 모두 1500us)와 맞추려고 4관절 90도 + gripper 0.5(=1500us)로 뒀다.
  */
 static const ForearmJointCommand k_home_pose = {
-    .elbow_roll_deg = 70.0f,
-    .elbow_pitch_deg = 110.0f,
+    .elbow_roll_deg = 90.0f,
+    .elbow_pitch_deg = 70.0f,
     .wrist_pitch_deg = 100.0f,
-    .wrist_roll_deg = 87.0f,
+    .wrist_roll_deg = 90.0f,
     .gripper_norm = 0.7f,
     .valid = 1U
 };

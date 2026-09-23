@@ -47,6 +47,7 @@ static int output_hold_or_invalid(
     ctx->hand_angle_valid = 0U;
     ctx->prev_hand_normal_valid = 0U;
     ctx->prev_roll_raw_valid = 0U;
+    ctx->prev_pitch_raw_valid = 0U;
     ctx->finger_pose3d_valid = 0U;
 
     return -1;

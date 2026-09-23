@@ -100,6 +100,7 @@ static int hold_or_invalid(ForearmMappingContext *ctx, HumanForearmTarget *out)
     ctx->pose.hand_angle_valid = 0U;
     ctx->pose.prev_hand_normal_valid = 0U;
     ctx->pose.prev_roll_raw_valid = 0U;
+    ctx->pose.prev_pitch_raw_valid = 0U;
     ctx->pose.finger_pose3d_valid = 0U;
     return -1;
 }
