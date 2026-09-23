@@ -113,12 +113,11 @@ int pm_calculate_hand_with_reference(
      * ------------------------------------------------------------ */
     pitch_axis = pm_project_perpendicular(finger_span_n, forearm_n);
 
-    if (pm_vnormalize(&pitch_axis) != 0) {
-        /* Legacy Body Z / new forearm-local reference fallback. Degenerate
-         * hand planes still fail the quality checks below (caller HOLD). */
-        pitch_axis = pm_vcross(reference ? *reference : body_z, forearm_n);
-        if (pm_vnormalize(&pitch_axis) != 0) return -1;
-    }
+    /* A normalized near-zero projection amplifies landmark noise. Do not
+     * invent a pitch axis from the body frame when the hand is unobservable. */
+    if (pm_vlen(pitch_axis) < PM_MIN_HAND_PLANE_QUALITY) return -1;
+
+    if (pm_vnormalize(&pitch_axis) != 0) return -1;
 
     sin_value = pm_vdot(
         pitch_axis,
@@ -145,7 +144,11 @@ int pm_calculate_hand_with_reference(
     if (pm_vnormalize(&hand_normal) != 0) return -1;
 
     /* Roll은 Forearm 축 주위 회전이므로 Forearm 방향 성분 제거 */
-    hand_normal_proj = pm_project_perpendicular(hand_normal, forearm_n);
+    /* Derive the roll normal from the lateral finger axis. Projecting the
+     * palm normal collapses at 90-degree wrist flexion and reverses beyond it,
+     * incorrectly coupling pitch into roll. f x projected span stays defined
+     * for a bent hand whenever the lateral axis is observable. */
+    hand_normal_proj = pm_vcross(forearm_n, pitch_axis);
 
     if (pm_vlen(hand_normal_proj) < PM_MIN_HAND_PLANE_QUALITY) return -1;
     if (pm_vnormalize(&hand_normal_proj) != 0) return -1;
@@ -163,7 +166,12 @@ int pm_calculate_hand_with_reference(
             pm_vscale(hand_normal_proj, normal_alpha)
         );
 
-        if (pm_vnormalize(&hand_normal_proj) != 0) return -1;
+        /* Previous camera-space normal need not be perpendicular to today's
+         * forearm. atan2 requires both directions in the same normal plane. */
+        hand_normal_proj = pm_project_perpendicular(hand_normal_proj, forearm_n);
+
+        if (pm_vlen(hand_normal_proj) < PM_MIN_HAND_PLANE_QUALITY ||
+            pm_vnormalize(&hand_normal_proj) != 0) return -1;
     }
 
     ctx->prev_hand_normal = hand_normal_proj;
@@ -236,6 +244,20 @@ int pm_calculate_hand_with_reference(
     if (ctx->roll_zero_calibrated) {
         corrected_roll_deg -= ctx->roll_zero_offset_deg;
     }
+
+    /* Apply the same bounded estimator correction to pitch as to roll.
+     * A monocular depth-branch change is not an instantaneous measured bend.
+     * This is not proof of correctness or the robot's actuator rate limit. */
+    if (ctx->prev_pitch_raw_valid) {
+        wrist_pitch_deg = pm_unwrap_near(wrist_pitch_deg,
+                                       ctx->prev_pitch_raw_unwrapped_deg);
+        float delta = wrist_pitch_deg - ctx->prev_pitch_raw_unwrapped_deg;
+        if (fabsf(delta) > PM_PITCH_SPIKE_MARGIN_DEG)
+            wrist_pitch_deg = ctx->prev_pitch_raw_unwrapped_deg +
+                copysignf(PM_PITCH_SPIKE_MARGIN_DEG, delta);
+    }
+    ctx->prev_pitch_raw_unwrapped_deg = wrist_pitch_deg;
+    ctx->prev_pitch_raw_valid = 1U;
 
     if (!ctx->hand_angle_valid) {
         ctx->prev_wrist_pitch_deg = wrist_pitch_deg;

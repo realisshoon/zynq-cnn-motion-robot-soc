@@ -184,12 +184,40 @@ static void test_wrist(void)
 {
     ForearmMappingContext c;
     HumanForearmTarget t;
-    const float cases[][2]={{0,0},{30,0},{-30,0},{0,45},{0,-45},{25,40},{0,179},{0,-179}};
+    /* Pure parent translation must not introduce relative finger-depth lag. */
+    init(&c);
+    c.pose.wrist_3d=pm_vec3(0,0,5);
+    c.pose.finger_parent_wrist=c.pose.wrist_3d;
+    c.pose.finger1_3d=pm_vec3(0.3f,0.15f,5.1f);
+    c.pose.finger2_3d=pm_vec3(0.3f,-0.15f,5.1f);
+    c.pose.finger_pose3d_valid=1;
+    c.pose.wrist_3d.z=6;
+    c.pose.finger1.value.x=PM_CAMERA_CX+PM_CAMERA_FX*0.3f/6.1f;
+    c.pose.finger1.value.y=PM_CAMERA_CY-PM_CAMERA_FY*0.15f/6.1f;
+    c.pose.finger2.value.x=c.pose.finger1.value.x;
+    c.pose.finger2.value.y=PM_CAMERA_CY+PM_CAMERA_FY*0.15f/6.1f;
+    assert(pm_reconstruct_finger_pose3d(&c.pose,0.05f)==0);
+    near(c.pose.finger1_3d.z-c.pose.wrist_3d.z,0.1f,0.001f);
+    near(c.pose.finger2_3d.z-c.pose.wrist_3d.z,0.1f,0.001f);
+    /* Roll must remain defined through 90-degree flexion, and must not
+     * acquire a 180-degree offset when the palm normal changes hemisphere. */
+    const float cases[][2]={{0,0},{30,0},{-30,0},{0,45},{0,-45},{25,40},{0,179},{0,-179},
+                            {89,40},{90,40},{91,40},{120,40},{-90,-45}};
     for(unsigned i=0;i<sizeof(cases)/sizeof(cases[0]);i++) {
         init(&c); t=hand(&c,25,35,cases[i][0],cases[i][1],12);
         near(t.wrist_pitch_deg,-cases[i][0],0.003f); /* legacy HUMAN sign */
         near(t.wrist_roll_deg,cases[i][1],0.003f);
         assert(t.gripper_norm==1 && t.hand_fresh);
+    }
+    init(&c);
+    t=hand(&c,25,35,0,0,12);
+    {
+        Vec3 f=direction_at(25,35);
+        Vec3 center=pm_vadd(c.pose.wrist_3d,c.wrist_reference);
+        c.pose.finger1_3d=pm_vsub(center,pm_vscale(f,0.1f));
+        c.pose.finger2_3d=pm_vadd(center,pm_vscale(f,0.1f));
+        /* Lateral axis parallel to forearm: HOLD rather than fabricated axis. */
+        assert(fm_calculate_hand(&c,100,0.05f,0.05f,&t)==-1);
     }
     init(&c); t=hand(&c,0,0,0,179,12);
     for(int i=0;i<80;i++) {

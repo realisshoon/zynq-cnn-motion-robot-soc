@@ -600,6 +600,7 @@ int pm_reconstruct_finger_pose3d(
     float finger2_len;
     Point3D raw_finger1;
     Point3D raw_finger2;
+    Point3D predicted_finger1, predicted_finger2;
     uint8_t prev_valid;
 
     if (ctx == NULL) return -1;
@@ -607,37 +608,28 @@ int pm_reconstruct_finger_pose3d(
     finger1_len = PM_SHOULDER_WIDTH_UNIT * PM_WRIST_TO_FINGER1_RATIO;
     finger2_len = PM_SHOULDER_WIDTH_UNIT * PM_WRIST_TO_FINGER2_RATIO;
     prev_valid = ctx->finger_pose3d_valid;
+    predicted_finger1 = pm_vadd(ctx->wrist_3d,
+        pm_vsub(ctx->finger1_3d, ctx->finger_parent_wrist));
+    predicted_finger2 = pm_vadd(ctx->wrist_3d,
+        pm_vsub(ctx->finger2_3d, ctx->finger_parent_wrist));
 
-    if (reconstruct_on_ray_sphere(
-            ctx->finger1.value,
-            ctx->wrist_3d,
-            finger1_len,
-            &ctx->finger1_3d,
-            prev_valid,
-            &raw_finger1) != 0) {
+    if (reconstruct_on_ray_sphere(ctx->finger1.value, ctx->wrist_3d,
+            finger1_len, &predicted_finger1, prev_valid, &raw_finger1) != 0 ||
+        reconstruct_on_ray_sphere(ctx->finger2.value, ctx->wrist_3d,
+            finger2_len, &predicted_finger2, prev_valid, &raw_finger2) != 0)
         return -1;
-    }
-
-    if (reconstruct_on_ray_sphere(
-            ctx->finger2.value,
-            ctx->wrist_3d,
-            finger2_len,
-            &ctx->finger2_3d,
-            prev_valid,
-            &raw_finger2) != 0) {
-        return -1;
-    }
 
     if (prev_valid) {
         ctx->finger1_3d = ema_point3d(
-            ctx->finger1_3d, raw_finger1, dt_filter_sec);
+            predicted_finger1, raw_finger1, dt_filter_sec);
         ctx->finger2_3d = ema_point3d(
-            ctx->finger2_3d, raw_finger2, dt_filter_sec);
+            predicted_finger2, raw_finger2, dt_filter_sec);
     } else {
         ctx->finger1_3d = raw_finger1;
         ctx->finger2_3d = raw_finger2;
     }
 
     ctx->finger_pose3d_valid = 1U;
+    ctx->finger_parent_wrist = ctx->wrist_3d;
     return 0;
 }

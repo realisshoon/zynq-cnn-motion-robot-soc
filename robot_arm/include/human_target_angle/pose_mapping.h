@@ -51,6 +51,9 @@ typedef struct {
     Point3D finger2_3d;
     uint8_t major_pose3d_valid;
     uint8_t finger_pose3d_valid;
+    /* Wrist at the last successful finger reconstruction. Finger continuity
+     * and smoothing use offsets from this parent, not absolute camera depth. */
+    Point3D finger_parent_wrist;
 
     /*
      * 안정화된 Human Body Coordinate.
@@ -70,6 +73,8 @@ typedef struct {
     uint8_t prev_hand_normal_valid;
     float prev_roll_raw_unwrapped_deg;
     uint8_t prev_roll_raw_valid;
+    float prev_pitch_raw_unwrapped_deg;
+    uint8_t prev_pitch_raw_valid;
 
     /* Human wrist roll zero calibration */
     uint8_t roll_zero_calibrating;
