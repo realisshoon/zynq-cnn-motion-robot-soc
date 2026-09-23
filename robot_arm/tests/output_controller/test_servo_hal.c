@@ -20,7 +20,17 @@ int main(void)
 {
     ServoPwmCommand cmd = {600, 900, 1200, 1800, 2400};
     const unsigned values[] = {600, 900, 1200, 1800, 2400};
+    const unsigned startup_values[] = {2500, 1500, 1500, 1500, 1500};
     unsigned i, side;
+
+    assert(servo_config_get(SERVO_ELBOW_ROLL)->min_us == 500U);
+    assert(servo_config_get(SERVO_ELBOW_ROLL)->center_us == 1500U);
+    assert(servo_config_get(SERVO_ELBOW_ROLL)->max_us == 2500U);
+    assert(servo_config_get(SERVO_ELBOW_ROLL)->startup_us == 2500U);
+    for (i = SERVO_ELBOW_PITCH; i < SERVO_COUNT; ++i) {
+        const ServoConfig *config = servo_config_get((ServoChannel)i);
+        assert(config->startup_us == config->center_us);
+    }
     reset();
     assert(servo_hal_apply(&cmd));
     assert(servo_pwm_driver_mock_get_log_count() == 6);
@@ -30,7 +40,7 @@ int main(void)
     assert(servo_hal_startup());
     assert(servo_pwm_driver_mock_get_log_count() == 7);
     for (i = 0; i < 5; ++i)
-        check(i, i * 4, servo_config_get((ServoChannel)i)->center_us);
+        check(i, i * 4, startup_values[i]);
     check(5, 0x1C, 1); check(6, 0x18, 1);
     assert(servo_hal_disable()); check(7, 0x18, 0);
     for (i = 0; i < 5; ++i) for (side = 0; side < 2; ++side) {
