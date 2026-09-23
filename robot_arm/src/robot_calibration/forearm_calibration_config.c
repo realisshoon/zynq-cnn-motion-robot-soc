@@ -11,6 +11,9 @@
  *    특히 elbow_roll/elbow_pitch는 기구 형상이 달라 실제 최대각이 더 좁을 수 있다.
  *  - max_delta_deg=0.6(20ms 틱당, 초당 30도): legacy의 낮은 명령 속도를
  *    재사용했다. 하중/토크/가속도 또는 실제 새 기구의 안전 보장은 아니다.
+ *  - amax_deg_s2=120(초당 120도의 초당): D:\Working\robot-motion-harness에서
+ *    Codex가 검증한 SPEED_ACCEL 프로토타입 데모값을 그대로 가져왔다. 실제
+ *    서보/부하로 측정한 값이 아니다 — Cortex-A9 실행시간도 아직 미검증.
  *
  * 실물 적용 전 필요한 실측 목록(2026-09-22):
  *  1) elbow_roll: 실제 회전 + 방향, 90도가 테이블 위 어느 방위를 가리키는지,
@@ -31,4 +34,6 @@ const ForearmCalibrationConfig forearm_calibration_config = {
                       .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
     .wrist_roll  = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 90.0f,
                       .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
+    /* 순서: elbow_roll, elbow_pitch, wrist_pitch, wrist_roll. */
+    .amax_deg_s2 = { 120.0f, 120.0f, 120.0f, 120.0f },
 };

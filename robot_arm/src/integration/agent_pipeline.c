@@ -141,8 +141,14 @@ int agent2_run(AgentPipelineContext *ctx)
     ctx->commands_accepted++;
     TRACE_SET_A2_MAPPED(ctx, command); /* [TRACE] */
 
-    /* HOLD 프레임처럼 직전과 같은 명령이면 재계획하지 않는다(램프가 속도 0에서 다시 시작되는 것을 막는다). */
-    if (ctx->command_valid && same_command(&command, &ctx->command)) {
+    /* HOLD 프레임처럼 직전과 같은 명령이면 재계획하지 않는다(램프가 속도 0에서 다시 시작되는 것을 막는다).
+     * 단, motion이 hold 중(blocked_flags != OK)이면 값이 같아도 반드시 다시
+     * set_target을 불러야 한다 -- forearm_calibration_step()의 emergency_hold가
+     * 축의 target=q/v=0으로 얼어붙여 놨으므로, set_target 호출 자체가 재개의
+     * 유일한 신호다(forearm_calibration.h의 forearm_calibration_set_target()
+     * 주석 참고). 여기서 스킵하면 같은 명령으로는 영원히 안 풀린다. */
+    if (ctx->command_valid && same_command(&command, &ctx->command) &&
+        ctx->motion.blocked_flags == FOREARM_SAFETY_CHECK_OK) {
         TRACE_SET_A2_RESULT(ctx, A2_RESULT_SAME); /* [TRACE] */
         return 1;
     }

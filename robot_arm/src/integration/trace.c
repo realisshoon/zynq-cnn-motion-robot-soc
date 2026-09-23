@@ -482,7 +482,7 @@ static float ramp_remaining(const ForearmMotionState *m)
     unsigned i;
 
     for (i = 0U; i < (unsigned)FOREARM_MOTION_JOINT_COUNT; ++i) {
-        float d = m->target[i] - m->current[i];
+        float d = (float)(m->axes[i].target - m->axes[i].q);
 
         if (d < 0.0f) d = -d;
         if (d > worst) worst = d;
