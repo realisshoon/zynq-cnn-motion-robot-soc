@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
-static void test_rejected_command(const JointCommand *command)
+static void test_rejected_command(const ForearmJointCommand *command)
 {
     ServoPwmCommand pwm = {600, 900, 1200, 1800, 2400};
     ServoPwmCommand before = pwm;
@@ -16,7 +16,7 @@ static void test_rejected_command(const JointCommand *command)
 #ifndef SERVO_PWM_DRIVER_USE_XILINX
 static void test_failed_conversion_skips_apply(void)
 {
-    JointCommand invalid = {0};
+    ForearmJointCommand invalid = {0};
     ServoPwmCommand pwm = {600, 900, 1200, 1800, 2400};
     int applied = 0;
     servo_pwm_driver_mock_reset();
@@ -33,7 +33,7 @@ static void test_failed_conversion_skips_apply(void)
 
 int main(void)
 {
-    JointCommand legacy = {0};
+    ForearmJointCommand legacy = {0};
     output_control_init();
     test_rejected_command(NULL);
     test_rejected_command(&legacy);

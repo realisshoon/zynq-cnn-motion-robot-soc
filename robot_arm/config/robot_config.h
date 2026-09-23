@@ -86,6 +86,7 @@
 #define PM_JOINT_DEADBAND_DEG                   0.5f
 #define PM_ROLL_DEADBAND_DEG                    1.0f
 #define PM_ROLL_SPIKE_MARGIN_DEG                35.0f
+#define PM_PITCH_SPIKE_MARGIN_DEG               35.0f
 
 /* Gripper 의도: 0.0=CLOSE, 1.0=OPEN */
 #define PM_GRIPPER_OPEN_RATIO                   0.10f

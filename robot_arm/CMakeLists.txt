@@ -115,10 +115,18 @@ if(AGENT1_ONLY)
 endif()
 
 add_library(robot_calibration STATIC
-    src/robot_calibration/kinematics_2d.c
+    src/robot_calibration/robot_calibration.c
+    src/robot_calibration/robot_calibration_config.c
+    src/robot_calibration/safety_check.c
     src/robot_calibration/motion_control.c
+    src/robot_calibration/motion_limits.c
+    src/robot_calibration/motion_smoothing.c
 )
 configure_robot_target(robot_calibration)
+
+if(UNIX OR MINGW)
+    target_link_libraries(robot_calibration PUBLIC m)
+endif()
 
 # ============================================================
 # Agent 3 : Output Controller
@@ -128,8 +136,8 @@ add_library(output_controller STATIC
     src/output_controller/output_control.c
     src/output_controller/servo_control.c
     src/output_controller/servo_config.c
-    src/output_controller/motion_record.c
-    src/output_controller/robot_mode.c
+    src/output_controller/servo_hal.c
+    src/drivers/servo_pwm_driver.c
 )
 configure_robot_target(output_controller)
 
@@ -171,12 +179,19 @@ if(BUILD_TESTING)
     target_link_libraries(test_pose_csv PRIVATE human_target_angle)
 
     # Agent 2 - 팀원 영역
-    add_executable(test_kinematics_2d
-        tests/robot_calibration/test_kinematics_2d.c
+    add_executable(test_robot_calibration
+        tests/robot_calibration/test_robot_calibration.c
     )
-    configure_robot_target(test_kinematics_2d)
-    target_link_libraries(test_kinematics_2d PRIVATE robot_calibration)
-    add_test(NAME kinematics_2d COMMAND test_kinematics_2d)
+    configure_robot_target(test_robot_calibration)
+    target_link_libraries(test_robot_calibration PRIVATE robot_calibration)
+    add_test(NAME robot_calibration COMMAND test_robot_calibration)
+
+    add_executable(test_safety_check
+        tests/robot_calibration/test_safety_check.c
+    )
+    configure_robot_target(test_safety_check)
+    target_link_libraries(test_safety_check PRIVATE robot_calibration)
+    add_test(NAME safety_check COMMAND test_safety_check)
 
     # Agent 3 - 팀원 영역
     add_executable(test_servo_control
@@ -185,13 +200,6 @@ if(BUILD_TESTING)
     configure_robot_target(test_servo_control)
     target_link_libraries(test_servo_control PRIVATE output_controller)
     add_test(NAME servo_control COMMAND test_servo_control)
-
-    add_executable(test_record
-        tests/output_controller/test_record.c
-    )
-    configure_robot_target(test_record)
-    target_link_libraries(test_record PRIVATE output_controller)
-    add_test(NAME motion_record COMMAND test_record)
 
     add_executable(test_output_control
         tests/output_controller/test_output_control.c
