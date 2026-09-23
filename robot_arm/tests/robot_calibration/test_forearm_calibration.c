@@ -235,14 +235,31 @@ static void test_clamped_envelope_never_reaches_table(void)
     assert(min_height > -5.0f); /* 지금 범위에서는 항상 테이블 위 */
 }
 
+/*
+ * motion.c(Motion/SPEED_ACCEL) 도입 후 재작성(2026-09-23). 예전에는 pitch=170
+ * (클램프 밖) 값으로 [20,160] 안에서는 도달 불가능한 테이블충돌 구간을 직접
+ * 뚫고 지나가며 차단을 검증했는데, forearm_calibration_set_target()이 이제
+ * motion_init()에 넘기기 전에 값을 [min,max]로 clamp한다(motion_init은 범위
+ * 밖 initial을 그냥 거부하고 그 축의 Motion을 0으로 방치하므로, set_target()도
+ * 항상 clamp하는 motion_set_target()과 동작을 맞추기 위해서다 -- 위
+ * forearm_calibration_set_target() 주석 참고). 그래서 클램프 밖 값을 이 API에
+ * 직접 넣는 시나리오 자체가 더 이상 의미가 없다. 대신 [20,160] 안에서 실제로
+ * 도달 가능한 자기충돌(wrist_pitch>155, test_forearm_safety_check.c의
+ * test_self_collision 참고)로 같은 차단 메커니즘을 검증한다.
+ *
+ * 실행해서 확인한 값(never guessed): roll=90,pitch=90,wr=90 고정, wp를
+ * 20->160으로 보내면 tick=230에서 wp=154.544도까지 갔을 때 자기충돌로
+ * 차단되고(blocked_flags=SELF_COLLISION), 그 뒤로는 새 목표가 오기 전까지
+ * 그 자리에 멈춘다(차단은 경계를 처음 넘는 그 순간 한 번만 뜬다 -- 그 다음
+ * 틱부터는 emergency_hold가 target=q로 얼어붙여서 "직전과 같은 안전한 위치"를
+ * 다시 제안하므로 blocked_flags는 OK로 돌아간다. 이게 예전 설계와 다른 점:
+ * 예전엔 ticks_elapsed만 멈추고 target은 안 바뀌어서 매틱 다시 막혔다).
+ */
 static void test_safe_endpoints_do_not_allow_unsafe_ramp(void)
 {
     ForearmMotionState s;
-    /* 클램프 밖(roll=90,pitch=170,wp=90 고정) 값으로 중간경로 차단
-     * 메커니즘만 검증한다. wr=20/160에서 tip.z=0.799cm(안전), wr=90
-     * 중간에서 tip.z=-5.681cm(테이블 -5cm 아래). */
-    ForearmJointCommand start=raw_command(90,170,90,20);
-    ForearmJointCommand end=raw_command(90,170,90,160);
+    ForearmJointCommand start=raw_command(90,90,20,90);
+    ForearmJointCommand end=raw_command(90,90,160,90);
     ForearmJointCommand output=start, previous;
     int blocked=0;
     forearm_calibration_state_init(&s);
@@ -252,18 +269,17 @@ static void test_safe_endpoints_do_not_allow_unsafe_ramp(void)
         previous=output;
         forearm_calibration_step(&s,&output);
         assert(output.valid && forearm_safety_check_apply(&output,NULL));
-        assert(fabsf(output.wrist_roll_deg-previous.wrist_roll_deg)<=0.6001f);
+        assert(fabsf(output.wrist_pitch_deg-previous.wrist_pitch_deg)<=0.6001f);
         if (s.blocked_flags) {
-            assert(s.blocked_flags==FOREARM_SAFETY_CHECK_TABLE_COLLISION);
-            near(output.wrist_roll_deg,previous.wrist_roll_deg);
+            assert(s.blocked_flags==FOREARM_SAFETY_CHECK_SELF_COLLISION);
+            near(output.wrist_pitch_deg,previous.wrist_pitch_deg);
             blocked++;
         }
     }
-    assert(blocked>0 && output.wrist_roll_deg<90);
-    /* A safe new goal must release the hold, with no skipped trajectory time.
-     * elbow_roll/pitch는 그대로 두고(안 그러면 170도 차이 때문에 250틱
-     * 안에 도달 못 한다) wp/wr만 안전한 값으로 바꾼다. */
-    end=raw_command(90,170,20,20);
+    assert(blocked>0 && output.wrist_pitch_deg<155.0f);
+    near(output.wrist_pitch_deg,154.544f);
+    /* A safe new goal must release the hold, with no skipped trajectory time. */
+    end=raw_command(90,90,20,20);
     forearm_calibration_set_target(&s,&end);
     assert(s.blocked_flags==0);
     for (int tick=0; tick<250; tick++) {

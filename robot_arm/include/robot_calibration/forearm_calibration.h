@@ -3,6 +3,7 @@
 
 #include "robot_calibration/forearm_motion_control.h"
 #include "robot_calibration/forearm_safety_check.h"
+#include "robot_calibration/motion.h"
 
 /*
  * Agent2 새 5축 공개 API. Agent1의 HumanForearmTarget을 받아 보정 및
@@ -21,28 +22,24 @@ int forearm_calibration_apply(
 #define FOREARM_MOTION_JOINT_COUNT 4
 
 /*
- * 틱 단위 램프 상태. legacy RobotMotionState와 같은 설계(속도 제한 + 다관절
- * 동기화 + 스무딩, 정지 후 출발은 smoothstep/이동 중 재목표는 선형 추종,
- * 가속도 제한 없음 — docs/agent2_design_log.md 참고)를 4관절로 재사용한다.
- * 처음 쓰기 전에 forearm_calibration_state_init()으로 0 초기화한다.
+ * 틱 단위 램프 상태. D:\Working\robot-motion-harness에서 Codex가 설계/검증한
+ * motion.c(Motion, SPEED_ACCEL)를 관절마다 하나씩 4개 써서, 실제 속도 상태를
+ * 유지하며 매틱 가속도+관절한계 제동거리를 지키는 궤적을 만든다(문서:
+ * D:\Working\robot-motion-harness\README.md). 이전의 "정해진 tick 수에 걸쳐
+ * 보간(smoothstep/선형), 가속도 제한 없음" 방식을 대체한다 — 처음 쓰기 전에
+ * forearm_calibration_state_init()으로 0 초기화한다.
  *
  * 사용법: forearm_calibration_apply()가 새 ForearmJointCommand를 만들 때마다
- * forearm_calibration_set_target() 호출, 고정 제어 틱마다
+ * forearm_calibration_set_target() 호출, 고정 제어 틱(20ms)마다
  * forearm_calibration_step() 호출.
  *
- * 관절 배열 순서: elbow_roll, elbow_pitch, wrist_pitch, wrist_roll --
+ * axes 배열 순서: elbow_roll, elbow_pitch, wrist_pitch, wrist_roll --
  * ForearmJointCommand 필드 순서와 동일(gripper 제외).
  */
 typedef struct {
-    float current[FOREARM_MOTION_JOINT_COUNT];
-    float start[FOREARM_MOTION_JOINT_COUNT];
-    float target[FOREARM_MOTION_JOINT_COUNT];
-    float max_delta_per_tick[FOREARM_MOTION_JOINT_COUNT];
+    Motion axes[FOREARM_MOTION_JOINT_COUNT];
     float gripper;
-    int stretched_ticks;
-    int ticks_elapsed;
     int has_target;
-    int linear_retarget;
     /* Unsafe intermediate command: hold last output and expose the cause.
      * A new target clears the flag. This checks sampled centerline poses,
      * not swept volume, mechanical thickness, or actual servo feedback. */
@@ -52,18 +49,24 @@ typedef struct {
 void forearm_calibration_state_init(ForearmMotionState *state);
 
 /*
- * 로봇팔의 현재 명령 위치에서 target까지 가는 램프를 다시 계획한다. legacy
- * robot_calibration_set_target()과 동일한 계약: 이전 램프가 끝나기 전에
- * 다시 부를 수 있고, 이동 중 재목표는 선형 추종(속도 연속성/가속도
- * 제한은 보장하지 않는다), 최초 호출은 곧바로 target으로 스냅한다.
+ * 로봇팔의 현재 명령 위치에서 target까지 가는 목표를 다시 세운다(각 축
+ * motion_set_target() 그대로 위임 -- 목표만 갱신, 현재 속도/위치는 안 건드림).
+ * 이전 램프가 끝나기 전에 다시 부를 수 있고, hold 중이었어도 이 호출로
+ * 곧바로 새 목표를 향해 재개한다(호출자가 이전과 같은 값을 다시 넣어도
+ * 마찬가지 -- hold 해제는 이 함수 호출 여부로만 결정된다, ctx->command와의
+ * 비교로 스킵하지 말 것). 최초 호출은 곧바로 target으로 스냅한다.
  * target은 forearm_calibration_apply() 등으로 안전검사한 valid==1 명령이어야 한다.
  * 최초 target은 실측/승인한 시작 명령으로 시드해야 한다. 위치 피드백은 없다.
  */
 void forearm_calibration_set_target(ForearmMotionState *state, const ForearmJointCommand *target);
 
-/* 램프를 한 틱 진행시킨다. 중간 명령이 unsafe면 기존 출력을 유지하고
- * blocked_flags를 설정한다. 목표가 안전해도 그 사이 경로는 다를 수 있다.
- * 다른 경로 자동 탐색은 하지 않는다. */
+/* 램프를 한 틱 진행시킨다. 4축 사본에 각각 motion_step()을 적용해 후보를
+ * 만들고, 합쳐서 forearm_safety_check_apply()를 통과해야 4축을 함께 commit한다.
+ * 실패하면(motion_step 자체 실패 포함) 사본을 버리고 4축 모두
+ * motion_emergency_hold()를 적용해 그 자리에서 속도를 0으로 묶는다 --
+ * 위험한 후보를 매틱 다시 시도하며 내부 속도가 누적되지 않게 하기 위해서다.
+ * blocked_flags에 사유를 남긴다. 목표가 안전해도 그 사이 경로는 다를 수
+ * 있고, 다른 경로 자동 탐색은 하지 않는다. */
 void forearm_calibration_step(ForearmMotionState *state, ForearmJointCommand *output);
 
 #endif /* ROBOT_CALIBRATION_FOREARM_CALIBRATION_H */

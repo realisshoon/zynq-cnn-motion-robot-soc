@@ -23,6 +23,12 @@ typedef struct {
     JointCalibration elbow_pitch;  /* M1: 팔꿈치 고도각(구 shoulder 역할) */
     JointCalibration wrist_pitch;  /* M2 */
     JointCalibration wrist_roll;   /* M3 */
+    /* motion.c(Motion)의 가속도 제한(deg/s^2). 순서는 위와 동일(elbow_roll,
+     * elbow_pitch, wrist_pitch, wrist_roll). JointCalibration에는 안 넣었다 --
+     * 그 구조체는 legacy 6축과 공유하는 타입이라 가속도 제한이 없는 legacy
+     * 경로(motion_limits.c/motion_smoothing.c)에 불필요한 필드를 얹고 싶지
+     * 않았다. 값 자체는 다른 필드들과 마찬가지로 미실측 임시값이다. */
+    float amax_deg_s2[4];
 } ForearmCalibrationConfig;
 
 extern const ForearmCalibrationConfig forearm_calibration_config;
