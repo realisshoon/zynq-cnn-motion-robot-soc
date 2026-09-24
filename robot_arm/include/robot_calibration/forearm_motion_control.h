@@ -5,14 +5,7 @@
 #include "common/robot_types.h"
 #include "human_target_angle/forearm_mapping.h"
 
-/*
- * Agent2 새 5축(팔꿈치부터 시작) 출력. ForearmJointCommand는
- * include/common/robot_types.h에 정의된다(2026-09-22, 사용자 지시 —
- * Agent3 실물 통합을 위해 공용 헤더로 옮김). 그 파일의 legacy JointCommand
- * (구 6축, base/shoulder/elbow/wrist_pitch/wrist_roll/gripper)와는 별도
- * 타입이다 — legacy 경로가 계속 쓰므로 필드를 재해석하거나 덮어쓰지 않는다.
- * 서보 명령(도 단위, 보정 이후 값)이며 사람 관절 의미가 아니다.
- */
+/* Five-axis output uses ForearmJointCommand from common/robot_types.h. */
 
 /*
  * target->valid==0이거나 elbow_roll/elbow_pitch/wrist_pitch/wrist_roll/

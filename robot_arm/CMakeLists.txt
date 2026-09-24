@@ -115,12 +115,11 @@ if(AGENT1_ONLY)
 endif()
 
 add_library(robot_calibration STATIC
-    src/robot_calibration/robot_calibration.c
-    src/robot_calibration/robot_calibration_config.c
-    src/robot_calibration/safety_check.c
-    src/robot_calibration/motion_control.c
-    src/robot_calibration/motion_limits.c
-    src/robot_calibration/motion_smoothing.c
+    src/robot_calibration/forearm_calibration.c
+    src/robot_calibration/forearm_calibration_config.c
+    src/robot_calibration/forearm_motion_control.c
+    src/robot_calibration/forearm_safety_check.c
+    src/robot_calibration/motion.c
 )
 configure_robot_target(robot_calibration)
 
@@ -178,20 +177,16 @@ if(BUILD_TESTING)
     configure_robot_target(test_pose_csv)
     target_link_libraries(test_pose_csv PRIVATE human_target_angle)
 
-    # Agent 2 - 팀원 영역
-    add_executable(test_robot_calibration
-        tests/robot_calibration/test_robot_calibration.c
-    )
-    configure_robot_target(test_robot_calibration)
-    target_link_libraries(test_robot_calibration PRIVATE robot_calibration)
-    add_test(NAME robot_calibration COMMAND test_robot_calibration)
-
-    add_executable(test_safety_check
-        tests/robot_calibration/test_safety_check.c
-    )
-    configure_robot_target(test_safety_check)
-    target_link_libraries(test_safety_check PRIVATE robot_calibration)
-    add_test(NAME safety_check COMMAND test_safety_check)
+    # Active five-axis Agent2 regressions.
+    foreach(name forearm_calibration forearm_safety_check forearm_replay)
+        add_executable(test_${name} tests/robot_calibration/test_${name}.c)
+        configure_robot_target(test_${name})
+        target_link_libraries(test_${name} PRIVATE robot_calibration human_target_angle)
+    endforeach()
+    add_test(NAME forearm_calibration COMMAND test_forearm_calibration)
+    add_test(NAME forearm_safety_check COMMAND test_forearm_safety_check)
+    add_test(NAME forearm_replay COMMAND test_forearm_replay
+        ${CMAKE_CURRENT_SOURCE_DIR}/etc/example_pose2d_1280x720_20hz.csv)
 
     # Agent 3 - 팀원 영역
     add_executable(test_servo_control

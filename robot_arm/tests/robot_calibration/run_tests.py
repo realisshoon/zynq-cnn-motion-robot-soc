@@ -24,30 +24,18 @@ def main():
     a1 = [f"src/human_target_angle/{name}.c" for name in (
         "agent1_stage", "pose_hand", "pose_joint", "pose_mapping", "pose_math",
         "pose_reconstruction", "pose_tracking")]
-    a2 = [f"src/robot_calibration/{name}.c" for name in (
-        "motion_control", "motion_limits", "motion_smoothing", "robot_calibration",
-        "robot_calibration_config", "safety_check")]
     a3 = [f"src/output_controller/{name}.c" for name in (
         "output_control", "servo_config", "servo_control", "servo_hal")]
     a3 += ["src/drivers/servo_pwm_driver.c"]
     uart = ["src/uart_pose/uart_pose_protocol.c"]
-    # 새 5축(팔꿈치부터 시작하는 수평 설치) 모듈. legacy a1/a2 목록은 건드리지
-    # 않고, forearm_mapping.c만 얹은 별도 목록으로 링크한다 -- 기존 테스트
-    # 케이스의 소스 목록/동작에 영향이 없게 하기 위해서다.
     forearm_a1 = a1 + ["src/human_target_angle/forearm_mapping.c"]
     forearm_a2 = [f"src/robot_calibration/{name}.c" for name in (
         "forearm_calibration", "forearm_calibration_config", "forearm_motion_control",
         "forearm_safety_check", "motion")]
-    # 2026-09-22: agent_pipeline.c가 Agent1의 agent1_forearm_stage_*와 Agent3의
-    # 새 ForearmJointCommand 기반 output_control/servo_control로 옮겨가서,
-    # legacy a2(motion_control 등)로는 더 이상 링크되지 않는다. a3 파일 경로는
-    # 그대로지만 내용이 Agent3가 바꾼 새 5채널 버전이다.
     pipeline = (a1 + ["src/human_target_angle/agent1_forearm_stage.c",
                        "src/human_target_angle/forearm_mapping.c"] +
                 forearm_a2 + a3 + ["src/integration/agent_pipeline.c"])
     cases = []
-    for name in ("test_robot_calibration", "test_motion_limits", "test_motion_smoothing", "test_safety_check"):
-        cases.append((name, a2 + [f"tests/robot_calibration/{name}.c"], [], []))
     for name in ("test_pose_mapping", "test_body_frame"):
         cases.append((name, a1 + [f"tests/human_target_angle/{name}.c"], [], []))
     cases += [

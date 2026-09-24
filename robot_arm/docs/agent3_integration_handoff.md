@@ -1,3 +1,5 @@
+> 이 문서는 과거 인계 기록이다. 현행 5축 전용 수정 정책은 [../AGENTS.md](../AGENTS.md)를 따른다. 6축 보존 지침은 폐기되었다.
+
 # Agent3 Integration Handoff
 
 기준: 로컬 HEAD `cba4832` 이후 Agent3 작업 트리 변경. Agent2 병렬 개발 중임을

@@ -1,7 +1,17 @@
 # robot_arm
 
 > Agent1 **사람 몸 좌표계 기반 5축 전완 경로**는 [README_AGENT1_TEST.md](README_AGENT1_TEST.md)를 참조하세요.
-> 아래 기존 6축 보드 통합 설명은 유지됩니다. 새 Agent2/3 연결·실물 보정은 아직 완료되지 않았습니다.
+> 현재 A1/A2/A3 파이프라인은 **5축 forearm 경로**를 사용합니다.
+> 수정 정책: [AGENTS.md](AGENTS.md). A2 설정: [forearm_calibration_config.c](src/robot_calibration/forearm_calibration_config.c).
+> elbow_roll/elbow_pitch는 `direction=-1`, 중립 offset은 90°입니다.
+> 호스트 검증: `python tests/robot_calibration/run_tests.py`.
+> Vitis에서 삭제된 6축 A2 소스 링크를 제거하고, 현행 `forearm_*.c`와 `motion.c`를 등록하세요.
+> 관절 설정 자료형은 `forearm_calibration_config.h`, 3D 점 자료형은 `robot_geometry.h`에 있습니다.
+> [정리 및 검증 결과](docs/agent2_cleanup_20260924.md)를 확인하세요.
+
+## 과거 6축 통합 안내 (이력)
+
+아래는 이전 구성의 기록입니다. 6축 API·소스 목록·채널 수는 현재 빌드 지침으로 사용하지 마세요.
 
 Zybo Z7-20(Zynq-7020)의 PS(ARM Cortex-A9, 베어메탈)에서 동작하는 **6축 서보 로봇팔 제어 소프트웨어**입니다.
 사람 팔의 2D 관절 좌표를 받아 로봇팔 관절 각도로 바꾸고, 안전검사와 속도제한을 거쳐 서보 PWM으로 출력합니다.

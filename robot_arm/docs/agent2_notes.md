@@ -1,5 +1,9 @@
 # Agent2 통합 기록
 
+> 현행 수정 지침은 [../AGENTS.md](../AGENTS.md)이다. 2026-09-24 사용자 결정으로
+> 6축 A2 보존 지침은 폐기되었고, 아래의 보존/legacy 연결 설명은 작성 당시 이력이다.
+> 정리 결과: [agent2_cleanup_20260924.md](agent2_cleanup_20260924.md).
+
 Agent2(robot_calibration/motion 담당) 쪽에서 Claude Code/Codex가 생성한 설계 로그·핸드오프·검증 리포트를
 한 파일로 모았다. 원래 여러 개의 `agent2_*`/`agent3_forearm_handoff_prompt`/날짜별 인계 문서로
 흩어져 있던 것을 2026-09-24에 통합했다. 각 절은 원문을 그대로 보존했고(작성 시점 기준 코드/로그를

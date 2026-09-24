@@ -76,23 +76,21 @@ static void test_map_and_limits(void)
 {
     ForearmJointCommand c;
 
-    /* scale=1,direction=1인 항등 매핑. zero_offset은 elbow_roll/elbow_pitch/
-     * wrist_pitch=90(수식/사진으로 확정), wrist_roll=87(실물 서보 30/90/160
-     * 실측으로 확정, 2026-09-23). */
+    /* Elbow directions are -1; wrists remain +1. Neutral offsets unchanged. */
     c = mapped(target(0, 0, 0, 0, 0.0f));
     near(c.elbow_roll_deg, 90); near(c.elbow_pitch_deg, 90);
     near(c.wrist_pitch_deg, 90); near(c.wrist_roll_deg, 87);
     near(c.gripper_norm, 0.0f);
 
     c = mapped(target(30, -20, 45, -45, 1.0f));
-    near(c.elbow_roll_deg, 120); near(c.elbow_pitch_deg, 70);
+    near(c.elbow_roll_deg, 60); near(c.elbow_pitch_deg, 110);
     near(c.wrist_pitch_deg, 135); near(c.wrist_roll_deg, 42);
     near(c.gripper_norm, 1.0f);
 
     /* clamp: [20,160] 밖으로 나가는 큰 값. */
     {
         c = mapped(target(200, 0, 200, -200, 0.5f));
-        near(c.elbow_roll_deg, 160);
+        near(c.elbow_roll_deg, 20);
         near(c.wrist_pitch_deg, 160);
         near(c.wrist_roll_deg, 20);
     }
@@ -110,10 +108,10 @@ static void test_map_and_limits(void)
         float wr_edge=sign<0 ? 20.0f : sign*70.0f+87.0f;
         float wr_edge2=sign<0 ? 20.0f : sign*70.1f+87.0f;
         c=mapped(target(sign*70.0f,sign*70.0f,sign*70.0f,sign*70.0f,0.5f));
-        near(c.elbow_roll_deg,edge); near(c.elbow_pitch_deg,edge);
+        near(c.elbow_roll_deg,180.0f-edge); near(c.elbow_pitch_deg,180.0f-edge);
         near(c.wrist_pitch_deg,edge); near(c.wrist_roll_deg,wr_edge);
         c=mapped(target(sign*70.1f,sign*70.1f,sign*70.1f,sign*70.1f,0.5f));
-        near(c.elbow_roll_deg,edge); near(c.elbow_pitch_deg,edge);
+        near(c.elbow_roll_deg,180.0f-edge); near(c.elbow_pitch_deg,180.0f-edge);
         near(c.wrist_pitch_deg,edge); near(c.wrist_roll_deg,wr_edge2);
     }
 
