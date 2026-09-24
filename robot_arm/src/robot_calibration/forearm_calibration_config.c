@@ -2,9 +2,9 @@
 
 /*
  * direction/zero_offset_deg 실측 현황(2026-09-23):
- *  - elbow_roll, elbow_pitch: BodyFrame 정의(pose_math.c)와 forearm_mapping.c의
- *    atan2 수식을 대조해서 "표값 = raw+90"이 대수적으로 정확히 성립함을 코드로
- *    확인했다. direction=1, zero_offset_deg=90 확정.
+ *  - elbow_roll, elbow_pitch: 2026-09-24 사용자 실물 관찰에 따라 direction=-1.
+ *    이전 raw+90 수식 대조는 물리 서보 방향의 검증이 아니므로 확정 주장을 폐기.
+ *    중립 offset=90 유지. FK 물리 축 방향은 별도 실측 대상이다.
  *  - wrist_pitch: idle.jpg/straight.jpg 두 사진 raw 비교로 방향만 확인(손이
  *    더 아래로 굽은 idle이 실제로 더 낮은 표값으로 나옴) → direction=1 확정.
  *    offset 정밀값은 아직 미실측이라 기존 90 유지.
@@ -34,9 +34,9 @@
  * 내보내지 말 것(문서/README에서 확인 절차를 안내한다).
  */
 const ForearmCalibrationConfig forearm_calibration_config = {
-    .elbow_roll  = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 90.0f,
+    .elbow_roll  = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 90.0f,
                       .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
-    .elbow_pitch = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 90.0f,
+    .elbow_pitch = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 90.0f,
                       .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
     .wrist_pitch = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 90.0f,
                       .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },

@@ -1,3 +1,5 @@
+> 이 문서는 과거 인계 기록이다. 현행 5축 전용 수정 정책은 [../AGENTS.md](../AGENTS.md)를 따른다. 6축 보존 지침은 폐기되었다.
+
 # Agent3(Output Controller) 담당 전달용 — 5축 인터페이스 변경 (2026-09-22)
 
 Agent1→Agent2 계약은 이미 확정돼 있다(`HumanForearmTarget`, Agent1이 정의·구현·

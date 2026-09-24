@@ -27,22 +27,8 @@ int main(void)
      * Startup Safe Pose
      * ========================================================
      *
-     * 현재 초기값:
-     *
-     * BASE        = 1500 us
-     * SHOULDER    = 1500 us
-     * ELBOW       = 1500 us
-     * WRIST_PITCH = 1500 us
-     * WRIST_ROLL  = 1500 us
-     * GRIPPER     = 1500 us
-     *
-     * 적용 순서:
-     *
-     * Shadow 6개
-     *    ↓
-     * UPDATE
-     *    ↓
-     * ENABLE
+     * Five-channel startup PWM comes from servo_config.c.
+     * Write five shadow registers, UPDATE, then ENABLE.
      */
     if (!servo_hal_startup()) {
         return 1;
@@ -58,7 +44,7 @@ int main(void)
      *
      * 20 ms = 50 Hz
      *
-     * 실제 JointCommand 연동 및
+     * 실제 ForearmJointCommand 연동 및
      * 20 ms Timer는 Vitis 통합 단계에서 연결한다.
      */
     while (1) {
