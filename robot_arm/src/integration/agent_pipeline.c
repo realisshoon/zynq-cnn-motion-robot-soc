@@ -25,10 +25,10 @@
 #define AGENT_PIPELINE_ACTIVE_ARM POSE_ARM_RIGHT
 
 /*
- * 전원 인가 시 팔이 놓이는 홈 자세(서보 각도 기준).
- * Idle ㄱ자 사진에 대응하는 사용자 지정 자세: 90/70/100/90도.
- * Agent2의 사람각 offset과 별도로 지정하는 부팅 자세다.
- * gripper_norm은 0.0=Close, 1.0=Open이며 홈은 0.7이다.
+ * 전원 인가 시 팔이 놓이는 홈 자세(서보 각도 기준). gripper_norm은 0.0=Close, 1.0=Open이다.
+ * 로컬에서 실측한 홈 wrist roll은 87도다 -- 아직 실측 offset 기반 최종값은 아니다.
+ * agent_pipeline_init()이 home_within_limits()/home_is_safe()로 부팅 시 범위와
+ * FK 안전검사를 둘 다 확인한다.
  */
 static const ForearmJointCommand k_home_pose = {
     .elbow_roll_deg = 90.0f,
@@ -58,6 +58,18 @@ static int home_within_limits(void)
     return same_command(&clamped, &k_home_pose);
 }
 
+/* 홈이 FK 자기충돌/테이블충돌도 통과하는지 확인한다. 홈은 forearm_calibration_apply()의
+ * 안전검사 경로를 거치지 않고 set_target()에 직접 들어가므로(위 주석 참고), 이 검사가
+ * 없으면 홈 값이 unsafe해도 agent_pipeline_init()이 그냥 성공하고 forearm_calibration_step()이
+ * 매틱 output->valid=1을 찍어 그 위험한 자세를 그대로 서보로 내보낸다 -- step()은 후보가
+ * 안전검사에 실패해도 항상 output->valid=1로 끝맺으므로(직전 승인 위치를 계속 보여주기
+ * 위해서다), "검사 존재"와 "검사 실패 시 출력 차단"이 다르다(Codex 코드리뷰 2026-09-24
+ * 발견). 여기서 미리 막아 그 취약 경로 자체를 없앤다. */
+static int home_is_safe(void)
+{
+    return forearm_safety_check_apply(&k_home_pose, NULL);
+}
+
 int agent_pipeline_init(AgentPipelineContext *ctx)
 {
     if (ctx == NULL) return -1;
@@ -69,7 +81,7 @@ int agent_pipeline_init(AgentPipelineContext *ctx)
     forearm_calibration_state_init(&ctx->motion);
     output_control_init();
 
-    if (!home_within_limits()) return -1;
+    if (!home_within_limits() || !home_is_safe()) return -1;
 
     /*
      * 홈으로 부트스트랩한다. Agent2는 첫 set_target을 램프 없이 스냅하므로,
@@ -142,13 +154,17 @@ int agent2_run(AgentPipelineContext *ctx)
     TRACE_SET_A2_MAPPED(ctx, command); /* [TRACE] */
 
     /* HOLD 프레임처럼 직전과 같은 명령이면 재계획하지 않는다(램프가 속도 0에서 다시 시작되는 것을 막는다).
-     * 단, motion이 hold 중(blocked_flags != OK)이면 값이 같아도 반드시 다시
+     * 단, motion이 hold 중(motion.held!=0)이면 값이 같아도 반드시 다시
      * set_target을 불러야 한다 -- forearm_calibration_step()의 emergency_hold가
      * 축의 target=q/v=0으로 얼어붙여 놨으므로, set_target 호출 자체가 재개의
      * 유일한 신호다(forearm_calibration.h의 forearm_calibration_set_target()
-     * 주석 참고). 여기서 스킵하면 같은 명령으로는 영원히 안 풀린다. */
+     * 주석 참고). blocked_flags는 매틱 자동으로 OK로 돌아갈 수 있어(멈춘 자리
+     * 자체는 항상 안전검사를 통과함) 재개 판단 기준으로 쓰면 안 된다 --
+     * Codex 코드리뷰 2026-09-24에서 이 자리에 blocked_flags를 쓰던 이전 수정이
+     * 대부분 상황에서 무효화된다는 걸 발견했다. 여기서 스킵하면 같은 명령으로는
+     * 영원히 안 풀린다. */
     if (ctx->command_valid && same_command(&command, &ctx->command) &&
-        ctx->motion.blocked_flags == FOREARM_SAFETY_CHECK_OK) {
+        ctx->motion.held == 0) {
         TRACE_SET_A2_RESULT(ctx, A2_RESULT_SAME); /* [TRACE] */
         return 1;
     }

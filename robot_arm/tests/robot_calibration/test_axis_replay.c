@@ -86,10 +86,11 @@ int main(int argc,char **argv)
     assert(parser.crc_errors==0 && parser.format_errors==0 && parser.range_errors==0);
     /* [20,160] 범위에서 테이블충돌은 여전히 도달 불가능하지만(위 참고),
      * wrist_pitch=90=90도 굽힘 기준으로 바뀌면서 자기충돌(wrist_pitch>155)은
-     * 도달 가능해졌다 -- 실행해서 실제 승인/거부 수를 확인했다. */
+     * 도달 가능해졌다 -- 실행해서 실제 승인/거부 수를 확인했다. dev/robot의
+     * PR#57(Agent1 손목 계산 수정) 병합 이후 481/41 -> 479/43으로 바뀌었다. */
     printf("commands_accepted=%u commands_rejected=%u\n",
         (unsigned)ctx.commands_accepted, (unsigned)ctx.commands_rejected);
-    assert(ctx.commands_accepted==481 && ctx.commands_rejected==41);
+    assert(ctx.commands_accepted==479 && ctx.commands_rejected==43);
     /* Drain the remaining ramp; motion must settle, not only accept targets. */
     for(unsigned i=0;i<400;i++) tick(&ctx,&max_step);
     assert(fabsf(ctx.output.elbow_roll_deg-ctx.command.elbow_roll_deg)<0.001f);

@@ -100,11 +100,12 @@ static void assert_same_pwm(const ServoPwmCommand *a, const ServoPwmCommand *b)
 
 static void assert_home(const AgentPipelineContext *ctx)
 {
-    /* agent_pipeline.c의 k_home_pose(70,110,100,87,gripper=0.7 -- PR #55).
-     * PWM은 servo_control_convert()로 실제 계산해 확인한 값이다(0deg=500us,
-     * 90deg=1500us, 180deg=2500us 선형매핑, uint16_t 절삭 포함). */
-    static const uint16_t expected_pwm[CHANNELS] = {1277U, 1722U, 1611U, 1466U, 1900U};
-    static const float expected_deg[CHANNELS] = {70.0f, 110.0f, 100.0f, 87.0f, 0.7f};
+    /* agent_pipeline.c의 k_home_pose(90,70,100,90,gripper=0.7 -- PR #57, 실측
+     * wrist_roll 캘리브레이션 반영). PWM은 servo_control_convert()로 실제
+     * 계산해 확인한 값이다(0deg=500us, 90deg=1500us, 180deg=2500us 선형매핑,
+     * uint16_t 절삭 포함). */
+    static const uint16_t expected_pwm[CHANNELS] = {1500U, 1277U, 1611U, 1500U, 1900U};
+    static const float expected_deg[CHANNELS] = {90.0f, 70.0f, 100.0f, 90.0f, 0.7f};
     uint16_t values[CHANNELS];
     float angles[CHANNELS];
     unsigned i;
@@ -472,17 +473,17 @@ static void test_front_main(void)
     assert(ctx.ticks == 250U && ctx.servo_writes == ctx.ticks);
     /* 호스트 재생 실측값. 네 관절 모두 움직이며 손목도 scale=1이다. */
     {
-        /* motion.c(SPEED_ACCEL) + 새 home(70,110,100,87,0.7 -- PR #55) 기준
-         * 실행으로 확인한 값(never guessed). */
-        const uint16_t minimum[CHANNELS] = {1277U, 1229U, 1466U, 722U, 1900U};
-        const uint16_t maximum[CHANNELS] = {1637U, 1722U, 1611U, 1466U, 2500U};
-        const unsigned max_step[JOINTS] = {7U, 7U, 7U, 7U};
+        /* motion.c(SPEED_ACCEL) + 새 home(90,70,100,90,0.7 -- PR #57, 실측
+         * wrist_roll 캘리브레이션 반영) 기준 실행으로 확인한 값(never guessed). */
+        const uint16_t minimum[CHANNELS] = {1500U, 1214U, 1408U, 722U, 1900U};
+        const uint16_t maximum[CHANNELS] = {1637U, 1320U, 1611U, 1500U, 2500U};
+        const unsigned max_step[JOINTS] = {7U, 6U, 7U, 7U};
         for (i = 0; i < CHANNELS; ++i) {
             assert(trace.minimum[i] == minimum[i] && trace.maximum[i] == maximum[i]);
             if (i < JOINTS) assert(trace.max_step[i] == max_step[i]);
         }
     }
-    assert(ctx.commands_rejected == 0U && ctx.retargets == 91U);
+    assert(ctx.commands_rejected == 0U && ctx.retargets == 99U);
     print_stats("S3 replay", &ctx);
     printf("S3 max_delta_us=%u,%u,%u,%u limits_us=8,8,8,8\n",
            trace.max_step[0], trace.max_step[1], trace.max_step[2],
@@ -524,16 +525,16 @@ static void test_first_ramp(void)
            ctx.output.elbow_roll_deg, ctx.output.elbow_pitch_deg,
            ctx.output.wrist_pitch_deg, ctx.output.wrist_roll_deg);
     {
-        /* home(70,110,100,87)에서 SPEED_ACCEL로 첫 틱 가속 출발 -- 실행해서
+        /* home(90,70,100,90)에서 SPEED_ACCEL로 첫 틱 가속 출발 -- 실행해서
          * 확인한 값(never guessed). */
-        const float expected[JOINTS] = {70.047997f, 109.952003f, 100.047997f, 86.952003f};
+        const float expected[JOINTS] = {90.047997f, 69.952003f, 100.047997f, 89.952003f};
         float actual[JOINTS];
         joints(&ctx.output, actual);
         for (i = 0; i < JOINTS; ++i) assert(fabsf(actual[i] - expected[i]) < 0.00001f);
     }
-    assert(first_angle > 70.0f && first_angle <= 70.6f);
+    assert(first_angle > 90.0f && first_angle <= 90.6f);
     /* At this slower profile the first fractional microsecond can quantize away. */
-    assert(ctx.pwm.elbow_roll_pwm_us >= 1277U && ctx.pwm.elbow_roll_pwm_us <= 1279U);
+    assert(ctx.pwm.elbow_roll_pwm_us >= 1500U && ctx.pwm.elbow_roll_pwm_us <= 1502U);
     assert(ctx.output.gripper_norm == 0.25f && ctx.pwm.gripper_pwm_us == 1000U);
     for (i = 1U; i < 200U; ++i) checked_tick(&ctx, &trace);
     assert(fabsf(ctx.output.elbow_roll_deg - 120.0f) < 0.001f && ctx.pwm.elbow_roll_pwm_us == 1833U);
@@ -661,7 +662,7 @@ static unsigned test_dropout(void)
            ctx.pwm.wrist_roll_pwm_us != held.wrist_roll_pwm_us);
     assert(ctx.frames_in == 152U && ctx.servo_errors == 0U);
     assert(ctx.targets_valid == 146U && ctx.commands_accepted == 146U);
-    assert(ctx.commands_rejected == 0U && ctx.retargets == 39U);
+    assert(ctx.commands_rejected == 0U && ctx.retargets == 41U);
     print_stats("S6 200ms HOLD / 400..600ms invalid / recovery", &ctx);
     printf("S6 HOLD boundary first_invalid_age_ms=%u\n", first_invalid_ms);
     return first_invalid_ms;
