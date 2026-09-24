@@ -40,10 +40,24 @@ typedef struct {
     Motion axes[FOREARM_MOTION_JOINT_COUNT];
     float gripper;
     int has_target;
-    /* Unsafe intermediate command: hold last output and expose the cause.
-     * A new target clears the flag. This checks sampled centerline poses,
-     * not swept volume, mechanical thickness, or actual servo feedback. */
+    /* Unsafe intermediate command: hold last output and expose the cause
+     * FOR THIS TICK ONLY. A rejected tick freezes each axis at its last safe
+     * position (motion_emergency_hold: target=q, v=0) -- and that frozen
+     * position trivially re-passes the safety check on the very next tick
+     * (같은 자리, e=0이라 항상 안전), so blocked_flags snaps back to OK one
+     * tick later even though the axes never actually resumed toward the
+     * real target. blocked_flags alone is NOT a reliable "still stuck"
+     * signal -- use `held` for that (Codex 코드리뷰 2026-09-24 발견).
+     * A new target clears both. This checks sampled centerline poses, not
+     * swept volume, mechanical thickness, or actual servo feedback. */
     ForearmSafetyCheckFlags blocked_flags;
+    /* 1이면 현재 축들이 emergency_hold로 얼어붙은 채(내부 target이 실제
+     * 원하는 목표가 아니라 정지 위치로 덮어써진 상태)라는 뜻이다.
+     * forearm_calibration_set_target()을 호출해야만 0으로 풀린다 --
+     * blocked_flags와 달리 매틱 자동으로 안 풀린다. 호출자(agent_pipeline.c)는
+     * "같은 명령이면 재계획 생략" 최적화를 할 때 이 플래그로 재개가 필요한지
+     * 판단해야 한다(blocked_flags로 판단하면 안 됨). */
+    int held;
 } ForearmMotionState;
 
 void forearm_calibration_state_init(ForearmMotionState *state);

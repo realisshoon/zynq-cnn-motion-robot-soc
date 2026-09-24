@@ -110,8 +110,12 @@ void forearm_calibration_set_target(ForearmMotionState *state, const ForearmJoin
      * 다시 들어와도(예: agent_pipeline.c가 같은 명령으로 재개시킬 때) 여기까지
      * 도달했다면 무조건 재개시킨다. 호출자가 "같은 명령이면 여기 호출을
      * 스킵"하면 안 된다(hold는 axes[i].v=0/target=q로 얼어붙은 채 영원히 안
-     * 풀린다) -- 이 파일 헤더의 forearm_calibration_set_target() 주석 참고. */
+     * 풀린다) -- 이 파일 헤더의 forearm_calibration_set_target() 주석 참고.
+     * blocked_flags는 이번 틱 상태 표시용이라 다음 스텝에 자동으로 OK가 될 수
+     * 있다(멈춘 자리 자체는 항상 안전검사를 통과하므로) -- 그래서 "재개가
+     * 필요한가"는 blocked_flags가 아니라 아래 held로 판단해야 한다. */
     state->blocked_flags = FOREARM_SAFETY_CHECK_OK;
+    state->held = 0;
 }
 
 void forearm_calibration_step(ForearmMotionState *state, ForearmJointCommand *output)
@@ -156,6 +160,11 @@ void forearm_calibration_step(ForearmMotionState *state, ForearmJointCommand *ou
             motion_emergency_hold(&state->axes[i]);
         }
         state->blocked_flags = feasible ? issues : FOREARM_SAFETY_CHECK_INVALID_COMMAND;
+        /* blocked_flags와 달리 다음 틱에 저절로 안 풀린다 -- set_target()만
+         * 풀 수 있다(Codex 코드리뷰 2026-09-24: 안 그러면 멈춘 자리가 다음
+         * 틱에 스스로 안전검사를 통과해버려서 agent_pipeline.c의 재개 판단이
+         * "이미 재개됐다"고 착각한다). */
+        state->held = 1;
     }
 
     for (i = 0; i < FOREARM_MOTION_JOINT_COUNT; i++) {
