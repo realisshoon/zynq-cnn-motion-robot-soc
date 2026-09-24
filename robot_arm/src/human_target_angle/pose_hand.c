@@ -50,6 +50,34 @@ static void update_roll_zero_calibration(
     }
 }
 
+/* Thumb/index separation remains observable in 2D when wrist depth or
+ * orientation is not. Keep this state independent of 3D hand geometry. */
+int pm_update_gripper_from_2d(PoseMappingContext *ctx,
+                              float shoulder_span_px, float *gripper_norm)
+{
+    float finger_span_px;
+    float gripper_ratio;
+
+    if (ctx == NULL || gripper_norm == NULL ||
+        !isfinite(shoulder_span_px) || shoulder_span_px <= PM_EPS) return -1;
+
+    finger_span_px = pm_distance_2d(ctx->finger1.value, ctx->finger2.value);
+    if (!isfinite(finger_span_px)) return -1;
+    gripper_ratio = finger_span_px / shoulder_span_px;
+
+    if (!ctx->gripper_initialized) {
+        ctx->gripper_state = (gripper_ratio >= PM_GRIPPER_OPEN_RATIO) ? 1U : 0U;
+        ctx->gripper_initialized = 1U;
+    } else if (ctx->gripper_state) {
+        if (gripper_ratio <= PM_GRIPPER_CLOSE_RATIO) ctx->gripper_state = 0U;
+    } else if (gripper_ratio >= PM_GRIPPER_OPEN_RATIO) {
+        ctx->gripper_state = 1U;
+    }
+
+    *gripper_norm = (float)ctx->gripper_state;
+    return 0;
+}
+
 int pm_calculate_hand_angles_and_gripper(
     PoseMappingContext *ctx, float shoulder_span_px, float dt_age_sec,
     float dt_filter_sec, HumanJointTarget *out)
@@ -84,8 +112,6 @@ int pm_calculate_hand_with_reference(
     float plane_quality;
     float reference_quality;
     float normal_alpha;
-    float finger_span_px;
-    float gripper_ratio;
 
     if (ctx == NULL || out == NULL || shoulder_span_px <= PM_EPS) return -1;
 
@@ -289,27 +315,10 @@ int pm_calculate_hand_with_reference(
      * 0=CLOSE, 1=OPEN만 Agent2/3로 전달한다.
      * 실제 물체 접촉 압력은 Agent3의 압력센서 feedback이 담당한다.
      */
-    finger_span_px = pm_distance_2d(ctx->finger1.value, ctx->finger2.value);
-    gripper_ratio = finger_span_px / shoulder_span_px;
-
-    if (!ctx->gripper_initialized) {
-        ctx->gripper_state = (gripper_ratio >= PM_GRIPPER_OPEN_RATIO) ? 1U : 0U;
-        ctx->gripper_initialized = 1U;
-    } else if (ctx->gripper_state) {
-        /* 현재 OPEN: 충분히 오므려졌을 때만 CLOSE */
-        if (gripper_ratio <= PM_GRIPPER_CLOSE_RATIO) {
-            ctx->gripper_state = 0U;
-        }
-    } else {
-        /* 현재 CLOSE: 충분히 벌어졌을 때만 OPEN */
-        if (gripper_ratio >= PM_GRIPPER_OPEN_RATIO) {
-            ctx->gripper_state = 1U;
-        }
-    }
+    if (pm_update_gripper_from_2d(ctx, shoulder_span_px,
+                                  &out->gripper_norm) != 0) return -1;
 
     out->wrist_pitch_deg = pm_wrap180(ctx->prev_wrist_pitch_deg);
     out->wrist_roll_deg = pm_wrap180(ctx->prev_wrist_roll_deg);
-    out->gripper_norm = (float)ctx->gripper_state;
-
     return 0;
 }

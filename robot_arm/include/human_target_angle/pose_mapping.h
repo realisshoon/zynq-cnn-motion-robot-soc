@@ -28,6 +28,17 @@ typedef struct {
     uint8_t fresh;
 } PoseLandmarkState;
 
+/* Forearm wrist depth selection: fixed, trailing 60-frame window (~3s at 20Hz). */
+#define POSE_FINGER_BRANCH_WINDOW 60U
+
+typedef struct {
+    Point3D prev_mid_relative;
+    Point3D prev_span;
+    float frame_cost[POSE_FINGER_BRANCH_WINDOW];
+    uint8_t consecutive_frames;
+    uint8_t prev_valid;
+} PoseFingerBranchState;
+
 typedef struct {
     PoseLandmarkState shoulder_l;
     PoseLandmarkState shoulder_r;
@@ -55,6 +66,13 @@ typedef struct {
      * and smoothing use offsets from this parent, not absolute camera depth. */
     Point3D finger_parent_wrist;
 
+    /* Four near/far thumb/index combinations are tracked independently.
+     * No branch is committed before a full evidence window is available. */
+    PoseFingerBranchState finger_branch[4];
+    uint8_t finger_branch_ring;
+    uint8_t finger_branch_selected;
+    uint8_t finger_branch_selected_valid;
+
     /*
      * 안정화된 Human Body Coordinate.
      * X = anatomical left shoulder -> right shoulder (time-filtered).
@@ -67,6 +85,13 @@ typedef struct {
     Point3D body_y_axis;
     Point3D body_z_axis;
     uint8_t body_frame_valid;
+
+    /*
+     * 카메라 roll의 프레임 단위 추정치(도). PM_CAMERA_ROLL_ADAPT_* 참고.
+     * valid=0이면 아직 시딩 전 — 다음 성공 frame에서 PM_CAMERA_ROLL_DEG로 시딩된다.
+     */
+    float camera_roll_estimate_deg;
+    uint8_t camera_roll_estimate_valid;
 
     /* Wrist roll */
     Point3D prev_hand_normal;

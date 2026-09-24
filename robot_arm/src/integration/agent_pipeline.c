@@ -26,7 +26,7 @@
 
 /*
  * 전원 인가 시 팔이 놓이는 홈 자세(서보 각도 기준). gripper_norm은 0.0=Close, 1.0=Open이다.
- * PR #55/#57(Agent1)에서 idle 자세로 갱신됐다 -- 아직 실측 offset 기반 최종값은 아니다.
+ * 로컬에서 실측한 홈 wrist roll은 87도다 -- 아직 실측 offset 기반 최종값은 아니다.
  * agent_pipeline_init()이 home_within_limits()/home_is_safe()로 부팅 시 범위와
  * FK 안전검사를 둘 다 확인한다.
  */

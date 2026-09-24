@@ -309,16 +309,80 @@ static HumanPose2D sample(void)
     p.valid=1; p.frame_id=123;
     return p;
 }
+static void test_gripper_without_wrist_geometry(void)
+{
+    ForearmMappingContext c;
+    HumanForearmTarget t;
+    HumanPose2D p = sample();
+
+    /* Coincident thumb/index tips are a valid closed gripper observation,
+     * while their 3D span cannot define a wrist orientation. */
+    p.finger2 = p.finger1;
+    assert(forearm_mapping_init(&c) == 0);
+    assert(forearm_mapping_update(&c, &p, POSE_ARM_RIGHT, 0.05f, &t) == -1);
+    assert(!t.valid && !t.hand_fresh);
+    near(t.gripper_norm, 0.0f, 0.0f);
+    assert(c.pose.gripper_initialized && c.pose.gripper_state == 0U);
+}
+static void test_finger_branch_window(void)
+{
+    PoseMappingContext p;
+    const float depth = 4.65f;
+
+    assert(pose_mapping_init(&p) == 0);
+    p.wrist_3d = pm_vec3(0.0f, 0.0f, 5.0f);
+    p.elbow_3d = pm_vec3(0.0f, 0.0f, 5.65f);
+    p.finger1.value.x = PM_CAMERA_CX - PM_CAMERA_FX * 0.07f / depth;
+    p.finger1.value.y = PM_CAMERA_CY;
+    p.finger2.value.x = PM_CAMERA_CX + PM_CAMERA_FX * 0.07f / depth;
+    p.finger2.value.y = PM_CAMERA_CY;
+
+    for (unsigned i = 1U; i < POSE_FINGER_BRANCH_WINDOW; ++i) {
+        assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == -1);
+        assert(!p.finger_pose3d_valid);
+    }
+    assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
+    assert(p.finger_branch_selected == 0U); /* nearer, forearm-aligned pair */
+    assert(p.finger1_3d.z < p.wrist_3d.z);
+    assert(p.finger2_3d.z < p.wrist_3d.z);
+
+    pm_reset_finger_branch_tracker(&p);
+    assert(!p.finger_pose3d_valid && !p.finger_branch_selected_valid);
+    /* When both 3D bends fit the same 2D track equally well, the window
+     * still forces a pick once full: holding forever on a coin-flip is
+     * worse than committing to whichever candidate the tie-break settles
+     * on, and the pick is deterministic and stable frame to frame. */
+    p.elbow_3d = pm_vec3(-0.65f, 0.0f, 5.0f);
+    p.finger1.value.x = PM_CAMERA_CX;
+    p.finger1.value.y = PM_CAMERA_CY - PM_CAMERA_FY * 0.07f / depth;
+    p.finger2.value.x = PM_CAMERA_CX;
+    p.finger2.value.y = PM_CAMERA_CY + PM_CAMERA_FY * 0.07f / depth;
+    for (unsigned i = 1U; i < POSE_FINGER_BRANCH_WINDOW; ++i)
+        assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == -1);
+    assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
+    assert(p.finger_pose3d_valid);
+    /* The tie-break is stable: re-running does not flip the pick. */
+    assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
+    assert(p.finger_branch_selected == 0U);
+}
 static void test_pipeline(void)
 {
     ForearmMappingContext c, old;
     HumanPose2D p=sample();
     HumanForearmTarget t, prev;
     forearm_mapping_init(&c);
-    assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==1);
+    assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==-1);
     assert(c.pose.body_frame_valid);
-    assert(t.valid && t.frame_id==123 && t.hand_fresh);
-    old=c; prev=t;
+    assert(!t.valid && !t.hand_fresh);
+    /* Seed an already-approved wrist target to exercise the downstream HOLD
+     * path independently of the branch decision tested above. */
+    memset(&c.last_target,0,sizeof(c.last_target));
+    c.last_target.valid=1;
+    c.last_target.frame_id=p.frame_id;
+    c.last_target.wrist_pitch_deg=15.0f;
+    c.last_target.wrist_roll_deg=-20.0f;
+    c.last_target_valid=1;
+    old=c; prev=c.last_target;
     assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,100,&t)==0);
     assert(memcmp(&c,&old,sizeof(c))==0);
     near(t.elbow_roll_deg,prev.elbow_roll_deg,0);
@@ -339,21 +403,21 @@ static void test_pipeline(void)
     for(int i=0;i<10;i++) {p.frame_id++; forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t);}
     assert(!t.valid);
     p=sample(); p.frame_id=200;
-    assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,NAN,&t)==1);
+    assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,NAN,&t)==-1);
     p.frame_id++; p.valid=0;
     assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,1,&t)==-1);
     p=sample(); p.frame_id=300;
-    assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==1);
+    assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==-1);
     /* Same-id side change must reset history, never reuse the other arm. */
     forearm_mapping_update(&c,&p,POSE_ARM_LEFT,0.05f,&t);
     assert(c.pose.last_arm_side==POSE_ARM_LEFT);
     assert(agent1_forearm_stage_init()==0);
-    assert(agent1_forearm_stage_run(&p,POSE_ARM_RIGHT,0.05f)==1);
-    assert(agent1_forearm_stage_output()->valid);
+    assert(agent1_forearm_stage_run(&p,POSE_ARM_RIGHT,0.05f)==-1);
+    assert(!agent1_forearm_stage_output()->valid);
     p.frame_id++; p.wrist.x=NAN;
     assert(forearm_mapping_update(&c,&p,POSE_ARM_LEFT,1,&t)==-1);
     p=sample(); p.frame_id=400;
-    assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==1);
+    assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==-1);
 }
 static void test_uart(const char *path)
 {
@@ -362,24 +426,32 @@ static void test_uart(const char *path)
     HumanPose2D p;
     ForearmMappingContext c;
     HumanForearmTarget t;
-    int byte, count=0;
+    int byte, count=0, accepted=0;
     assert(f);
     pose_uart_parser_init(&parser); forearm_mapping_init(&c);
     while((byte=fgetc(f))!=EOF) {
         int r=pose_uart_parser_push(&parser,(uint8_t)byte,&p);
         assert(r>=0);
         if(r==1) {
-            assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==1);
-            assert(t.valid && t.frame_id==p.frame_id && isfinite(t.elbow_pitch_deg));
+            int rc=forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t);
+            assert(rc==1 || rc==-1);
+            assert(t.frame_id==p.frame_id);
+            if (rc==1) {
+                assert(t.valid && isfinite(t.elbow_pitch_deg));
+                accepted++;
+            } else assert(!t.valid);
             count++;
         }
     }
-    fclose(f); assert(count==522); printf("UART forearm replay: %d PASS\n",count);
+    fclose(f); assert(count==522 && accepted>0);
+    printf("UART forearm replay: %d frames, %d valid PASS\n",count,accepted);
 }
 int main(int argc,char **argv)
 {
     test_geometry(); test_temporal_geometry(); test_body_rotation(); test_wrist();
-    test_wrist_body_reference(); test_pipeline();
+    test_wrist_body_reference(); test_gripper_without_wrist_geometry();
+    test_finger_branch_window();
+    test_pipeline();
     if(argc>1) test_uart(argv[1]);
     puts("Forearm geometry / wrist / temporal / pipeline: PASS");
     return 0;

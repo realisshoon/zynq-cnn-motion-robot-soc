@@ -101,7 +101,7 @@ static int hold_or_invalid(ForearmMappingContext *ctx, HumanForearmTarget *out)
     ctx->pose.prev_hand_normal_valid = 0U;
     ctx->pose.prev_roll_raw_valid = 0U;
     ctx->pose.prev_pitch_raw_valid = 0U;
-    ctx->pose.finger_pose3d_valid = 0U;
+    pm_reset_finger_branch_tracker(&ctx->pose);
     return -1;
 }
 
@@ -112,6 +112,7 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
     HumanForearmTarget fresh;
     HumanPose2D finite_pose;
     float filter_dt, span = 0.0f;
+    uint8_t gripper_fresh = 0U;
     if (!out) return -1;
     memset(out, 0, sizeof(*out));
     if (!ctx || !pose || !ctx->pose.initialized ||
@@ -146,18 +147,29 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
     if (pm_update_stable_body_frame(p, filter_dt) != 0 ||
         fm_calculate_angles(ctx, filter_dt, &fresh) != 0)
         return hold_or_invalid(ctx, out);
+    if (pm_fingers_both_fresh(p) &&
+        pm_update_gripper_from_2d(p, span, &fresh.gripper_norm) == 0)
+        gripper_fresh = 1U;
+    if (!pm_fingers_both_fresh(p)) pm_reset_finger_branch_tracker(p);
     if (!pm_fingers_both_fresh(p) ||
-        pm_reconstruct_finger_pose3d(p, filter_dt) != 0 ||
+        pm_reconstruct_finger_pose3d_tracked(p, filter_dt) != 0 ||
         fm_calculate_hand(ctx, span, dt, filter_dt, &fresh) != 0) {
         if (ctx->last_target_valid) {
             fresh.wrist_pitch_deg = ctx->last_target.wrist_pitch_deg;
             fresh.wrist_roll_deg = ctx->last_target.wrist_roll_deg;
-            fresh.gripper_norm = ctx->last_target.gripper_norm;
-        } else {
-            fresh.gripper_norm = 1.0f; /* default only; hand_fresh remains 0 */
         }
+        if (!gripper_fresh) fresh.gripper_norm = ctx->last_target_valid
+            ? ctx->last_target.gripper_norm : 1.0f;
     }
     fresh.frame_id = pose->frame_id;
+    /* Agent2 currently does not gate wrist fields on hand_fresh. Until the
+     * first reliable wrist pose exists, a valid target would send arbitrary
+     * zero angles rather than retain the boot home. Keep the whole target
+     * invalid during this startup-only ambiguity. */
+    if (!ctx->last_target_valid && !fresh.hand_fresh) {
+        *out = fresh;
+        return -1;
+    }
     fresh.valid = 1U;
     p->target_age_sec = 0.0f;
     ctx->last_target = fresh;

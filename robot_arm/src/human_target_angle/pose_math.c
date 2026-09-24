@@ -140,6 +140,43 @@ float pm_distance_2d(Point2D a, Point2D b)
 }
 
 /*
+ * 카메라 roll(이미지 평면 내 회전, +Z=카메라 시선축 기준)만큼 "위" 벡터를
+ * 보정한다. 카메라를 위/아래로 향하는 각도(pitch)는 이미지 up 벡터 자체를
+ * 안 바꾸므로 여기서 다루지 않는다 — roll만 X-Y 평면 안에서 up을 틀어지게
+ * 만든다. roll=0이면 기존과 동일한 (0,1,0)을 그대로 돌려준다.
+ */
+Vec3 pm_camera_up_for_roll(float roll_deg)
+{
+    float rad = -roll_deg * PM_DEG_TO_RAD;
+    float c = cosf(rad), s = sinf(rad);
+    Vec3 up = {-s, c, 0.0f, 1U};
+    return up;
+}
+
+/*
+ * pm_camera_up_for_roll()의 역함수 방향 관계: 카메라가 시계방향으로 roll_deg만큼
+ * 돌아가면 관측되는 모든 것(어깨선 포함)의 이미지평면 각도가 -roll_deg만큼
+ * 회전한다. 즉 어깨가 실제로 수평(world-level)이고 카메라를 정면으로 바라보고
+ * 있다고 가정하면, 관측된 raw BodyX의 이미지평면 각도로부터 카메라 roll을
+ * 역산할 수 있다.
+ *
+ * 기준 방향은 +X가 아니라 -X다: 사람이 카메라를 정면으로 보면 해부학적
+ * 오른쪽 어깨(shoulder_r)가 화면 왼쪽(카메라 -X)에 나타난다(거울 대칭.
+ * docs/coordinate_system.md의 실측 예제도 SR.x < SL.x). roll=0, 정면
+ * 기준일 때 body_x ~= (-1,0,0)이어야 하므로 atan2(y,-x)를 쓴다.
+ *
+ * 사람이 몸을 돌리면(yaw) X0 부호 자체가 달라질 수 있어 이 역산이 깨진다 —
+ * 호출부(pm_update_stable_body_frame)가 body_x.x가 충분히 음수(정면에 가까움)일
+ * 때만 이 값을 쓰도록 게이팅한다. 또한 사람이 실제로 어깨를 기울인 경우와도
+ * 구분하지 못하므로 이 값 자체는 근사치다 — 느린 저역통과로만 사용한다
+ * (PM_CAMERA_ROLL_ADAPT_*).
+ */
+float pm_camera_roll_estimate_from_x(Vec3 body_x)
+{
+    return atan2f(body_x.y, -body_x.x) * PM_RAD_TO_DEG;
+}
+
+/*
  * X is anatomical left -> right; Y is projected camera up; Z = X x Y.
  * Forcing Z toward camera +Z would reverse Y for front-facing people.
  * Near vertical X, projected up is ill-conditioned. Report failure so the
@@ -147,9 +184,9 @@ float pm_distance_2d(Point2D a, Point2D b)
  * 0.01 = sin(angle to camera up), approximately a 0.57 degree exclusion cone.
  * At the pole, up semantics and continuous Y cannot both be guaranteed.
  */
-static int complete_body_frame(Vec3 x, Vec3 *y, Vec3 *z)
+static int complete_body_frame(Vec3 x, float roll_deg, Vec3 *y, Vec3 *z)
 {
-    const Vec3 up = {0.0f, 1.0f, 0.0f, 1U};
+    const Vec3 up = pm_camera_up_for_roll(roll_deg);
     *y = pm_project_perpendicular(up, x);
     if (pm_vlen(*y) < PM_BODY_UP_MIN_PROJECTION || pm_vnormalize(y) != 0) {
         return -1;
@@ -160,7 +197,12 @@ static int complete_body_frame(Vec3 x, Vec3 *y, Vec3 *z)
     return pm_vnormalize(y);
 }
 
-/* Stateless construction uses the same convention as the filtered frame. */
+/*
+ * Stateless construction — always uses the fixed PM_CAMERA_ROLL_DEG config
+ * value, never the per-frame adaptive estimate (no history to adapt from
+ * here). Used by tests and one-shot reconstruction; the live pipeline goes
+ * through pm_update_stable_body_frame() instead.
+ */
 int pm_build_body_frame(
     Point3D shoulder_l,
     Point3D shoulder_r,
@@ -174,7 +216,7 @@ int pm_build_body_frame(
     *body_x = pm_vsub(shoulder_r, shoulder_l);
     if (pm_vnormalize(body_x) != 0) return -1;
 
-    return complete_body_frame(*body_x, body_y, body_z);
+    return complete_body_frame(*body_x, PM_CAMERA_ROLL_DEG, body_y, body_z);
 }
 
 /*
@@ -195,15 +237,35 @@ int pm_update_stable_body_frame(PoseMappingContext *ctx, float dt_filter_sec)
     float alpha;
     float axis_dot;
     float axis_jump_deg;
+    float active_roll_deg;
+    float measured_roll_deg;
+    uint8_t roll_observation_ok;
 
     if (ctx == NULL) return -1;
 
-    if (pm_build_body_frame(
-            ctx->shoulder_l_3d,
-            ctx->shoulder_r_3d,
-            &raw_x,
-            &raw_y,
-            &raw_z) != 0) {
+    raw_x = pm_vsub(ctx->shoulder_r_3d, ctx->shoulder_l_3d);
+    if (pm_vnormalize(&raw_x) != 0) return -1;
+
+    shoulder_span_px = pm_distance_2d(
+        ctx->shoulder_l.value,
+        ctx->shoulder_r.value
+    );
+
+    /*
+     * 이번 프레임 축은 항상 "이전까지 검증된" roll 추정치로 만든다. 새 관측치는
+     * 이번 프레임이 끝까지 성공했을 때만(맨 아래) 반영한다 — 실패/저신뢰 프레임이
+     * 추정치를 오염시키지 않도록 하기 위함.
+     */
+    active_roll_deg = ctx->camera_roll_estimate_valid
+        ? ctx->camera_roll_estimate_deg : PM_CAMERA_ROLL_DEG;
+#if !PM_CAMERA_ROLL_ADAPT_ENABLE
+    active_roll_deg = PM_CAMERA_ROLL_DEG;
+#endif
+    roll_observation_ok = (shoulder_span_px >= PM_BODY_FRAME_LOW_CONF_SPAN_PX) &&
+        (raw_x.x < -PM_CAMERA_ROLL_ADAPT_MIN_FRONTAL);
+    measured_roll_deg = pm_camera_roll_estimate_from_x(raw_x);
+
+    if (complete_body_frame(raw_x, active_roll_deg, &raw_y, &raw_z) != 0) {
         return -1;
     }
 
@@ -212,13 +274,10 @@ int pm_update_stable_body_frame(PoseMappingContext *ctx, float dt_filter_sec)
         ctx->body_y_axis = raw_y;
         ctx->body_z_axis = raw_z;
         ctx->body_frame_valid = 1U;
+        ctx->camera_roll_estimate_deg = active_roll_deg;
+        ctx->camera_roll_estimate_valid = 1U;
         return 0;
     }
-
-    shoulder_span_px = pm_distance_2d(
-        ctx->shoulder_l.value,
-        ctx->shoulder_r.value
-    );
 
     /*
      * Side-view처럼 Shoulder가 가까워질수록 body direction 관측 신뢰도가 낮다.
@@ -258,7 +317,7 @@ int pm_update_stable_body_frame(PoseMappingContext *ctx, float dt_filter_sec)
     }
 
     /* filtered X축을 기준으로 Y/Z를 다시 직교화한다. */
-    if (complete_body_frame(filtered_x, &new_y, &new_z) != 0) {
+    if (complete_body_frame(filtered_x, active_roll_deg, &new_y, &new_z) != 0) {
         return -1;
     }
 
@@ -266,6 +325,20 @@ int pm_update_stable_body_frame(PoseMappingContext *ctx, float dt_filter_sec)
     ctx->body_y_axis = new_y;
     ctx->body_z_axis = new_z;
     ctx->body_frame_valid = 1U;
+
+    /*
+     * 이번 프레임이 끝까지 성공했고 어깨가 충분히 넓게(고신뢰) 보였을 때만
+     * roll 추정치를 갱신한다. PM_CAMERA_ROLL_ADAPT_TAU_SEC로 느리게 따라가서
+     * 사람의 빠른 동작과는 섞이지 않게 한다.
+     */
+    if (roll_observation_ok) {
+        float roll_alpha = pm_alpha_from_tau(dt_filter_sec, PM_CAMERA_ROLL_ADAPT_TAU_SEC);
+        ctx->camera_roll_estimate_deg = pm_clampf(
+            active_roll_deg + roll_alpha * pm_wrap180(measured_roll_deg - active_roll_deg),
+            -PM_CAMERA_ROLL_ADAPT_MAX_DEG,
+            PM_CAMERA_ROLL_ADAPT_MAX_DEG
+        );
+    }
 
     return 0;
 }

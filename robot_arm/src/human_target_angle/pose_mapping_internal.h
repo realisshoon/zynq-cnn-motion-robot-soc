@@ -28,6 +28,8 @@ Vec3 pm_vcross(Vec3 a, Vec3 b);
 float pm_vlen(Vec3 a);
 int pm_vnormalize(Vec3 *v);
 Vec3 pm_project_perpendicular(Vec3 v, Vec3 axis);
+Vec3 pm_camera_up_for_roll(float roll_deg);
+float pm_camera_roll_estimate_from_x(Vec3 body_x);
 float pm_wrap180(float deg);
 float pm_unwrap_near(float deg, float reference);
 float pm_distance_2d(Point2D a, Point2D b);
@@ -54,6 +56,9 @@ int pm_reconstruct_major_pose3d(PoseMappingContext *ctx,
                                 float *shoulder_span_px_out);
 int pm_reconstruct_finger_pose3d(PoseMappingContext *ctx,
                                  float dt_filter_sec);
+int pm_reconstruct_finger_pose3d_tracked(PoseMappingContext *ctx,
+                                         float dt_filter_sec);
+void pm_reset_finger_branch_tracker(PoseMappingContext *ctx);
 
 /* pose_joint.c */
 int pm_calculate_major_angles(PoseMappingContext *ctx,
@@ -62,6 +67,8 @@ int pm_calculate_major_angles(PoseMappingContext *ctx,
                               HumanJointTarget *out);
 
 /* pose_hand.c */
+int pm_update_gripper_from_2d(PoseMappingContext *ctx,
+                              float shoulder_span_px, float *gripper_norm);
 /* Optional forearm-local roll reference; NULL preserves legacy BodyFrame. */
 int pm_calculate_hand_with_reference(PoseMappingContext *ctx,
                                      float shoulder_span_px, float dt_age_sec,
