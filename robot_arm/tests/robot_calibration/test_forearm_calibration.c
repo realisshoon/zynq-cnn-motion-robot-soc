@@ -76,15 +76,17 @@ static void test_map_and_limits(void)
 {
     ForearmJointCommand c;
 
-    /* scale=1,direction=1,zero_offset=90인 현재 임시 설정에서는 항등 매핑. */
+    /* scale=1,direction=1인 항등 매핑. zero_offset은 elbow_roll/elbow_pitch/
+     * wrist_pitch=90(수식/사진으로 확정), wrist_roll=87(실물 서보 30/90/160
+     * 실측으로 확정, 2026-09-23). */
     c = mapped(target(0, 0, 0, 0, 0.0f));
     near(c.elbow_roll_deg, 90); near(c.elbow_pitch_deg, 90);
-    near(c.wrist_pitch_deg, 90); near(c.wrist_roll_deg, 90);
+    near(c.wrist_pitch_deg, 90); near(c.wrist_roll_deg, 87);
     near(c.gripper_norm, 0.0f);
 
     c = mapped(target(30, -20, 45, -45, 1.0f));
     near(c.elbow_roll_deg, 120); near(c.elbow_pitch_deg, 70);
-    near(c.wrist_pitch_deg, 135); near(c.wrist_roll_deg, 45);
+    near(c.wrist_pitch_deg, 135); near(c.wrist_roll_deg, 42);
     near(c.gripper_norm, 1.0f);
 
     /* clamp: [20,160] 밖으로 나가는 큰 값. */
@@ -102,12 +104,17 @@ static void test_map_and_limits(void)
 
     for (int sign=-1; sign<=1; sign+=2) {
         float edge=sign<0 ? 20.0f : 160.0f;
+        /* wrist_roll은 zero_offset=87이라 다른 세 관절과 clamp 경계가 다르다:
+         * sign<0(=-70+87=17)은 여전히 min_deg=20에 clamp되지만, sign>0
+         * (=70+87=157)은 max_deg=160 미만이라 clamp 안 되고 그대로 나온다. */
+        float wr_edge=sign<0 ? 20.0f : sign*70.0f+87.0f;
+        float wr_edge2=sign<0 ? 20.0f : sign*70.1f+87.0f;
         c=mapped(target(sign*70.0f,sign*70.0f,sign*70.0f,sign*70.0f,0.5f));
         near(c.elbow_roll_deg,edge); near(c.elbow_pitch_deg,edge);
-        near(c.wrist_pitch_deg,edge); near(c.wrist_roll_deg,edge);
+        near(c.wrist_pitch_deg,edge); near(c.wrist_roll_deg,wr_edge);
         c=mapped(target(sign*70.1f,sign*70.1f,sign*70.1f,sign*70.1f,0.5f));
         near(c.elbow_roll_deg,edge); near(c.elbow_pitch_deg,edge);
-        near(c.wrist_pitch_deg,edge); near(c.wrist_roll_deg,edge);
+        near(c.wrist_pitch_deg,edge); near(c.wrist_roll_deg,wr_edge2);
     }
 
     {

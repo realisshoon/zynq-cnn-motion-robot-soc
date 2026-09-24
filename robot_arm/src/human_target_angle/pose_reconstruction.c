@@ -3,6 +3,7 @@
 #include <float.h>
 #include <math.h>
 #include <stddef.h>
+#include <string.h>
 
 /* ================================================================
  * 단안 Camera 2D -> 상대 3D Pose 복원
@@ -52,8 +53,39 @@
 #define PM_RECON_BOOTSTRAP_STEP_WEIGHT      0.5f
 #define PM_RECON_TRACKING_DEPTH_WEIGHT      0.01f
 
+/* Robot 관절은 180도까지만 돌아간다: elbow가 shoulder보다 카메라에서
+ * 더 먼(뒤) 해는 로봇이 절대 재현할 수 없으므로 강하게 배제한다.
+ * wrist가 elbow보다 뒤인 해는 실제로 손목을 굽히면 나타날 수 있으므로
+ * (elbow/wrist roll이 0도나 180도 근처일 때) 약한 선호로만 사용해
+ * 실제 그런 자세일 때는 residual/temporal 증거로 뒤집힐 수 있게 둔다. */
+#define PM_RECON_SHOULDER_ELBOW_ORDER_WEIGHT 200.0f
+#define PM_RECON_ELBOW_WRIST_ORDER_WEIGHT    2.0f
+
 /* Shoulder ray가 사실상 완전히 겹치는 퇴화 상태만 거른다. */
 #define PM_DEGENERATE_SHOULDER_SPAN_PX      4.0f
+
+/* These are dimensionless heuristic scores, not learned depth measurements.
+ * PM_FINGER_BRANCH_MIN_LEAD no longer gates the first pick: as soon as the
+ * window (POSE_FINGER_BRANCH_WINDOW frames) is full, the best-scoring
+ * branch is reported, even if the lead over the runner-up is tiny. A larger
+ * lead is still required to abandon an already selected branch, so
+ * established tracking does not flip-flop on frame-to-frame score noise.
+ * best_cost/second_cost are already POSE_FINGER_BRANCH_WINDOW-frame rolling
+ * averages, so most single-frame noise is already filtered out before this
+ * margin is even checked — 0.050 on top of that was observed to never be
+ * crossed for an entire clip (a runner-up branch that stayed consistently,
+ * increasingly better by up to 0.046 was still never switched to), freezing
+ * the reported finger position for the rest of the video. */
+#define PM_FINGER_BRANCH_MIN_LEAD           0.020f
+#define PM_FINGER_BRANCH_SWITCH_LEAD        0.010f
+
+/* The first-ever pick needs the full POSE_FINGER_BRANCH_WINDOW (60 frames)
+ * of evidence, since there is no prior branch to fall back on. Once a
+ * branch has been selected at least once, re-evaluating (to hold, switch,
+ * or recover from a brief dropout) only needs a much shorter trailing
+ * window — requiring 60 fresh frames after every reset made even a short
+ * plane-quality dropout freeze the reported position for seconds. */
+#define PM_FINGER_BRANCH_TRACKING_WINDOW    6U
 
 typedef struct {
     Point3D point;
@@ -279,6 +311,47 @@ static float candidate_score(
             pm_sqrf(candidate->elbow.z - active_shoulder_z) +
             pm_sqrf(candidate->wrist.z - candidate->elbow.z)
         );
+    }
+
+    /*
+     * Motor 180도 한계상 도달 불가능한 순서(elbow가 shoulder보다 뒤)는
+     * 매 frame 강하게 배제하고, wrist가 elbow보다 뒤인 순서는 약하게만
+     * 배제한다(실제로 손목을 굽힌 경우와 구분이 안 되므로 hard clamp가
+     * 아니라 다른 증거로 뒤집을 수 있는 soft prior로 둔다).
+     *
+     * "뒤"는 카메라 depth가 아니라 사람 본인의 앞/뒤축(Body Z)으로 판단해야
+     * 한다 — 카메라 앞에서 몸을 옆으로 틀면 Camera Z와 Body Z가 갈라지기
+     * 때문이다. Body frame은 이 major chain 복원 *다음*에 계산되므로
+     * (forearm_mapping.c) 여기서는 직전 frame의 안정화된 Body Z만 쓸 수
+     * 있다 — 프레임 간 Body Z 변화는 느리므로 근사로 충분하다. 아직 Body
+     * frame이 없으면(초기 몇 frame) camera Z로 fallback한다.
+     */
+    {
+        Vec3 shoulder_mid = pm_vscale(
+            pm_vadd(candidate->shoulder_l, candidate->shoulder_r), 0.5f);
+        float elbow_behind_shoulder;
+        float wrist_behind_elbow;
+
+        if (ctx->body_frame_valid) {
+            Vec3 elbow_rel = pm_vsub(candidate->elbow, shoulder_mid);
+            Vec3 wrist_rel = pm_vsub(candidate->wrist, candidate->elbow);
+            float elbow_front_z = pm_vdot(elbow_rel, ctx->body_z_axis);
+            float wrist_front_z = pm_vdot(wrist_rel, ctx->body_z_axis);
+
+            /* +Body Z = 사람 정면. 정면 성분이 음수면 그만큼 "뒤"다. */
+            elbow_behind_shoulder = fmaxf(0.0f, -elbow_front_z);
+            wrist_behind_elbow = fmaxf(0.0f, -wrist_front_z);
+        } else {
+            elbow_behind_shoulder =
+                fmaxf(0.0f, candidate->elbow.z - shoulder_mid.z);
+            wrist_behind_elbow =
+                fmaxf(0.0f, candidate->wrist.z - candidate->elbow.z);
+        }
+
+        score += PM_RECON_SHOULDER_ELBOW_ORDER_WEIGHT *
+            pm_sqrf(elbow_behind_shoulder);
+        score += PM_RECON_ELBOW_WRIST_ORDER_WEIGHT *
+            pm_sqrf(wrist_behind_elbow);
     }
 
     return score;
@@ -631,5 +704,190 @@ int pm_reconstruct_finger_pose3d(
 
     ctx->finger_pose3d_valid = 1U;
     ctx->finger_parent_wrist = ctx->wrist_3d;
+    return 0;
+}
+
+void pm_reset_finger_branch_tracker(PoseMappingContext *ctx)
+{
+    if (ctx == NULL) return;
+    memset(ctx->finger_branch, 0, sizeof(ctx->finger_branch));
+    ctx->finger_branch_ring = 0U;
+    ctx->finger_branch_selected = 0U;
+    ctx->finger_branch_selected_valid = 0U;
+    ctx->finger_pose3d_valid = 0U;
+}
+
+/* Score one complete hand hypothesis in the wrist's moving local origin.
+ * Translation of the whole arm therefore does not look like finger motion.
+ * Forearm alignment is deliberately weak: a real wrist may bend backwards. */
+static float finger_branch_frame_cost(
+    const PoseMappingContext *ctx,
+    const PoseFingerBranchState *track,
+    Point3D finger1,
+    Point3D finger2,
+    Vec3 forearm_n,
+    float finger_length,
+    Point3D *mid_relative_out,
+    Point3D *span_out
+)
+{
+    Vec3 mid_relative = pm_vsub(
+        pm_vscale(pm_vadd(finger1, finger2), 0.5f), ctx->wrist_3d);
+    Vec3 span = pm_vsub(finger2, finger1);
+    Vec3 hand_n = mid_relative;
+    Vec3 lateral = pm_project_perpendicular(span, forearm_n);
+    float span_length = pm_vlen(span);
+    float cost;
+
+    if (pm_vnormalize(&hand_n) != 0 || span_length <= PM_EPS ||
+        pm_vlen(lateral) / span_length < PM_MIN_HAND_PLANE_QUALITY)
+        return FLT_MAX;
+
+    /* A gentle anatomical prior, never a hard straight-hand constraint. */
+    cost = 0.05f * (1.0f - pm_vdot(forearm_n, hand_n));
+
+    /* A mixed near/far pair often puts thumb and index implausibly far apart.
+     * This remains soft because grip aperture and human proportions vary. */
+    if (span_length > 1.25f * finger_length)
+        cost += 0.06f * pm_sqrf(span_length / finger_length - 1.25f);
+
+    if (track->prev_valid) {
+        float inv_length_sq = 1.0f / pm_sqrf(finger_length);
+        cost += 0.50f * point_distance_sq(mid_relative,
+                                           track->prev_mid_relative) * inv_length_sq;
+        cost += 0.15f * point_distance_sq(span,
+                                           track->prev_span) * inv_length_sq;
+    }
+
+    *mid_relative_out = mid_relative;
+    *span_out = span;
+    return cost;
+}
+
+/* Operational forearm path only. Keep the legacy single-frame reconstruction
+ * above unchanged for callers that explicitly use the older mapping API. */
+int pm_reconstruct_finger_pose3d_tracked(
+    PoseMappingContext *ctx,
+    float dt_filter_sec
+)
+{
+    RaySphereCandidate finger1_candidate[2], finger2_candidate[2];
+    Point3D current_finger1[4], current_finger2[4];
+    Vec3 forearm_n;
+    float finger1_length, finger2_length, mean_length;
+    float best_cost = FLT_MAX, second_cost = FLT_MAX;
+    int finger1_count, finger2_count, best = -1;
+    unsigned i;
+
+    if (ctx == NULL) return -1;
+    finger1_length = PM_SHOULDER_WIDTH_UNIT * PM_WRIST_TO_FINGER1_RATIO;
+    finger2_length = PM_SHOULDER_WIDTH_UNIT * PM_WRIST_TO_FINGER2_RATIO;
+    mean_length = 0.5f * (finger1_length + finger2_length);
+    if (mean_length <= PM_EPS) return -1;
+
+    forearm_n = pm_vsub(ctx->wrist_3d, ctx->elbow_3d);
+    if (pm_vnormalize(&forearm_n) != 0) {
+        pm_reset_finger_branch_tracker(ctx);
+        return -1;
+    }
+
+    finger1_count = ray_sphere_candidates(
+        pixel_unit_ray(ctx->finger1.value), ctx->wrist_3d,
+        finger1_length, finger1_candidate);
+    finger2_count = ray_sphere_candidates(
+        pixel_unit_ray(ctx->finger2.value), ctx->wrist_3d,
+        finger2_length, finger2_candidate);
+    if (finger1_count <= 0 || finger2_count <= 0) {
+        pm_reset_finger_branch_tracker(ctx);
+        return -1;
+    }
+
+    for (i = 0U; i < 4U; ++i) {
+        PoseFingerBranchState *track = &ctx->finger_branch[i];
+        unsigned index1 = i & 1U;
+        unsigned index2 = (i >> 1U) & 1U;
+        Point3D mid_relative, span;
+        float cost;
+
+        if (index1 >= (unsigned)finger1_count ||
+            index2 >= (unsigned)finger2_count) {
+            track->consecutive_frames = 0U;
+            track->prev_valid = 0U;
+            continue;
+        }
+
+        current_finger1[i] = finger1_candidate[index1].point;
+        current_finger2[i] = finger2_candidate[index2].point;
+        cost = finger_branch_frame_cost(
+            ctx, track, current_finger1[i], current_finger2[i],
+            forearm_n, mean_length, &mid_relative, &span);
+        if (cost == FLT_MAX) {
+            track->consecutive_frames = 0U;
+            track->prev_valid = 0U;
+            continue;
+        }
+
+        track->frame_cost[ctx->finger_branch_ring] = cost;
+        track->prev_mid_relative = mid_relative;
+        track->prev_span = span;
+        track->prev_valid = 1U;
+        if (track->consecutive_frames < POSE_FINGER_BRANCH_WINDOW)
+            track->consecutive_frames++;
+
+        {
+            unsigned required = ctx->finger_branch_selected_valid
+                ? PM_FINGER_BRANCH_TRACKING_WINDOW
+                : POSE_FINGER_BRANCH_WINDOW;
+
+            if (track->consecutive_frames >= required) {
+                float average = 0.0f;
+                unsigned j;
+                for (j = 0U; j < required; ++j) {
+                    unsigned idx = (ctx->finger_branch_ring +
+                        POSE_FINGER_BRANCH_WINDOW - j) % POSE_FINGER_BRANCH_WINDOW;
+                    average += track->frame_cost[idx];
+                }
+                average /= (float)required;
+                if (average < best_cost) {
+                    second_cost = best_cost;
+                    best_cost = average;
+                    best = (int)i;
+                } else if (average < second_cost) {
+                    second_cost = average;
+                }
+            }
+        }
+    }
+    ctx->finger_branch_ring = (uint8_t)(
+        (ctx->finger_branch_ring + 1U) % POSE_FINGER_BRANCH_WINDOW);
+
+    /* No candidate has filled the window yet: retain the caller's previous
+     * pitch/roll (gripper stays independently observable from the 2D
+     * fingertip separation). Once a candidate has filled the window, report
+     * it outright, unless it would mean abandoning an already selected
+     * branch without a clear lead. */
+    if (best < 0 || (ctx->finger_branch_selected_valid &&
+                      (unsigned)best != ctx->finger_branch_selected &&
+                      second_cost - best_cost < PM_FINGER_BRANCH_SWITCH_LEAD))
+        return -1;
+
+    if (ctx->finger_pose3d_valid && ctx->finger_branch_selected_valid &&
+        (unsigned)best == ctx->finger_branch_selected) {
+        Point3D predicted_finger1 = pm_vadd(ctx->wrist_3d,
+            pm_vsub(ctx->finger1_3d, ctx->finger_parent_wrist));
+        Point3D predicted_finger2 = pm_vadd(ctx->wrist_3d,
+            pm_vsub(ctx->finger2_3d, ctx->finger_parent_wrist));
+        ctx->finger1_3d = ema_point3d(predicted_finger1,
+                                       current_finger1[best], dt_filter_sec);
+        ctx->finger2_3d = ema_point3d(predicted_finger2,
+                                       current_finger2[best], dt_filter_sec);
+    } else {
+        ctx->finger1_3d = current_finger1[best];
+        ctx->finger2_3d = current_finger2[best];
+    }
+    ctx->finger_parent_wrist = ctx->wrist_3d;
+    ctx->finger_pose3d_valid = 1U;
+    ctx->finger_branch_selected = (uint8_t)best;
+    ctx->finger_branch_selected_valid = 1U;
     return 0;
 }

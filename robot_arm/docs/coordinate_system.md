@@ -13,7 +13,30 @@
 
 ## Body frame: 확정 규약
 
-`U=(0,1,0)`이라 할 때:
+`U`는 카메라 roll(좌우 기울어짐)만큼 X-Y 평면 안에서 보정된 "위" 벡터다
+(`pose_math.c`의 `pm_camera_up_for_roll()`). 카메라를 위/아래로 향하는 각도(pitch)는
+이미지 up 벡터 자체를 안 바꾸므로 이 보정 대상이 아니다 — roll만 U를 틀어지게 만든다.
+
+roll 값을 구하는 경로는 두 가지다:
+
+- **Stateless 경로**(`pm_build_body_frame()`, 테스트/일회성 재구성용): 항상
+  `config/robot_config.h`의 고정값 `PM_CAMERA_ROLL_DEG`를 쓴다. 기본값 0 = 카메라가
+  수평이라고 가정하는 기존 동작과 동일.
+- **라이브 파이프라인**(`pm_update_stable_body_frame()`, `Agent1`이 매 프레임 호출):
+  카메라가 세션 중에도 계속 움직일 수 있어서(핸드헬드/진동/팔 마운트) 고정값 하나로는
+  부족하다. 대신 어깨선(BodyX)이 이미지평면에서 보이는 기울기로부터 카메라 roll을
+  역산(`pm_camera_roll_estimate_from_x()`)해서, `PM_CAMERA_ROLL_ADAPT_TAU_SEC`(기본
+  5초)짜리 느린 저역통과로 따라간다. "사람이 어깨를 한쪽으로 오래 기울인 채 버티는
+  일은 드물다"는 가정에 기반한 근사치라 완벽하지 않다 — 사람이 실제로 수십 초 이상
+  어깨를 기울이면 그것도 카메라 roll로 오인해 서서히 지울 수 있다. 이 한계는
+  hip landmark나 IMU 없이 현재 6점 랜드마크 입력만으로 가능한 범위 안에서, 완전
+  고정 카메라 가정보다 오차를 줄이기 위한 절충이다(`PM_CAMERA_ROLL_ADAPT_MAX_DEG`로
+  추정치 자체도 ±20°로 clamp). 어깨 폭이 `PM_BODY_FRAME_LOW_CONF_SPAN_PX` 미만이거나
+  사람이 카메라를 정면으로 보고 있지 않은(대략 32° 이상 돌아선) frame은 추정치
+  갱신에서 제외한다(`PM_CAMERA_ROLL_ADAPT_MIN_FRONTAL`) — 이 역산 자체가 "정면 +
+  어깨 수평" 가정에 기대기 때문에, 사람이 몸을 돌리는 동안은 관측을 신뢰하지 않는다.
+
+`U=(0,1,0)`(기본값 기준)이라 할 때:
 
 ```text
 X = normalize(shoulder_r - shoulder_l)
