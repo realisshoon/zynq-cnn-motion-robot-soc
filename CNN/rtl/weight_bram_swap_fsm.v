@@ -95,6 +95,11 @@ module weight_bram_swap_fsm (
     localparam [2:0] STATE_COMMIT = 3'd3;
     localparam [2:0] STATE_FAULT  = 3'd4;
 
+    localparam [1:0] LOAD_PHASE_WEIGHT  = 2'd0;
+    localparam [1:0] LOAD_PHASE_PADDING = 2'd1;
+    localparam [1:0] LOAD_PHASE_PARAM   = 2'd2;
+    localparam [1:0] LOAD_PHASE_DONE    = 2'd3;
+
     localparam [19:0] CONV0_WEIGHT_BYTES = 20'd768;
     localparam [19:0] CONV0_PARAM_BYTES  = 20'd192;
 
@@ -109,6 +114,16 @@ module weight_bram_swap_fsm (
     reg [19:0] expected_param_offset;
     reg [19:0] expected_dma_bytes;
     reg [10:0] expected_pw_word_count;
+    reg [1:0] load_phase;
+    reg [3:0] local_weight_bank;
+    reg [10:0] local_weight_word_addr;
+    reg [1:0] local_param_bank;
+    reg [8:0] local_param_word_addr;
+    reg [16:0] total_beats_remaining;
+    reg [16:0] region_beats_remaining;
+    reg [16:0] param_beats_total;
+    reg [16:0] pre_padding_beats_total;
+    reg padding_before_param;
 
     reg conv0_storage_valid;
     reg dw_storage_valid;
@@ -168,61 +183,75 @@ module weight_bram_swap_fsm (
     wire [19:0] desc_dma_bytes = desc_reg[`CFG_DMA_BYTES_MSB:`CFG_DMA_BYTES_LSB];
     wire [106:0] desc_reserved = desc_reg[`CFG_RESERVED_MSB:`CFG_RESERVED_LSB];
 
-    wire [9:0] desc_in_batches = ({1'b0, desc_cin} + 10'd31) >> 5;
-    wire [9:0] desc_out_groups = ({1'b0, desc_cout} + 10'd3) >> 2;
+    /* Ceiling divisions use the already-aligned high field plus a low-bit
+       nonzero flag.  This avoids carrying through ten bits before the
+       descriptor-local multiply. */
+    wire [9:0] desc_in_batches =
+        {5'd0, desc_cin[8:5]} + {9'd0, (|desc_cin[4:0])};
+    wire [9:0] desc_out_groups =
+        {2'd0, desc_cout[8:2]} + {9'd0, (|desc_cout[1:0])};
 
-    /* Predecode descriptor-invariant geometry on the load-accept edge.  CHECK
-       then compares registered boundaries rather than placing all arithmetic
-       in the state/fault control cone. */
-    wire [1:0] load_kind = load_desc[`CFG_KIND_MSB:`CFG_KIND_LSB];
-    wire [8:0] load_cin = load_desc[`CFG_CIN_MSB:`CFG_CIN_LSB];
-    wire [8:0] load_cout = load_desc[`CFG_COUT_MSB:`CFG_COUT_LSB];
-    wire [9:0] load_in_batches = ({1'b0, load_cin} + 10'd31) >> 5;
-    wire [9:0] load_out_groups = ({1'b0, load_cout} + 10'd3) >> 2;
-    wire [10:0] load_pw_word_count =
-        mul_batches_groups(load_in_batches[3:0], load_out_groups[6:0]);
-    wire [19:0] load_dw_weight_bytes =
-        ({10'd0, load_in_batches} << 8) +
-        ({10'd0, load_in_batches} << 5);
-    wire [19:0] load_pw_weight_bytes =
-        {2'd0, load_pw_word_count, 7'd0};
-    wire [19:0] load_dw_param_bytes = {11'd0, load_cout} << 3;
-    wire [19:0] load_pw_param_bytes = {10'd0, load_out_groups} << 5;
+    /* Descriptor geometry is derived only after load_desc has been captured
+       in desc_reg.  STATE_CHECK validates and captures these values on the
+       same edge that advances to STATE_LOAD, preserving the external load
+       latency while removing the direct top descriptor path. */
+    /* A small balanced LUT multiplier is shallower here than the historical
+       13-way case mux; keep it out of DSP48 resources. */
+    (* use_dsp = "no" *) wire [10:0] check_pw_word_count =
+        desc_in_batches[3:0] * desc_out_groups[6:0];
+    wire [19:0] check_dw_weight_bytes =
+        ({10'd0, desc_in_batches} << 8) +
+        ({10'd0, desc_in_batches} << 5);
+    wire [19:0] check_pw_weight_bytes =
+        {2'd0, check_pw_word_count, 7'd0};
+    wire [19:0] check_dw_param_bytes = {11'd0, desc_cout} << 3;
+    wire [19:0] check_pw_param_bytes = {10'd0, desc_out_groups} << 5;
 
-    wire [7:0] load_dw_nine_batches =
-        {4'd0, load_in_batches[3:0]} +
-        ({4'd0, load_in_batches[3:0]} << 3);
-    wire [7:0] load_dw_param_offset_units =
-        (load_dw_nine_batches + 8'd1) >> 1;
-    wire [9:0] load_dw_param_units = ({1'b0, load_cout} + 10'd7) >> 3;
-    wire [10:0] load_dw_dma_units =
-        {3'd0, load_dw_param_offset_units} + {1'b0, load_dw_param_units};
-    wire [19:0] load_dw_param_offset =
-        {6'd0, load_dw_param_offset_units, 6'd0};
-    wire [19:0] load_dw_dma_bytes = {3'd0, load_dw_dma_units, 6'd0};
+    wire [7:0] check_dw_nine_batches =
+        {4'd0, desc_in_batches[3:0]} +
+        ({4'd0, desc_in_batches[3:0]} << 3);
+    wire [7:0] check_dw_param_offset_units =
+        (check_dw_nine_batches + 8'd1) >> 1;
+    wire [9:0] check_dw_param_units =
+        {3'd0, desc_cout[8:3]} + {9'd0, (|desc_cout[2:0])};
+    wire [10:0] check_dw_dma_units =
+        {3'd0, check_dw_param_offset_units} + {1'b0, check_dw_param_units};
+    wire [19:0] check_dw_param_offset =
+        {6'd0, check_dw_param_offset_units, 6'd0};
+    wire [19:0] check_dw_dma_bytes = {3'd0, check_dw_dma_units, 6'd0};
 
-    wire [7:0] load_pw_param_units =
-        ({1'b0, load_out_groups[6:0]} + 8'd1) >> 1;
-    wire [11:0] load_pw_dma_units =
-        {load_pw_word_count, 1'b0} + {4'd0, load_pw_param_units};
-    wire [19:0] load_pw_dma_bytes = {2'd0, load_pw_dma_units, 6'd0};
+    wire [7:0] check_pw_param_units =
+        {2'd0, desc_out_groups[6:1]} + {7'd0, desc_out_groups[0]};
+    wire [11:0] check_pw_dma_units =
+        {check_pw_word_count, 1'b0} + {4'd0, check_pw_param_units};
+    wire [19:0] check_pw_dma_bytes = {2'd0, check_pw_dma_units, 6'd0};
 
-    wire [19:0] load_calc_weight_bytes =
-        (load_kind == `CNN_KIND_CONV0) ? CONV0_WEIGHT_BYTES :
-        (load_kind == `CNN_KIND_DEPTHWISE) ? load_dw_weight_bytes :
-        (load_kind == `CNN_KIND_POINTWISE) ? load_pw_weight_bytes : 20'd0;
-    wire [19:0] load_calc_param_bytes =
-        (load_kind == `CNN_KIND_CONV0) ? CONV0_PARAM_BYTES :
-        (load_kind == `CNN_KIND_DEPTHWISE) ? load_dw_param_bytes :
-        (load_kind == `CNN_KIND_POINTWISE) ? load_pw_param_bytes : 20'd0;
-    wire [19:0] load_calc_param_offset =
-        (load_kind == `CNN_KIND_CONV0) ? CONV0_WEIGHT_BYTES :
-        (load_kind == `CNN_KIND_DEPTHWISE) ? load_dw_param_offset :
-        (load_kind == `CNN_KIND_POINTWISE) ? load_pw_weight_bytes : 20'd0;
-    wire [19:0] load_calc_dma_bytes =
-        (load_kind == `CNN_KIND_CONV0) ? 20'd960 :
-        (load_kind == `CNN_KIND_DEPTHWISE) ? load_dw_dma_bytes :
-        (load_kind == `CNN_KIND_POINTWISE) ? load_pw_dma_bytes : 20'd0;
+    wire [19:0] check_calc_weight_bytes =
+        (desc_kind == `CNN_KIND_CONV0) ? CONV0_WEIGHT_BYTES :
+        (desc_kind == `CNN_KIND_DEPTHWISE) ? check_dw_weight_bytes :
+        (desc_kind == `CNN_KIND_POINTWISE) ? check_pw_weight_bytes : 20'd0;
+    wire [19:0] check_calc_param_bytes =
+        (desc_kind == `CNN_KIND_CONV0) ? CONV0_PARAM_BYTES :
+        (desc_kind == `CNN_KIND_DEPTHWISE) ? check_dw_param_bytes :
+        (desc_kind == `CNN_KIND_POINTWISE) ? check_pw_param_bytes : 20'd0;
+    wire [19:0] check_calc_param_offset =
+        (desc_kind == `CNN_KIND_CONV0) ? CONV0_WEIGHT_BYTES :
+        (desc_kind == `CNN_KIND_DEPTHWISE) ? check_dw_param_offset :
+        (desc_kind == `CNN_KIND_POINTWISE) ? check_pw_weight_bytes : 20'd0;
+    wire [19:0] check_calc_dma_bytes =
+        (desc_kind == `CNN_KIND_CONV0) ? 20'd960 :
+        (desc_kind == `CNN_KIND_DEPTHWISE) ? check_dw_dma_bytes :
+        (desc_kind == `CNN_KIND_POINTWISE) ? check_pw_dma_bytes : 20'd0;
+    wire [19:0] check_pre_padding_bytes =
+        check_calc_param_offset - check_calc_weight_bytes;
+    wire [16:0] check_weight_beats = check_calc_weight_bytes[19:3];
+    wire [16:0] check_param_beats = check_calc_param_bytes[19:3];
+    wire [16:0] check_total_beats = check_calc_dma_bytes[19:3];
+    wire [16:0] check_pre_padding_beats = check_pre_padding_bytes[19:3];
+    wire [13:0] check_dw_dma_units_from_desc_offset =
+        {2'd0, desc_param_offset[17:6]} + {4'd0, check_dw_param_units};
+    wire [13:0] check_pw_dma_units_from_desc_offset =
+        {2'd0, desc_param_offset[17:6]} + {6'd0, check_pw_param_units};
 
     reg desc_error;
 
@@ -236,20 +265,22 @@ module weight_bram_swap_fsm (
             (desc_kind != `CNN_KIND_DEPTHWISE) &&
             (desc_kind != `CNN_KIND_POINTWISE))
             desc_error = 1'b1;
-        if ({2'b00, desc_param_offset} != expected_param_offset)
-            desc_error = 1'b1;
-        if (desc_dma_bytes != expected_dma_bytes)
-            desc_error = 1'b1;
         case (desc_kind)
             `CNN_KIND_CONV0: begin
                 if ((desc_op_id != `CNN_OP_CONV0) ||
-                    (desc_cin != 9'd3) || (desc_cout != 9'd24))
+                    (desc_cin != 9'd3) || (desc_cout != 9'd24) ||
+                    ({2'b00, desc_param_offset} != 20'd768) ||
+                    (desc_dma_bytes != 20'd960))
                     desc_error = 1'b1;
             end
             `CNN_KIND_DEPTHWISE: begin
                 if ((desc_op_id[0] != 1'b1) || (desc_op_id > `CNN_OP_CONV13_DW) ||
                     (desc_cin == 9'd0) || (desc_cin > 9'd384) ||
-                    (desc_cout != desc_cin) || (desc_in_batches > 10'd12))
+                    (desc_cout != desc_cin) || (desc_in_batches > 10'd12) ||
+                    (desc_param_offset[5:0] != 6'd0) ||
+                    (desc_param_offset[17:6] != check_dw_param_offset_units) ||
+                    (desc_dma_bytes[5:0] != 6'd0) ||
+                    (desc_dma_bytes[19:6] != check_dw_dma_units_from_desc_offset))
                     desc_error = 1'b1;
             end
             `CNN_KIND_POINTWISE: begin
@@ -258,7 +289,12 @@ module weight_bram_swap_fsm (
                     (desc_cin == 9'd0) || (desc_cin > 9'd384) ||
                     (desc_cout == 9'd0) || (desc_cout > 9'd384) ||
                     (desc_in_batches > 10'd12) || (desc_out_groups > 10'd96) ||
-                    (expected_pw_word_count > 11'd1152))
+                    /* The two dimension bounds imply word_count<=12*96,
+                       so a second wide magnitude comparator is redundant. */
+                    (desc_param_offset[6:0] != 7'd0) ||
+                    (desc_param_offset[17:7] != check_pw_word_count) ||
+                    (desc_dma_bytes[5:0] != 6'd0) ||
+                    (desc_dma_bytes[19:6] != check_pw_dma_units_from_desc_offset))
                     desc_error = 1'b1;
             end
             default: desc_error = 1'b1;
@@ -314,32 +350,54 @@ module weight_bram_swap_fsm (
                           (pw_req_group >= pw_loaded_groups) ||
                           (pw_req_addr < pw_group_base) ||
                           (pw_req_addr >= pw_group_limit));
+    /* P1-B2: defensive physical bound for the pw_param_bank0..3 array read.
+       Each bank is declared [0:95] but pw_req_group is 7 bits (0..127), so
+       this guards the array index independently of pw_addr_error. Because
+       pw_loaded_groups is always <=96 (STATE_CHECK rejects
+       desc_out_groups>96), pw_req_group<pw_loaded_groups already implies
+       pw_req_group<96, so this bound never disagrees with the existing
+       pw_addr_error group check - it only removes the pw_group_base/
+       pw_group_limit (mul10x10_no_dsp) compare chain from the parameter
+       bank's read-enable fan-in, matching the split already used for
+       pw_w_bank0..15 above. */
+    wire pw_param_index_in_range = (pw_req_group < 7'd96);
     wire read_error = conv0_addr_error | dw_w_addr_error |
                       dw_p_addr_error | pw_addr_error;
 
     wire [20:0] dma_next_count = {1'b0, byte_count} + 21'd8;
+    wire dma_in_weight = (load_phase == LOAD_PHASE_WEIGHT);
+    wire dma_in_param = (load_phase == LOAD_PHASE_PARAM);
+    wire dma_write_phase = dma_in_weight || dma_in_param;
+    wire dma_local_final = (total_beats_remaining == 17'd1);
+    wire dma_local_overflow = (total_beats_remaining == 17'd0);
+    wire dma_param_format_ok = !dma_in_param ||
+        ((s_dma_data[31:24] == (s_dma_data[23] ? 8'hff : 8'h00)) &&
+         (s_dma_data[63:49] == 15'd0));
+    wire dma_current_beat_legal = (s_dma_keep == 8'hff) &&
+        !dma_local_overflow && (s_dma_last == dma_local_final) &&
+        dma_param_format_ok;
     wire dma_wrong_keep = dma_accept && (s_dma_keep != 8'hff);
-    wire dma_count_overflow = dma_accept && (dma_next_count > {1'b0, expected_dma_bytes});
-    wire dma_early_last = dma_accept && s_dma_last &&
-                          (dma_next_count != {1'b0, expected_dma_bytes});
-    wire dma_missing_last = dma_accept && !s_dma_last &&
-                            (dma_next_count == {1'b0, expected_dma_bytes});
-    wire dma_in_param = (byte_count >= expected_param_offset) &&
-                        (byte_count < (expected_param_offset +
-                                       expected_param_bytes));
+    /* Keep byte_count as an independent status/evidence counter.  A mismatch
+       can only arise from internal state corruption (normal progress updates
+       both counters together), and remains sticky-fault visible for legacy
+       diagnostics.  It is deliberately excluded from dma_write_enable and
+       every physical bank/address path. */
+    wire dma_status_count_overflow = dma_accept &&
+        (dma_next_count > {1'b0, expected_dma_bytes});
+    wire dma_count_overflow = (dma_accept && dma_local_overflow) ||
+                              dma_status_count_overflow;
+    wire dma_early_last = dma_accept && s_dma_last && !dma_local_final;
+    wire dma_missing_last = dma_accept && !s_dma_last && dma_local_final;
     wire dma_bias_error = dma_accept && dma_in_param &&
                           (s_dma_data[31:24] != (s_dma_data[23] ? 8'hff : 8'h00));
-    wire dma_m_error = dma_accept && dma_in_param && (s_dma_data[63:49] != 15'd0);
-    wire dma_error = dma_wrong_keep | dma_count_overflow | dma_early_last |
-                     dma_missing_last | dma_bias_error | dma_m_error;
-    wire dma_final_good = dma_accept && !dma_error && s_dma_last &&
-                          (dma_next_count == {1'b0, expected_dma_bytes});
-
-    wire dma_in_weight = (byte_count < expected_weight_bytes);
-    wire dma_write_enable = dma_accept && !dma_error &&
-                            (dma_in_weight || dma_in_param);
-    wire [14:0] weight_word64 = byte_count[17:3];
-    wire [8:0] param_word64 = byte_count[11:3] - expected_param_offset[11:3];
+    wire dma_m_error = dma_accept && dma_in_param &&
+                       (s_dma_data[63:49] != 15'd0);
+    wire dma_error = (dma_accept && !dma_current_beat_legal) ||
+                     dma_status_count_overflow;
+    wire dma_final_good = dma_accept && dma_current_beat_legal &&
+                          dma_local_final;
+    wire dma_write_enable = dma_accept && dma_current_beat_legal &&
+                            dma_write_phase;
 
     always @(posedge clk) begin
         if (!rst_n) begin
@@ -353,6 +411,16 @@ module weight_bram_swap_fsm (
             expected_param_offset <= 20'd0;
             expected_dma_bytes <= 20'd0;
             expected_pw_word_count <= 11'd0;
+            load_phase <= LOAD_PHASE_DONE;
+            local_weight_bank <= 4'd0;
+            local_weight_word_addr <= 11'd0;
+            local_param_bank <= 2'd0;
+            local_param_word_addr <= 9'd0;
+            total_beats_remaining <= 17'd0;
+            region_beats_remaining <= 17'd0;
+            param_beats_total <= 17'd0;
+            pre_padding_beats_total <= 17'd0;
+            padding_before_param <= 1'b0;
             conv0_storage_valid <= 1'b0;
             dw_storage_valid <= 1'b0;
             pw_storage_valid <= 1'b0;
@@ -426,30 +494,36 @@ module weight_bram_swap_fsm (
                                 pw_w_bank1[pw_req_addr],  pw_w_bank0[pw_req_addr]};
             end
 
-            if (pw_req_accept && !pw_addr_error) begin
-                pw_rsp_valid <= 1'b1;
+            /* P1-B2: parameter-bank array read is gated by pw_req_accept
+               and the defensive pw_param_index_in_range bound ALONE, so the
+               pw_addr_error (pw_group_base/pw_group_limit, mul10x10_no_dsp)
+               compare chain is removed from this array's read-enable/
+               ENARDEN fan-in - mirroring the pw_w_bank* split above
+               (L426-438). Public response validity keeps the original,
+               unchanged pw_addr_error-gated contract below, so invalid
+               requests (including group 96..127, which always also fails
+               pw_addr_error) never assert pw_rsp_valid. */
+            if (pw_req_accept && pw_param_index_in_range) begin
                 pw_rsp_params <= {pw_param_bank3[pw_req_group],
                                   pw_param_bank2[pw_req_group],
                                   pw_param_bank1[pw_req_group],
                                   pw_param_bank0[pw_req_group]};
+            end
+
+            if (pw_req_accept && !pw_addr_error) begin
+                pw_rsp_valid <= 1'b1;
             end else if (pw_rsp_valid && pw_rsp_ready) begin
                 pw_rsp_valid <= 1'b0;
             end
 
-            if (read_error) begin
-                fault <= 1'b1;
-                state <= STATE_FAULT;
-            end else begin
                 case (state)
                     STATE_IDLE: begin
-                        if (load_accept) begin
+                        if (read_error) begin
+                            fault <= 1'b1;
+                            state <= STATE_FAULT;
+                        end else if (load_accept) begin
                             desc_reg <= load_desc;
                             byte_count <= 20'd0;
-                            expected_weight_bytes <= load_calc_weight_bytes;
-                            expected_param_bytes <= load_calc_param_bytes;
-                            expected_param_offset <= load_calc_param_offset;
-                            expected_dma_bytes <= load_calc_dma_bytes;
-                            expected_pw_word_count <= load_pw_word_count;
                             case (load_desc[`CFG_KIND_MSB:`CFG_KIND_LSB])
                                 `CNN_KIND_CONV0: conv0_storage_valid <= 1'b0;
                                 `CNN_KIND_DEPTHWISE: dw_storage_valid <= 1'b0;
@@ -461,6 +535,27 @@ module weight_bram_swap_fsm (
                     end
 
                     STATE_CHECK: begin
+                        /* Capture the descriptor-local geometry on every CHECK
+                           edge.  For an invalid descriptor these private values
+                           are unreachable after the simultaneous FAULT entry;
+                           keeping capture unconditional prevents the full
+                           desc_error reduction from becoming a CE path into
+                           every local-state register. */
+                        expected_weight_bytes <= check_calc_weight_bytes;
+                        expected_param_bytes <= check_calc_param_bytes;
+                        expected_param_offset <= check_calc_param_offset;
+                        expected_dma_bytes <= check_calc_dma_bytes;
+                        expected_pw_word_count <= check_pw_word_count;
+                        load_phase <= LOAD_PHASE_WEIGHT;
+                        local_weight_bank <= 4'd0;
+                        local_weight_word_addr <= 11'd0;
+                        local_param_bank <= 2'd0;
+                        local_param_word_addr <= 9'd0;
+                        total_beats_remaining <= check_total_beats;
+                        region_beats_remaining <= check_weight_beats;
+                        param_beats_total <= check_param_beats;
+                        pre_padding_beats_total <= check_pre_padding_beats;
+                        padding_before_param <= 1'b0;
                         if (desc_error) begin
                             fault <= 1'b1;
                             state <= STATE_FAULT;
@@ -479,63 +574,139 @@ module weight_bram_swap_fsm (
                             state <= STATE_COMMIT;
                         end
 
+                        if (dma_accept && dma_current_beat_legal) begin
+                            total_beats_remaining <= total_beats_remaining - 17'd1;
+                            if (dma_local_final) begin
+                                load_phase <= LOAD_PHASE_DONE;
+                                region_beats_remaining <= 17'd0;
+                            end else begin
+                                case (load_phase)
+                                    LOAD_PHASE_WEIGHT: begin
+                                        if (region_beats_remaining == 17'd1) begin
+                                            if (pre_padding_beats_total != 17'd0) begin
+                                                load_phase <= LOAD_PHASE_PADDING;
+                                                region_beats_remaining <= pre_padding_beats_total;
+                                                padding_before_param <= 1'b1;
+                                            end else begin
+                                                load_phase <= LOAD_PHASE_PARAM;
+                                                region_beats_remaining <= param_beats_total;
+                                                padding_before_param <= 1'b0;
+                                            end
+                                        end else begin
+                                            region_beats_remaining <= region_beats_remaining - 17'd1;
+                                        end
+                                    end
+                                    LOAD_PHASE_PADDING: begin
+                                        if (region_beats_remaining == 17'd1) begin
+                                            if (padding_before_param) begin
+                                                load_phase <= LOAD_PHASE_PARAM;
+                                                region_beats_remaining <= param_beats_total;
+                                                padding_before_param <= 1'b0;
+                                            end else begin
+                                                load_phase <= LOAD_PHASE_DONE;
+                                                region_beats_remaining <= 17'd0;
+                                            end
+                                        end else begin
+                                            region_beats_remaining <= region_beats_remaining - 17'd1;
+                                        end
+                                    end
+                                    LOAD_PHASE_PARAM: begin
+                                        if (region_beats_remaining == 17'd1) begin
+                                            load_phase <= LOAD_PHASE_PADDING;
+                                            region_beats_remaining <= total_beats_remaining - 17'd1;
+                                            padding_before_param <= 1'b0;
+                                        end else begin
+                                            region_beats_remaining <= region_beats_remaining - 17'd1;
+                                        end
+                                    end
+                                    default: begin
+                                        load_phase <= LOAD_PHASE_DONE;
+                                        region_beats_remaining <= 17'd0;
+                                    end
+                                endcase
+                            end
+                        end
+
                         if (dma_write_enable) begin
                             case (desc_kind)
                                 `CNN_KIND_CONV0: begin
                                     if (dma_in_weight) begin
-                                        case (weight_word64[1:0])
-                                            2'd0: conv0_w_bank0[weight_word64[6:2]] <= s_dma_data;
-                                            2'd1: conv0_w_bank1[weight_word64[6:2]] <= s_dma_data;
-                                            2'd2: conv0_w_bank2[weight_word64[6:2]] <= s_dma_data;
-                                            2'd3: conv0_w_bank3[weight_word64[6:2]] <= s_dma_data;
+                                        case (local_weight_bank[1:0])
+                                            2'd0: conv0_w_bank0[local_weight_word_addr[4:0]] <= s_dma_data;
+                                            2'd1: conv0_w_bank1[local_weight_word_addr[4:0]] <= s_dma_data;
+                                            2'd2: conv0_w_bank2[local_weight_word_addr[4:0]] <= s_dma_data;
+                                            2'd3: conv0_w_bank3[local_weight_word_addr[4:0]] <= s_dma_data;
                                         endcase
                                     end else begin
-                                        conv0_param_mem[param_word64[4:0]] <= s_dma_data;
+                                        conv0_param_mem[local_param_word_addr[4:0]] <= s_dma_data;
                                     end
                                 end
                                 `CNN_KIND_DEPTHWISE: begin
                                     if (dma_in_weight) begin
-                                        case (weight_word64[1:0])
-                                            2'd0: dw_w_bank0[weight_word64[8:2]] <= s_dma_data;
-                                            2'd1: dw_w_bank1[weight_word64[8:2]] <= s_dma_data;
-                                            2'd2: dw_w_bank2[weight_word64[8:2]] <= s_dma_data;
-                                            2'd3: dw_w_bank3[weight_word64[8:2]] <= s_dma_data;
+                                        case (local_weight_bank[1:0])
+                                            2'd0: dw_w_bank0[local_weight_word_addr[6:0]] <= s_dma_data;
+                                            2'd1: dw_w_bank1[local_weight_word_addr[6:0]] <= s_dma_data;
+                                            2'd2: dw_w_bank2[local_weight_word_addr[6:0]] <= s_dma_data;
+                                            2'd3: dw_w_bank3[local_weight_word_addr[6:0]] <= s_dma_data;
                                         endcase
                                     end else begin
-                                        dw_param_mem[param_word64[8:0]] <= s_dma_data;
+                                        dw_param_mem[local_param_word_addr] <= s_dma_data;
                                     end
                                 end
                                 `CNN_KIND_POINTWISE: begin
                                     if (dma_in_weight) begin
-                                        case (weight_word64[3:0])
-                                            4'd0:  pw_w_bank0[weight_word64[14:4]] <= s_dma_data;
-                                            4'd1:  pw_w_bank1[weight_word64[14:4]] <= s_dma_data;
-                                            4'd2:  pw_w_bank2[weight_word64[14:4]] <= s_dma_data;
-                                            4'd3:  pw_w_bank3[weight_word64[14:4]] <= s_dma_data;
-                                            4'd4:  pw_w_bank4[weight_word64[14:4]] <= s_dma_data;
-                                            4'd5:  pw_w_bank5[weight_word64[14:4]] <= s_dma_data;
-                                            4'd6:  pw_w_bank6[weight_word64[14:4]] <= s_dma_data;
-                                            4'd7:  pw_w_bank7[weight_word64[14:4]] <= s_dma_data;
-                                            4'd8:  pw_w_bank8[weight_word64[14:4]] <= s_dma_data;
-                                            4'd9:  pw_w_bank9[weight_word64[14:4]] <= s_dma_data;
-                                            4'd10: pw_w_bank10[weight_word64[14:4]] <= s_dma_data;
-                                            4'd11: pw_w_bank11[weight_word64[14:4]] <= s_dma_data;
-                                            4'd12: pw_w_bank12[weight_word64[14:4]] <= s_dma_data;
-                                            4'd13: pw_w_bank13[weight_word64[14:4]] <= s_dma_data;
-                                            4'd14: pw_w_bank14[weight_word64[14:4]] <= s_dma_data;
-                                            4'd15: pw_w_bank15[weight_word64[14:4]] <= s_dma_data;
+                                        case (local_weight_bank)
+                                            4'd0:  pw_w_bank0[local_weight_word_addr] <= s_dma_data;
+                                            4'd1:  pw_w_bank1[local_weight_word_addr] <= s_dma_data;
+                                            4'd2:  pw_w_bank2[local_weight_word_addr] <= s_dma_data;
+                                            4'd3:  pw_w_bank3[local_weight_word_addr] <= s_dma_data;
+                                            4'd4:  pw_w_bank4[local_weight_word_addr] <= s_dma_data;
+                                            4'd5:  pw_w_bank5[local_weight_word_addr] <= s_dma_data;
+                                            4'd6:  pw_w_bank6[local_weight_word_addr] <= s_dma_data;
+                                            4'd7:  pw_w_bank7[local_weight_word_addr] <= s_dma_data;
+                                            4'd8:  pw_w_bank8[local_weight_word_addr] <= s_dma_data;
+                                            4'd9:  pw_w_bank9[local_weight_word_addr] <= s_dma_data;
+                                            4'd10: pw_w_bank10[local_weight_word_addr] <= s_dma_data;
+                                            4'd11: pw_w_bank11[local_weight_word_addr] <= s_dma_data;
+                                            4'd12: pw_w_bank12[local_weight_word_addr] <= s_dma_data;
+                                            4'd13: pw_w_bank13[local_weight_word_addr] <= s_dma_data;
+                                            4'd14: pw_w_bank14[local_weight_word_addr] <= s_dma_data;
+                                            4'd15: pw_w_bank15[local_weight_word_addr] <= s_dma_data;
                                         endcase
                                     end else begin
-                                        case (param_word64[1:0])
-                                            2'd0: pw_param_bank0[param_word64[8:2]] <= s_dma_data;
-                                            2'd1: pw_param_bank1[param_word64[8:2]] <= s_dma_data;
-                                            2'd2: pw_param_bank2[param_word64[8:2]] <= s_dma_data;
-                                            2'd3: pw_param_bank3[param_word64[8:2]] <= s_dma_data;
+                                        case (local_param_bank)
+                                            2'd0: pw_param_bank0[local_param_word_addr] <= s_dma_data;
+                                            2'd1: pw_param_bank1[local_param_word_addr] <= s_dma_data;
+                                            2'd2: pw_param_bank2[local_param_word_addr] <= s_dma_data;
+                                            2'd3: pw_param_bank3[local_param_word_addr] <= s_dma_data;
                                         endcase
                                     end
                                 end
                                 default: begin end
                             endcase
+
+                            if (dma_in_weight) begin
+                                if (((desc_kind == `CNN_KIND_POINTWISE) &&
+                                     (local_weight_bank == 4'd15)) ||
+                                    ((desc_kind != `CNN_KIND_POINTWISE) &&
+                                     (local_weight_bank[1:0] == 2'd3))) begin
+                                    local_weight_bank <= 4'd0;
+                                    local_weight_word_addr <= local_weight_word_addr + 11'd1;
+                                end else begin
+                                    local_weight_bank <= local_weight_bank + 4'd1;
+                                end
+                            end else begin
+                                if (desc_kind == `CNN_KIND_POINTWISE) begin
+                                    if (local_param_bank == 2'd3) begin
+                                        local_param_bank <= 2'd0;
+                                        local_param_word_addr <= local_param_word_addr + 9'd1;
+                                    end else begin
+                                        local_param_bank <= local_param_bank + 2'd1;
+                                    end
+                                end else begin
+                                    local_param_word_addr <= local_param_word_addr + 9'd1;
+                                end
+                            end
                         end
                     end
 
@@ -578,7 +749,6 @@ module weight_bram_swap_fsm (
                         state <= STATE_FAULT;
                     end
                 endcase
-            end
         end
     end
 
