@@ -68,6 +68,13 @@ typedef struct {
     Point3D body_z_axis;
     uint8_t body_frame_valid;
 
+    /*
+     * 카메라 roll의 프레임 단위 추정치(도). PM_CAMERA_ROLL_ADAPT_* 참고.
+     * valid=0이면 아직 시딩 전 — 다음 성공 frame에서 PM_CAMERA_ROLL_DEG로 시딩된다.
+     */
+    float camera_roll_estimate_deg;
+    uint8_t camera_roll_estimate_valid;
+
     /* Wrist roll */
     Point3D prev_hand_normal;
     uint8_t prev_hand_normal_valid;

@@ -229,12 +229,105 @@ static void degenerate_frames(void)
     check_frame(ctx.body_x_axis,ctx.body_y_axis,ctx.body_z_axis);
 }
 
+static void camera_roll_correction(void)
+{
+    Vec3 up;
+
+    /* roll=0: 기존과 동일한 (0,1,0). */
+    up = pm_camera_up_for_roll(0.0f);
+    vector_near(up, pm_vec3(0.0f, 1.0f, 0.0f));
+
+    /* roll=90: X-Y 평면 안에서 90도 회전, Z는 안 건드림(카메라 시선축 불변). */
+    up = pm_camera_up_for_roll(90.0f);
+    near(up.z, 0.0f, 0.0001f);
+    near(pm_vlen(up), 1.0f, 0.0001f);
+    near(up.y, 0.0f, 0.0001f);
+
+    /* 임의 각도에서도 항상 단위벡터, Z=0(roll은 카메라 시선축을 안 바꿈). */
+    for (int deg = -180; deg <= 180; deg += 17) {
+        up = pm_camera_up_for_roll((float)deg);
+        near(pm_vlen(up), 1.0f, 0.0001f);
+        near(up.z, 0.0f, 0.0001f);
+    }
+}
+
+/* shoulder_r_3d - shoulder_l_3d for a person facing the camera with level,
+ * un-rolled shoulders (reference direction (-1,0,0), anatomical mirror --
+ * see pm_camera_roll_estimate_from_x() comment), viewed through a camera
+ * rolled by theta_deg. */
+static Vec3 rolled_level_shoulder_x(float theta_deg)
+{
+    float rad = theta_deg * PM_DEG_TO_RAD;
+    return pm_vec3(-cosf(rad), sinf(rad), 0.0f);
+}
+
+static void camera_roll_adaptive_estimate(void)
+{
+    int deg;
+
+    /* Pure round-trip: recovers the synthetic camera roll from the observed
+     * (world-level) shoulder line, independent of any ctx/history. */
+    for (deg = -40; deg <= 40; deg += 20) {
+        Vec3 raw_x = rolled_level_shoulder_x((float)deg);
+        near(pm_camera_roll_estimate_from_x(raw_x), (float)deg, 0.01f);
+    }
+
+    /* Adaptive convergence: a sustained synthetic camera roll should pull the
+     * per-frame estimate toward it over many high-confidence frames -- not
+     * required to be exact, only closer to the truth than the roll=0
+     * baseline (matches the accuracy bar the user asked for). */
+    {
+        const float theta = 15.0f;
+        PoseMappingContext ctx;
+        Vec3 x = rolled_level_shoulder_x(theta);
+        Vec3 y_true = pm_camera_up_for_roll(theta);
+        float dot_before, dot_after;
+        int i;
+
+        pose_mapping_init(&ctx);
+        for (i = 0; i < 400; ++i) {
+            ctx.shoulder_l_3d = pm_vscale(x, -0.5f);
+            ctx.shoulder_r_3d = pm_vscale(x, 0.5f);
+            ctx.shoulder_l.value.x = 540.0f;
+            ctx.shoulder_r.value.x = 740.0f; /* span 200px: high confidence */
+            assert(pm_update_stable_body_frame(&ctx, 0.1f) == 0);
+        }
+        assert(fabsf(ctx.camera_roll_estimate_deg - theta) < fabsf(0.0f - theta));
+        assert(fabsf(ctx.camera_roll_estimate_deg - theta) < 3.0f);
+
+        dot_before = pm_vdot(pm_vec3(0.0f, 1.0f, 0.0f), y_true);
+        dot_after = pm_vdot(ctx.body_y_axis, y_true);
+        assert(dot_after > dot_before);
+        assert(dot_after > 0.999f);
+    }
+
+    /* Low-confidence (narrow shoulder span) frames must never move the
+     * estimate away from its seeded value, even under a large synthetic tilt. */
+    {
+        PoseMappingContext ctx;
+        Vec3 x = rolled_level_shoulder_x(15.0f);
+        int i;
+
+        pose_mapping_init(&ctx);
+        for (i = 0; i < 50; ++i) {
+            ctx.shoulder_l_3d = pm_vscale(x, -0.5f);
+            ctx.shoulder_r_3d = pm_vscale(x, 0.5f);
+            ctx.shoulder_l.value.x = 635.0f;
+            ctx.shoulder_r.value.x = 645.0f; /* span 10px: below low-conf threshold */
+            assert(pm_update_stable_body_frame(&ctx, 0.1f) == 0);
+        }
+        near(ctx.camera_roll_estimate_deg, 0.0f, 0.0001f);
+    }
+}
+
 int main(void)
 {
     first_log_frame();
     simple_angles_and_views();
     continuity();
     degenerate_frames();
-    puts("test_body_frame: PASS (signs, views, tilt, continuity, wrap, degeneracy)");
+    camera_roll_correction();
+    camera_roll_adaptive_estimate();
+    puts("test_body_frame: PASS (signs, views, tilt, continuity, wrap, degeneracy, camera roll, adaptive roll)");
     return 0;
 }

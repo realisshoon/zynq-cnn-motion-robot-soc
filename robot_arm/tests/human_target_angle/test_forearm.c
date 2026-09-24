@@ -309,6 +309,20 @@ static HumanPose2D sample(void)
     p.valid=1; p.frame_id=123;
     return p;
 }
+static void test_gripper_without_wrist_geometry(void)
+{
+    ForearmMappingContext c;
+    HumanForearmTarget t;
+    HumanPose2D p = sample();
+
+    /* Coincident thumb/index tips are a valid closed gripper observation,
+     * while their 3D span cannot define a wrist orientation. */
+    p.finger2 = p.finger1;
+    assert(forearm_mapping_init(&c) == 0);
+    assert(forearm_mapping_update(&c, &p, POSE_ARM_RIGHT, 0.05f, &t) == 1);
+    assert(t.valid && !t.hand_fresh);
+    near(t.gripper_norm, 0.0f, 0.0f);
+}
 static void test_pipeline(void)
 {
     ForearmMappingContext c, old;
@@ -379,7 +393,8 @@ static void test_uart(const char *path)
 int main(int argc,char **argv)
 {
     test_geometry(); test_temporal_geometry(); test_body_rotation(); test_wrist();
-    test_wrist_body_reference(); test_pipeline();
+    test_wrist_body_reference(); test_gripper_without_wrist_geometry();
+    test_pipeline();
     if(argc>1) test_uart(argv[1]);
     puts("Forearm geometry / wrist / temporal / pipeline: PASS");
     return 0;

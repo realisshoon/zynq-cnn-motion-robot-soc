@@ -56,7 +56,8 @@ typedef struct {
  * gripper: 0=CLOSE, 1=OPEN.
  * frame_id retains the last fresh major measurement's ID during HOLD.
  * valid covers major geometry only; elbow_roll_observable and hand_fresh
- * distinguish a fresh observation from retained/default values. */
+ * distinguish fresh elbow heading/wrist angles from retained/default values.
+ * A fresh 2D gripper observation may update while wrist angles are held. */
 typedef struct {
     float elbow_roll_deg, elbow_pitch_deg;
     float wrist_pitch_deg, wrist_roll_deg, gripper_norm;

@@ -26,15 +26,15 @@
 
 /*
  * 전원 인가 시 팔이 놓이는 홈 자세(서보 각도 기준).
- * TODO: 지금은 자리표시자다. 실측 offset이 나오면 교체하고 RTL reset 값과 일치시킨다.
- * gripper_norm은 0.0=Close, 1.0=Open이다. 지금은 servo_hal_startup()의 안전 자세
- * (5채널 모두 1500us)와 맞추려고 4관절 90도 + gripper 0.5(=1500us)로 뒀다.
+ * Idle ㄱ자 사진에 대응하는 사용자 지정 자세: 90/70/100/90도.
+ * Agent2의 사람각 offset과 별도로 지정하는 부팅 자세다.
+ * gripper_norm은 0.0=Close, 1.0=Open이며 홈은 0.7이다.
  */
 static const ForearmJointCommand k_home_pose = {
     .elbow_roll_deg = 90.0f,
     .elbow_pitch_deg = 70.0f,
     .wrist_pitch_deg = 100.0f,
-    .wrist_roll_deg = 90.0f,
+    .wrist_roll_deg = 87.0f,
     .gripper_norm = 0.7f,
     .valid = 1U
 };
