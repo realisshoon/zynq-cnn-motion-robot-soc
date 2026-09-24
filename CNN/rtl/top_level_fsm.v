@@ -163,6 +163,7 @@ reg [543:0] shadow_joints;
 reg [31:0] shadow_red, shadow_blue;
 reg load_inflight;
 reg busy_r, done_pending_r, error_pending_r, fault_lock;
+reg published_bank;
 reg [31:0] error_code_r, result_seq_r, result_frame_id_r;
 reg [543:0] joint_words_r;
 reg [16:0] joint_flags_r;
@@ -244,11 +245,14 @@ assign done_pending=done_pending_r;
 assign error_pending=error_pending_r;
 assign error_code=error_code_r;
 assign result_seq=result_seq_r;
-assign result_frame_id=result_frame_id_r;
-assign joint_words=joint_words_r;
-assign joint_flags=joint_flags_r;
-assign red_word=red_word_r;
-assign blue_word=blue_word_r;
+// The existing public and shadow stores are the two result banks.  Bank 0 is
+// the reset-visible bank.  Capture always targets the inactive bank and only
+// the narrow selector changes on a successful publish.
+assign result_frame_id=published_bank ? snap_frame_id : result_frame_id_r;
+assign joint_words=published_bank ? shadow_joints : joint_words_r;
+assign joint_flags=published_bank ? shadow_flags : joint_flags_r;
+assign red_word=published_bank ? shadow_red : red_word_r;
+assign blue_word=published_bank ? shadow_blue : blue_word_r;
 assign cycle_count=cycle_count_r;
 assign image_read_done=image_read_done_r;
 
@@ -308,6 +312,7 @@ wire [31:0] fault_code_next = (txn_done && txn_error) ? 32'h2 :
     status_fault ? 32'h4 :
     (rom_fault || swap_fault || descriptor_fault) ? 32'h10 :
     module_fault ? 32'h1 : watchdog_fault ? 32'h8 : 32'd0;
+wire fault_accept=(fault_code_next!=0) && !fault_lock;
 wire stage_complete=(stage==0) ?
     (seen_down_done && seen_input_done && seen_fm_done && fm_write_done &&
      seen_feature_s2mm_done && seen_image_dma_done) :
@@ -358,6 +363,7 @@ always @(posedge clk) begin
         joint_seen<=0; shadow_flags<=0; shadow_joints<=0;
         shadow_red<=0; shadow_blue<=0; load_inflight<=0;
         busy_r<=0; done_pending_r<=0; error_pending_r<=0;
+        published_bank<=0;
         fault_lock<=0; error_code_r<=0; result_seq_r<=0;
         result_frame_id_r<=0; joint_words_r<=0; joint_flags_r<=0;
         red_word_r<=0; blue_word_r<=0; cycle_count_r<=0;
@@ -387,14 +393,23 @@ always @(posedge clk) begin
         if (busy_r) cycle_count_r<=cycle_count_r+1'b1;
         if (clear_done) done_pending_r<=1'b0;
         if (clear_error) error_pending_r<=1'b0;
-        // Shadow clearing is harmless on a simultaneous fault and must not
-        // sit behind the wide watchdog comparison on the joint data path.
+        // Clear only the inactive/working bank.  This is intentionally outside
+        // the fault boundary: the selected published bank remains untouched.
         if (state==S_SNAPSHOT) begin
             seen_color_results<=0;
             joint_seen<=0;
             seen_joint_last<=0;
-            shadow_flags<=0;
-            shadow_joints<=0;
+            if (published_bank) begin
+                joint_flags_r<=0;
+                joint_words_r<=0;
+                red_word_r<=0;
+                blue_word_r<=0;
+            end else begin
+                shadow_flags<=0;
+                shadow_joints<=0;
+                shadow_red<=0;
+                shadow_blue<=0;
+            end
         end
 
         // Single-outstanding AXI-Lite transaction engine. AW and W retire
@@ -434,27 +449,34 @@ always @(posedge clk) begin
             if (fm_done) seen_fm_done<=1;
             if (swap_load_done && load_inflight) seen_swap_load_done<=1;
             if (color_results_valid) begin
-                shadow_red<=color_red_word;
-                shadow_blue<=color_blue_word;
+                if (published_bank) begin
+                    red_word_r<=color_red_word;
+                    blue_word_r<=color_blue_word;
+                end else begin
+                    shadow_red<=color_red_word;
+                    shadow_blue<=color_blue_word;
+                end
                 seen_color_results<=1;
             end
             if (joint_accept && !joint_protocol_fault) begin
-                shadow_joints[coord_m_joint_index*32 +: 32]
-                    <=coord_m_joint_data;
-                shadow_flags[coord_m_joint_index]<=coord_m_joint_good;
+                if (published_bank) begin
+                    joint_words_r[coord_m_joint_index*32 +: 32]
+                        <=coord_m_joint_data;
+                    joint_flags_r[coord_m_joint_index]<=coord_m_joint_good;
+                end else begin
+                    shadow_joints[coord_m_joint_index*32 +: 32]
+                        <=coord_m_joint_data;
+                    shadow_flags[coord_m_joint_index]<=coord_m_joint_good;
+                end
                 joint_seen[coord_m_joint_index]<=1;
                 if (coord_m_joint_last) seen_joint_last<=1;
             end
         end
 
-        if (fault_code_next!=0 && !fault_lock) begin
-            state<=S_ERROR;
-            busy_r<=0;
-            fault_lock<=1;
-            error_pending_r<=1;
-            error_code_r<=fault_code_next;
-            load_inflight<=0;
-        end else case (state)
+        // State-local/private updates are no longer placed behind the raw
+        // fault decode.  A final narrow override below preserves fault
+        // priority for all externally visible control.
+        case (state)
             S_IDLE: begin
                 step<=0;
                 if (start && !fault_lock && !done_pending_r) begin
@@ -465,7 +487,8 @@ always @(posedge clk) begin
                 end
             end
             S_SNAPSHOT: begin
-                snap_frame_id<=frame_id;
+                if (published_bank) result_frame_id_r<=frame_id;
+                else snap_frame_id<=frame_id;
                 snap_sg_base<=sg_desc_base;
                 snap_wgt_base<=wgt_base;
                 snap_a_base<=fm_a_base;
@@ -713,15 +736,13 @@ always @(posedge clk) begin
             S_POST: if (seen_color_results && (&joint_seen))
                 state<=S_PUBLISH;
             S_PUBLISH: begin
-                joint_words_r<=shadow_joints;
-                joint_flags_r<=shadow_flags;
-                red_word_r<=shadow_red;
-                blue_word_r<=shadow_blue;
-                result_frame_id_r<=snap_frame_id;
-                result_seq_r<=result_seq_r+1'b1;
-                done_pending_r<=1;
-                busy_r<=0;
-                state<=S_IDLE;
+                if (!fault_accept) begin
+                    published_bank<=~published_bank;
+                    result_seq_r<=result_seq_r+1'b1;
+                    done_pending_r<=1;
+                    busy_r<=0;
+                    state<=S_IDLE;
+                end
             end
             S_ERROR: begin
                 busy_r<=0;
@@ -734,6 +755,24 @@ always @(posedge clk) begin
                 error_code_r<=32'h1;
             end
         endcase
+
+        // Last nonblocking assignments win.  The raw fault cone terminates in
+        // this narrow boundary and cannot gate either 544-bit result bank.
+        if (fault_accept) begin
+            state<=S_ERROR;
+            busy_r<=0;
+            fault_lock<=1;
+            error_pending_r<=1;
+            error_code_r<=fault_code_next;
+            load_inflight<=0;
+            color_frame_start_r<=0;
+            image_read_done_r<=image_read_done_r;
+            // Suppress a transaction launched from T_IDLE on this edge while
+            // allowing an already outstanding transaction to retire exactly
+            // as before.
+            if (txn_state==T_IDLE)
+                txn_state<=T_IDLE;
+        end
     end
 end
 task launch_write;

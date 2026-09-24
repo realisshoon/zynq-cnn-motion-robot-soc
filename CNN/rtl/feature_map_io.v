@@ -131,24 +131,37 @@ module feature_map_io (
                           (read_parsed_bytes == read_input_bytes) &&
                           (read_count == 0) && !read_word_valid &&
                           !pixel_valid_reg && !read_frame_generated;
-    wire protocol_fault = active && (
-        dma_error || body_tag_mismatch ||
-        (read_push && (s_dma_read_keep != 8'hff ||
-                       read_beat_end > {1'b0, src_bytes_reg} ||
-                       s_dma_read_last !=
-                           (read_beat_end == {1'b0, src_bytes_reg}))) ||
-        (read_path_en && read_last_seen && s_dma_read_valid) ||
-        (read_dma_sample &&
-             (read_push ?
-                 (!s_dma_read_last || read_beat_end != {1'b0, src_bytes_reg}) :
-                 (!read_last_seen || read_input_bytes != {1'b0, src_bytes_reg}))) ||
-        read_underflow ||
-        (read_byte_step && read_frame_generated) ||
-        (body_accept && (body_bytes == 0 ||
-             write_input_bytes + body_bytes > {1'b0, dst_bytes_reg})) ||
-        (write_path_en && write_input_bytes == {1'b0, dst_bytes_reg} &&
-             s_body_valid)
-    );
+    wire dma_fault = active && dma_error;
+    wire read_accept_fault = read_push &&
+        (s_dma_read_keep != 8'hff ||
+         read_beat_end > {1'b0, src_bytes_reg} ||
+         s_dma_read_last != (read_beat_end == {1'b0, src_bytes_reg}));
+    wire read_extra_input_fault = read_path_en && read_last_seen &&
+                                  s_dma_read_valid;
+    wire read_dma_done_fault = read_dma_sample &&
+        (read_push ?
+            (!s_dma_read_last || read_beat_end != {1'b0, src_bytes_reg}) :
+            (!read_last_seen || read_input_bytes != {1'b0, src_bytes_reg}));
+    wire read_after_frame_fault = read_byte_step && read_frame_generated;
+    wire read_protocol_fault = active &&
+        (read_accept_fault || read_extra_input_fault ||
+         read_dma_done_fault || read_underflow || read_after_frame_fault);
+    wire write_body_count_fault = body_accept &&
+        (body_bytes == 0 ||
+         write_input_bytes + body_bytes > {1'b0, dst_bytes_reg});
+    wire write_extra_input_fault = write_path_en &&
+        write_input_bytes == {1'b0, dst_bytes_reg} && s_body_valid;
+    wire write_protocol_fault = active &&
+        (body_tag_mismatch || write_body_count_fault ||
+         write_extra_input_fault);
+    wire protocol_fault = dma_fault || read_protocol_fault ||
+                          write_protocol_fault;
+    wire fault_accept = protocol_fault && !fault_reg;
+    wire read_state_commit_ok = !dma_fault && !read_protocol_fault;
+    wire write_state_commit_ok = !dma_fault;
+    wire write_body_commit_ok = write_state_commit_ok &&
+                                !body_tag_mismatch &&
+                                !write_body_count_fault;
 
     assign cfg_ready = rst_n && !active && !fault_reg;
     assign fault = fault_reg;
@@ -172,13 +185,13 @@ module feature_map_io (
 
     // BRAM data arrays retain contents across reset; pointers and valid bits do not.
     always @(posedge clk) begin
-        if (read_push)
+        if (read_push && read_state_commit_ok)
             read_fifo[read_wr_ptr] <= s_dma_read_data;
-        if (read_pop)
+        if (read_pop && read_state_commit_ok)
             read_word <= read_fifo[read_rd_ptr];
-        if (write_push)
+        if (write_push && write_state_commit_ok)
             write_fifo[write_wr_ptr] <= packed_word;
-        if (write_pop)
+        if (write_pop && write_state_commit_ok)
             write_word <= write_fifo[write_rd_ptr];
     end
 
@@ -301,12 +314,7 @@ module feature_map_io (
             end
         end else begin
             done_reg <= 1'b0;
-            if (protocol_fault) begin
-                fault_reg <= 1'b1;
-                active <= 1'b0;
-                pixel_valid_reg <= 1'b0;
-                write_valid_reg <= 1'b0;
-            end else if (!fault_reg) begin
+            if (!fault_reg) begin
                 if (active && !operation_complete_seen &&
                     read_complete && write_complete) begin
                     done_reg <= 1'b1;
@@ -323,18 +331,19 @@ module feature_map_io (
                     read_dma_done_seen <= 1'b1;
                 if (write_dma_sample)
                     write_dma_done_seen <= 1'b1;
-                if (read_push) begin
+                if (read_push && read_state_commit_ok) begin
                     read_wr_ptr <= read_wr_ptr + 1'b1;
                     read_input_bytes <= read_input_bytes + 21'd8;
                     if (s_dma_read_last)
                         read_last_seen <= 1'b1;
                 end
-                if (read_pop) begin
+                if (read_pop && read_state_commit_ok) begin
                     read_rd_ptr <= read_rd_ptr + 1'b1;
                     read_word_valid <= 1'b1;
                     read_byte_lane <= 3'd0;
                 end
-                case ({read_push, read_pop})
+                case ({read_push && read_state_commit_ok,
+                       read_pop && read_state_commit_ok})
                     2'b10: read_count <= read_count + 1'b1;
                     2'b01: read_count <= read_count - 1'b1;
                     default: ;
@@ -344,7 +353,7 @@ module feature_map_io (
                     if (pixel_tag_reg[38])
                         final_pixel_accept_seen <= 1'b1;
                 end
-                if (read_byte_step) begin
+                if (read_byte_step && !read_after_frame_fault) begin
                     read_parsed_bytes <= read_parsed_bytes + 1'b1;
                     if (read_channel[4:0] == 0) begin
                         pixel_data_reg <= {248'd0, read_byte};
@@ -377,7 +386,7 @@ module feature_map_io (
                     end else
                         read_channel <= read_channel + 1'b1;
                 end
-                if (body_accept) begin
+                if (body_accept && write_body_commit_ok) begin
                     body_data_reg <= s_body_data;
                     body_mask_reg <= s_body_mask;
                     body_lane <= 3'd0;
@@ -392,7 +401,8 @@ module feature_map_io (
                     if (write_byte_step) begin
                         write_packed_bytes <= write_packed_bytes + 1'b1;
                         if (write_push) begin
-                            write_wr_ptr <= write_wr_ptr + 1'b1;
+                            if (write_state_commit_ok)
+                                write_wr_ptr <= write_wr_ptr + 1'b1;
                             write_pack <= 64'd0;
                             write_fill <= 3'd0;
                         end else begin
@@ -401,7 +411,7 @@ module feature_map_io (
                         end
                     end
                 end
-                if (write_pop) begin
+                if (write_pop && write_state_commit_ok) begin
                     write_rd_ptr <= write_rd_ptr + 1'b1;
                     write_valid_reg <= 1'b1;
                     write_last_reg <= write_output_bytes + 21'd8 >=
@@ -412,7 +422,8 @@ module feature_map_io (
                     else
                         write_keep_reg <= 8'hff;
                 end
-                case ({write_push, write_pop})
+                case ({write_push && write_state_commit_ok,
+                       write_pop && write_state_commit_ok})
                     2'b10: write_count <= write_count + 1'b1;
                     2'b01: write_count <= write_count - 1'b1;
                     default: ;
@@ -425,6 +436,20 @@ module feature_map_io (
                     end else
                         write_output_bytes <= write_output_bytes + 21'd8;
                 end
+            end
+            if (fault_accept) begin
+                fault_reg <= 1'b1;
+                active <= 1'b0;
+                done_reg <= 1'b0;
+                pixel_valid_reg <= 1'b0;
+                write_valid_reg <= 1'b0;
+                read_done_reg <= read_done_reg;
+                write_done_reg <= write_done_reg;
+                operation_complete_seen <= operation_complete_seen;
+                final_pixel_accept_seen <= final_pixel_accept_seen;
+                final_write_accept_seen <= final_write_accept_seen;
+                read_dma_done_seen <= read_dma_done_seen;
+                write_dma_done_seen <= write_dma_done_seen;
             end
         end
     end
