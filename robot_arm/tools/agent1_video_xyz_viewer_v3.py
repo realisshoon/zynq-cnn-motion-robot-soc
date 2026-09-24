@@ -5,11 +5,13 @@
 Agent1 실제 영상 + 직관적 3D XYZ Viewer V3
 
 핵심 변경
-1) 3D 시각화 좌표계를 "카메라 기준"으로 직관적으로 재배치
-   - 화면 가로축      : Camera X  (오른쪽 +)
-   - 화면 깊이축      : Camera Z  (카메라에서 멀어질수록 +)
-    - 화면 세로축      : Camera Y   (영상 위쪽 +)
-   즉, Z가 더 이상 위/아래 축처럼 보이지 않고 '화면 안쪽 깊이'로 보임.
+1) 3D 시각화 좌표계를 "사람 몸(양어깨) 기준"으로 재배치
+   - 화면 가로축      : Body X  (사람 자신의 오른쪽 +)
+   - 화면 깊이축      : Body Z  (사람 자신의 정면 +)
+   - 화면 세로축      : Body Y  (사람 자신의 위쪽 +)
+   원점은 그 frame의 양어깨 중점. 카메라가 움직이거나 사람이 카메라 앞에서
+   돌아도, 사람이 같은 동작을 하면 이 좌표계에서는 같은 모양으로 보인다.
+   CSV에 body_axes 컬럼이 없으면 기존 Camera XYZ로 자동 fallback한다.
 
 2) GRIP 상태를 크게 표시
    - GRIP = 1 : OPEN
@@ -225,19 +227,41 @@ def letterbox_square(img, size: int, bg=(0, 0, 0)):
     return canvas
 
 
+def body_origin(fr: "Result3DFrame"):
+    """Shoulder midpoint in camera coordinates: the body frame's origin."""
+    return tuple(0.5 * (a + b) for a, b in zip(fr.shoulder_l, fr.shoulder_r))
+
+
+def to_body_frame(p, origin, body_axes):
+    """Project a camera-space point into that frame's (BodyX, BodyY, BodyZ) basis."""
+    d = tuple(pc - oc for pc, oc in zip(p, origin))
+    bx, by, bz = body_axes
+    return (
+        d[0] * bx[0] + d[1] * bx[1] + d[2] * bx[2],
+        d[0] * by[0] + d[1] * by[1] + d[2] * by[2],
+        d[0] * bz[0] + d[1] * bz[1] + d[2] * bz[2],
+    )
+
+
 def compute_fixed_axis_limits(results: List[Result3DFrame], margin_ratio=0.12):
-    valid = [r for r in results if r.target_valid == 1]
+    have_body = any(r.body_axes is not None for r in results)
+
+    valid = [r for r in results if r.target_valid == 1 and
+             (not have_body or r.body_axes is not None)]
     if not valid:
-        valid = results
+        valid = [r for r in results if not have_body or r.body_axes is not None] or results
 
     xs, ys, zs = [], [], []
     for fr in valid:
+        origin = body_origin(fr) if have_body and fr.body_axes is not None else None
         for p in (fr.shoulder_l, fr.shoulder_r, fr.elbow,
                   fr.wrist, fr.finger1, fr.finger2):
-            if all(math.isfinite(q) for q in p):
-                xs.append(p[0])
-                ys.append(p[1])
-                zs.append(p[2])
+            if not all(math.isfinite(q) for q in p):
+                continue
+            bp = to_body_frame(p, origin, fr.body_axes) if origin is not None else p
+            xs.append(bp[0])
+            ys.append(bp[1])
+            zs.append(bp[2])
 
     def lim(arr, min_span):
         lo, hi = min(arr), max(arr)
@@ -292,16 +316,19 @@ def render_3d_panel(fr: Result3DFrame,
                     xlim, ylim, zlim,
                     size=720, elev=20, azim=-62):
     """
-    카메라 기준 직관적 표현:
+    사람 몸(양어깨) 기준 좌표계로 표현:
 
-        표시 X축  = 원래 Camera X     (화면 오른쪽 +)
-        표시 Y축  = 원래 Camera Z     (화면 안쪽 깊이 +)
-        표시 Z축  = 원래 Camera Y     (화면 위쪽 +)
+        표시 X축  = Body X   (사람 자신의 오른쪽 +)
+        표시 Y축  = Body Z   (사람 자신의 정면 +)
+        표시 Z축  = Body Y   (사람 자신의 위쪽 +)
 
-    즉 원래 Z(depth)가 수직축으로 보이지 않고,
-    3D 공간의 '뒤로 들어가는 축'으로 보이도록 재배치한다.
+    원점은 그 frame의 양어깨 중점이다. 카메라가 움직이거나 사람이 카메라
+    앞에서 돌아도, 사람이 같은 동작을 하면 이 좌표계에서는 같은 모양으로
+    보인다 (Camera XYZ 고정 좌표계와 달리 Body XYZ는 매 frame 어깨로부터
+    다시 계산됨. docs/coordinate_system.md 참고).
 
-    수치 표시는 원래 Camera X/Y/Z를 그대로 유지한다.
+    body_axes가 없는 frame(구버전 CSV, body frame 미확정 등)은
+    Camera XYZ로 그대로 fallback한다.
     """
     fig = plt.figure(figsize=(size / 100.0, size / 100.0), dpi=100)
     canvas = FigureCanvas(fig)
@@ -317,11 +344,16 @@ def render_3d_panel(fr: Result3DFrame,
         "F2": fr.finger2,
     }
 
-    # display coordinate = (X, Z_depth, Y); Agent1 Camera Y is up-positive.
-    pts = {
-        k: (p[0], p[2], p[1])
-        for k, p in pts_raw.items()
-    }
+    use_body_frame = fr.body_axes is not None
+    if use_body_frame:
+        origin = body_origin(fr)
+        pts_body = {k: to_body_frame(p, origin, fr.body_axes) for k, p in pts_raw.items()}
+        # display coordinate = (BodyX, BodyZ_front, BodyY_up)
+        pts = {k: (p[0], p[2], p[1]) for k, p in pts_body.items()}
+    else:
+        pts_body = None
+        # fallback: raw camera coordinate = (X, Z_depth, Y)
+        pts = {k: (p[0], p[2], p[1]) for k, p in pts_raw.items()}
 
     status = "FRESH"
     alpha = 1.0
@@ -347,20 +379,27 @@ def render_3d_panel(fr: Result3DFrame,
                 [pa[2], pb[2]],
                 linewidth=2.6, color=c, alpha=alpha)
 
-    if fr.body_axes is not None and fr.body_frame_valid:
+    if use_body_frame and fr.body_frame_valid:
         origin = pts["E"]
         length = max(0.1, math.dist(fr.elbow, fr.wrist) * 0.65)
-        for name, axis, color in zip("XYZ", fr.body_axes, ("red", "green", "blue")):
-            vector = (axis[0]*length, axis[2]*length, axis[1]*length)
+        # In body-frame display coordinates, Body X/Y/Z are just the
+        # standard basis (display axes = BodyX, BodyZ, BodyY).
+        axis_vectors = {"X": (1, 0, 0), "Y": (0, 0, 1), "Z": (0, 1, 0)}
+        for name, color in zip("XYZ", ("red", "green", "blue")):
+            vector = tuple(v * length for v in axis_vectors[name])
             ax.quiver(*origin, *vector, color=color, alpha=alpha, arrow_length_ratio=0.18)
             end = tuple(a+b for a, b in zip(origin, vector))
             ax.text(*end, f"Body {name}", color=color, fontsize=8)
         vector = tuple(b-a for a, b in zip(origin, pts["W"]))
         ax.quiver(*origin, *vector, color="purple", alpha=alpha, arrow_length_ratio=0.18)
         ax.text2D(0.02, 0.83,
-                  "HUMAN BODY FRAME (shoulder-derived)"
+                  "HUMAN BODY FRAME (this panel's axes)"
                   + f"\nelbow roll observable={fr.elbow_roll_observable} hand fresh={fr.hand_fresh}",
                   transform=ax.transAxes, fontsize=8, color="purple")
+    elif not use_body_frame:
+        ax.text2D(0.02, 0.83,
+                  "no body_axes in CSV -> showing Camera XYZ instead",
+                  transform=ax.transAxes, fontsize=8, color="red")
 
     colors = {
         "SL": "tab:blue", "SR": "tab:blue",
@@ -378,9 +417,14 @@ def render_3d_panel(fr: Result3DFrame,
     ax.set_ylim(zlim)
     ax.set_zlim(ylim)
 
-    ax.set_xlabel("Camera X  -> right")
-    ax.set_ylabel("Camera Z  -> depth / away")
-    ax.set_zlabel("Camera Y  -> up (+)")
+    if use_body_frame:
+        ax.set_xlabel("Body X  -> person's right")
+        ax.set_ylabel("Body Z  -> person's front")
+        ax.set_zlabel("Body Y  -> person's up (+)")
+    else:
+        ax.set_xlabel("Camera X  -> right")
+        ax.set_ylabel("Camera Z  -> depth / away")
+        ax.set_zlabel("Camera Y  -> up (+)")
     ax.view_init(elev=elev, azim=azim)
     ax.grid(True)
 
@@ -393,10 +437,14 @@ def render_3d_panel(fr: Result3DFrame,
     except Exception:
         pass
 
-    # 카메라 방향 / depth 방향 안내
+    # 축 방향 안내
+    if use_body_frame:
+        hint = "Body Y+ = up along person\nBody Z+ = toward person's front"
+    else:
+        hint = "IMAGE TOP = +Y\nZ+ = deeper into scene"
     ax.text2D(
         0.02, 0.94,
-        "IMAGE TOP = +Y\nZ+ = deeper into scene",
+        hint,
         transform=ax.transAxes,
         fontsize=9,
         bbox=dict(facecolor="white", alpha=0.75, edgecolor="gray")
@@ -412,16 +460,25 @@ def render_3d_panel(fr: Result3DFrame,
         fontsize=10, y=0.982
     )
 
-    table_lines = [
-        "RAW CAMERA COORDINATES",
-        "        X        Y        Z(depth)",
-        f"SL  {fr.shoulder_l[0]:7.3f}  {fr.shoulder_l[1]:7.3f}  {fr.shoulder_l[2]:7.3f}",
-        f"SR  {fr.shoulder_r[0]:7.3f}  {fr.shoulder_r[1]:7.3f}  {fr.shoulder_r[2]:7.3f}",
-        f"E   {fr.elbow[0]:7.3f}  {fr.elbow[1]:7.3f}  {fr.elbow[2]:7.3f}",
-        f"W   {fr.wrist[0]:7.3f}  {fr.wrist[1]:7.3f}  {fr.wrist[2]:7.3f}",
-        f"F1  {fr.finger1[0]:7.3f}  {fr.finger1[1]:7.3f}  {fr.finger1[2]:7.3f}",
-        f"F2  {fr.finger2[0]:7.3f}  {fr.finger2[1]:7.3f}  {fr.finger2[2]:7.3f}",
-    ]
+    if use_body_frame:
+        table_lines = [
+            "BODY FRAME COORDINATES (origin = shoulder midpoint)",
+            "      BodyX    BodyY    BodyZ",
+        ]
+        for name in ("SL", "SR", "E", "W", "F1", "F2"):
+            p = pts_body[name]
+            table_lines.append(f"{name:<3} {p[0]:7.3f}  {p[1]:7.3f}  {p[2]:7.3f}")
+    else:
+        table_lines = [
+            "RAW CAMERA COORDINATES",
+            "        X        Y        Z(depth)",
+            f"SL  {fr.shoulder_l[0]:7.3f}  {fr.shoulder_l[1]:7.3f}  {fr.shoulder_l[2]:7.3f}",
+            f"SR  {fr.shoulder_r[0]:7.3f}  {fr.shoulder_r[1]:7.3f}  {fr.shoulder_r[2]:7.3f}",
+            f"E   {fr.elbow[0]:7.3f}  {fr.elbow[1]:7.3f}  {fr.elbow[2]:7.3f}",
+            f"W   {fr.wrist[0]:7.3f}  {fr.wrist[1]:7.3f}  {fr.wrist[2]:7.3f}",
+            f"F1  {fr.finger1[0]:7.3f}  {fr.finger1[1]:7.3f}  {fr.finger1[2]:7.3f}",
+            f"F2  {fr.finger2[0]:7.3f}  {fr.finger2[1]:7.3f}  {fr.finger2[2]:7.3f}",
+        ]
     fig.text(0.09, 0.018, "\n".join(table_lines),
              family="monospace", fontsize=8.5, va="bottom")
 
@@ -500,8 +557,13 @@ def main():
     print(f"[INFO] source video: {src_w}x{src_h}, fps={src_fps:.3f}, duration={video_duration:.3f}s")
     print(f"[INFO] result csv: frames={len(results)}, t={results[0].time_sec:.3f}~{results[-1].time_sec:.3f}s, estimated fps={result_fps:.3f}")
     print(f"[INFO] output: fps={output_fps:.3f}, duration={duration:.3f}s, size={out_w}x{out_h}")
-    print(f"[INFO] fixed RAW camera axis: X={xlim}, Y={ylim}, Z(depth)={zlim}")
-    print("[INFO] 3D display axis: horizontal=X, depth=Z, vertical=Camera Y (+ up)")
+    have_body = any(r.body_axes is not None for r in results)
+    if have_body:
+        print(f"[INFO] fixed BODY frame axis: BodyX={xlim}, BodyY={ylim}, BodyZ={zlim}")
+        print("[INFO] 3D display axis: horizontal=Body X, depth=Body Z, vertical=Body Y (+ up)")
+    else:
+        print(f"[INFO] fixed RAW camera axis: X={xlim}, Y={ylim}, Z(depth)={zlim}")
+        print("[INFO] 3D display axis: horizontal=X, depth=Z, vertical=Camera Y (+ up) [no body_axes in CSV]")
 
     n_out = int(math.floor(duration * output_fps)) + 1
     current_src_idx = -1

@@ -101,12 +101,12 @@ def main():
         elbow_id = mp_pose.PoseLandmark.RIGHT_ELBOW.value
         wrist_id = mp_pose.PoseLandmark.RIGHT_WRIST.value
         index_id = mp_pose.PoseLandmark.RIGHT_INDEX.value
-        pinky_id = mp_pose.PoseLandmark.RIGHT_PINKY.value
+        thumb_id = mp_pose.PoseLandmark.RIGHT_THUMB.value
     else:
         elbow_id = mp_pose.PoseLandmark.LEFT_ELBOW.value
         wrist_id = mp_pose.PoseLandmark.LEFT_WRIST.value
         index_id = mp_pose.PoseLandmark.LEFT_INDEX.value
-        pinky_id = mp_pose.PoseLandmark.LEFT_PINKY.value
+        thumb_id = mp_pose.PoseLandmark.LEFT_THUMB.value
 
     sl_id = mp_pose.PoseLandmark.LEFT_SHOULDER.value
     sr_id = mp_pose.PoseLandmark.RIGHT_SHOULDER.value
@@ -181,7 +181,7 @@ def main():
                 "elbow": lms[elbow_id],
                 "wrist": lms[wrist_id],
                 "finger1": lms[index_id],
-                "finger2": lms[pinky_id],
+                "finger2": lms[thumb_id],
             }
 
             pts = {}

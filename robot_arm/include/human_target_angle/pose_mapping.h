@@ -28,8 +28,8 @@ typedef struct {
     uint8_t fresh;
 } PoseLandmarkState;
 
-/* Forearm wrist depth selection: fixed, trailing six-frame window. */
-#define POSE_FINGER_BRANCH_WINDOW 6U
+/* Forearm wrist depth selection: fixed, trailing 60-frame window (~3s at 20Hz). */
+#define POSE_FINGER_BRANCH_WINDOW 60U
 
 typedef struct {
     Point3D prev_mid_relative;

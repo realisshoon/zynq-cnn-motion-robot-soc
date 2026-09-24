@@ -348,15 +348,22 @@ static void test_finger_branch_window(void)
 
     pm_reset_finger_branch_tracker(&p);
     assert(!p.finger_pose3d_valid && !p.finger_branch_selected_valid);
-    /* When both 3D bends fit the same 2D track, do not invent a direction. */
+    /* When both 3D bends fit the same 2D track equally well, the window
+     * still forces a pick once full: holding forever on a coin-flip is
+     * worse than committing to whichever candidate the tie-break settles
+     * on, and the pick is deterministic and stable frame to frame. */
     p.elbow_3d = pm_vec3(-0.65f, 0.0f, 5.0f);
     p.finger1.value.x = PM_CAMERA_CX;
     p.finger1.value.y = PM_CAMERA_CY - PM_CAMERA_FY * 0.07f / depth;
     p.finger2.value.x = PM_CAMERA_CX;
     p.finger2.value.y = PM_CAMERA_CY + PM_CAMERA_FY * 0.07f / depth;
-    for (unsigned i = 0U; i < POSE_FINGER_BRANCH_WINDOW + 3U; ++i)
+    for (unsigned i = 1U; i < POSE_FINGER_BRANCH_WINDOW; ++i)
         assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == -1);
-    assert(!p.finger_pose3d_valid);
+    assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
+    assert(p.finger_pose3d_valid);
+    /* The tie-break is stable: re-running does not flip the pick. */
+    assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
+    assert(p.finger_branch_selected == 0U);
 }
 static void test_pipeline(void)
 {
