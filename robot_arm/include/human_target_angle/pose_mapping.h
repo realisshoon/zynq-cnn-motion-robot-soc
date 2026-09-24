@@ -28,6 +28,17 @@ typedef struct {
     uint8_t fresh;
 } PoseLandmarkState;
 
+/* Forearm wrist depth selection: fixed, trailing six-frame window. */
+#define POSE_FINGER_BRANCH_WINDOW 6U
+
+typedef struct {
+    Point3D prev_mid_relative;
+    Point3D prev_span;
+    float frame_cost[POSE_FINGER_BRANCH_WINDOW];
+    uint8_t consecutive_frames;
+    uint8_t prev_valid;
+} PoseFingerBranchState;
+
 typedef struct {
     PoseLandmarkState shoulder_l;
     PoseLandmarkState shoulder_r;
@@ -54,6 +65,13 @@ typedef struct {
     /* Wrist at the last successful finger reconstruction. Finger continuity
      * and smoothing use offsets from this parent, not absolute camera depth. */
     Point3D finger_parent_wrist;
+
+    /* Four near/far thumb/index combinations are tracked independently.
+     * No branch is committed before a full evidence window is available. */
+    PoseFingerBranchState finger_branch[4];
+    uint8_t finger_branch_ring;
+    uint8_t finger_branch_selected;
+    uint8_t finger_branch_selected_valid;
 
     /*
      * 안정화된 Human Body Coordinate.

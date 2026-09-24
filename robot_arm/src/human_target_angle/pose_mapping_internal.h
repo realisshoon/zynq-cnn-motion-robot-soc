@@ -56,6 +56,9 @@ int pm_reconstruct_major_pose3d(PoseMappingContext *ctx,
                                 float *shoulder_span_px_out);
 int pm_reconstruct_finger_pose3d(PoseMappingContext *ctx,
                                  float dt_filter_sec);
+int pm_reconstruct_finger_pose3d_tracked(PoseMappingContext *ctx,
+                                         float dt_filter_sec);
+void pm_reset_finger_branch_tracker(PoseMappingContext *ctx);
 
 /* pose_joint.c */
 int pm_calculate_major_angles(PoseMappingContext *ctx,
