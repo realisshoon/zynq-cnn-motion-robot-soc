@@ -135,10 +135,16 @@ static uint16_t angle_to_pwm_us(
  * Gripper Normalized Command -> PWM
  * ============================================================
  *
- * gripper_norm:
+ * gripper_norm (A1/JointCommand contract, unchanged):
  *
  * 0.0 = Close
  * 1.0 = Open
+ *
+ * The physical gripper servo closes at max_us and opens at min_us (verified
+ * on the new 5-axis mechanism, opposite of the ServoConfig's legacy
+ * min/max labels). Corrected here, at the A2 hardware layer, the same way
+ * the other joints use JointCalibration.direction -- the A1 gripper_norm
+ * meaning is not changed.
  */
 static uint16_t gripper_to_pwm_us(
     float gripper_norm,
@@ -158,14 +164,14 @@ static uint16_t gripper_to_pwm_us(
 
 
     pwm_us =
-        (float)config->min_us
+        (float)config->center_us
         +
-        gripper_norm
+        (1.0f - gripper_norm)
         *
         (
             (float)config->max_us
             -
-            (float)config->min_us
+            (float)config->center_us
         );
 
 

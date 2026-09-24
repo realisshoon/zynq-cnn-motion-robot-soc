@@ -36,7 +36,7 @@ static const ForearmJointCommand k_home_pose = {
     .elbow_pitch_deg = 70.0f,
     .wrist_pitch_deg = 100.0f,
     .wrist_roll_deg = 90.0f,
-    .gripper_norm = 0.7f,
+    .gripper_norm = 0.05f,
     .valid = 1U
 };
 
