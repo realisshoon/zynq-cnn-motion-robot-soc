@@ -31,6 +31,7 @@ module line_buffer (
     reg [8:0] cfg_hin, cfg_win, cfg_hout, cfg_wout, cfg_cin;
     reg [1:0] cfg_stride;
     reg [3:0] num_batches, last_batch;
+    reg [31:0] last_batch_mask;
     reg [8:0] row_words;
     reg [19:0] expected_input_beats, accepted_input_beats;
     reg [7:0] in_row, in_col;
@@ -74,16 +75,15 @@ module line_buffer (
     wire [21:0] desc_input_beats = desc_ok ?
         {4'd0, desc_input_beats_valid} : 22'd0;
 
-    function [31:0] batch_mask;
+    function [31:0] tail_mask_from_channels;
         input [8:0] channels;
-        input [3:0] batch;
-        reg [9:0] remaining;
+        reg [4:0] tail_channels;
         begin
-            remaining = {1'b0, channels} - {1'b0, batch, 5'b0};
-            if (remaining >= 10'd32)
-                batch_mask = 32'hffffffff;
+            tail_channels = channels[4:0];
+            if (tail_channels == 5'd0)
+                tail_mask_from_channels = 32'hffffffff;
             else
-                batch_mask = (32'h1 << remaining) - 32'h1;
+                tail_mask_from_channels = (32'h1 << tail_channels) - 32'h1;
         end
     endfunction
 
@@ -91,6 +91,8 @@ module line_buffer (
     wire input_row_last = ({1'b0, in_col} == cfg_win - 9'd1) &&
                           (in_batch == last_batch);
     wire input_final = input_row_last && ({1'b0, in_row} == cfg_hin - 9'd1);
+    wire [31:0] input_expected_mask = (in_batch == last_batch) ?
+        last_batch_mask : 32'hffffffff;
     reg [63:0] expected_input_tag;
     always @* begin
         expected_input_tag = 64'd0;
@@ -103,7 +105,7 @@ module line_buffer (
         expected_input_tag[38] = input_final;
     end
     wire input_protocol_ok = (s_pixel_tag == expected_input_tag) &&
-        (s_pixel_mask == batch_mask(cfg_cin, in_batch)) &&
+        (s_pixel_mask == input_expected_mask) &&
         ({1'b0, in_row} < cfg_hin) && ({1'b0, in_col} < cfg_win) &&
         (in_batch < num_batches) && (accepted_input_beats < expected_input_beats);
 
@@ -156,6 +158,8 @@ module line_buffer (
         (issue_batch == last_batch) && (issue_tap == 4'd8);
     wire issue_final_operation = issue_final_in_row &&
         ({1'b0, issue_oy} == cfg_hout - 9'd1);
+    wire [31:0] issue_expected_mask = (issue_batch == last_batch) ?
+        last_batch_mask : 32'hffffffff;
     reg [63:0] issue_tag;
     always @* begin
         issue_tag = 64'd0;
@@ -253,7 +257,7 @@ module line_buffer (
                 // The testbench asserts an in-bound lookup has exactly one hit.
                 req_zero <= issue_oob || !lookup_found;
                 req_addr <= read_addr_wide[9:0];
-                req_mask <= batch_mask(cfg_cin, issue_batch);
+                req_mask <= issue_expected_mask;
                 req_tag <= issue_tag;
                 req_row_last <= issue_final_in_row;
             end
@@ -284,6 +288,7 @@ module line_buffer (
             cfg_hout <= 9'd0; cfg_wout <= 9'd0; cfg_cin <= 9'd0;
             cfg_stride <= 2'd0;
             num_batches <= 4'd0; last_batch <= 4'd0;
+            last_batch_mask <= 32'd0;
             row_words <= 9'd0;
             expected_input_beats <= 20'd0;
             accepted_input_beats <= 20'd0;
@@ -311,6 +316,7 @@ module line_buffer (
                     cfg_cin <= cfg_desc[53:45]; cfg_stride <= cfg_desc[64:63];
                     num_batches <= desc_batches[3:0];
                     last_batch <= desc_batches[3:0] - 4'd1;
+                    last_batch_mask <= tail_mask_from_channels(cfg_desc[53:45]);
                     row_words <= desc_row_words[8:0];
                     slot1_base <= {1'b0, desc_row_words[8:0]};
                     slot2_base <= {desc_row_words[8:0], 1'b0};

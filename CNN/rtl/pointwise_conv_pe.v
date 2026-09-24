@@ -393,6 +393,7 @@ module pointwise_conv_pe (
     reg next_sched_slot;
     reg [6:0] sched_group;
     reg [3:0] sched_batch;
+    reg [10:0] pw_req_addr_cursor;
 
     reg pending_valid;
     reg pending_slot;
@@ -553,6 +554,10 @@ module pointwise_conv_pe (
         (s_pixel_tag[`TAG_RESERVED_MSB:`TAG_RESERVED_LSB] == 0) &&
         (s_pixel_mask == expected_input_mask);
     wire input_good = input_fire && input_protocol_ok;
+    /* Physical storage is safe for every accepted beat.  Semantic progress
+       and slot publication remain qualified by input_good below. */
+    wire input_store_fire = input_fire;
+    wire input_fault_event = input_fire && !input_protocol_ok;
     wire [4:0] input_mem_index = (selected_fill_slot ? 5'd12 : 5'd0) + input_batch;
 
     wire compute_ce = !pipe_valid[10] || m_value_ready;
@@ -565,7 +570,10 @@ module pointwise_conv_pe (
     assign pw_req_valid = rst_n && active && !fault_reg &&
                           (request_hold_valid || (compute_ce && sched_active && request_credit));
     assign pw_req_group = sched_group;
-    assign pw_req_addr = ({4'd0, sched_group} * {7'd0, gin_reg}) + {7'd0, sched_batch};
+    /* Request order is linear across {group,batch}; retain the address in a
+       request-synchronous cursor so configured geometry cannot enter the
+       cross-module address-validation cone. */
+    assign pw_req_addr = pw_req_addr_cursor;
     wire req_fire = pw_req_valid && pw_req_ready;
     always @(posedge clk) begin
         if (!rst_n || cfg_fire || !active || fault_reg)
@@ -574,6 +582,7 @@ module pointwise_conv_pe (
             request_hold_valid <= pw_req_valid && !pw_req_ready;
     end
     wire unexpected_rsp = active && !fault_reg && pw_rsp_valid && !pending_valid;
+    wire control_fault_event = unexpected_rsp || input_fault_event;
 
     wire [4:0] sched_mem_index = (sched_slot ? 5'd12 : 5'd0) + sched_batch;
     wire mac_issue = rsp_fire;
@@ -658,6 +667,7 @@ module pointwise_conv_pe (
             next_sched_slot <= 1'b0;
             sched_group <= 7'd0;
             sched_batch <= 4'd0;
+            pw_req_addr_cursor <= 11'd0;
             pending_valid <= 1'b0;
             pending_slot <= 1'b0;
             pending_group <= 7'd0;
@@ -667,6 +677,7 @@ module pointwise_conv_pe (
             done_reg <= 1'b0;
 
             if (cfg_fire) begin
+                pw_req_addr_cursor <= 11'd0;
                 if (cfg_error) begin
                     fault_reg <= 1'b1;
                     active <= 1'b0;
@@ -715,19 +726,21 @@ module pointwise_conv_pe (
                     pending_valid <= 1'b0;
                 end
             end else if (active && !fault_reg) begin
-                if (unexpected_rsp || (input_fire && !input_protocol_ok)) begin
-                    fault_reg <= 1'b1;
-                    sched_active <= 1'b0;
-                    pending_valid <= 1'b0;
-                end else begin
-                    if (input_good) begin
-                        for (lane = 0; lane < `CNN_W_IN; lane = lane + 1) begin
-                            if (s_pixel_mask[lane])
-                                pixel_mem[input_mem_index][lane*8 +: 8] <=
-                                    s_pixel_data[lane*8 +: 8];
-                            else
-                                pixel_mem[input_mem_index][lane*8 +: 8] <= 8'd0;
-                        end
+                /* Storage plane: no semantic protocol term may enter the
+                   distributed-RAM write enable. */
+                if (input_store_fire) begin
+                    for (lane = 0; lane < `CNN_W_IN; lane = lane + 1) begin
+                        if (s_pixel_mask[lane])
+                            pixel_mem[input_mem_index][lane*8 +: 8] <=
+                                s_pixel_data[lane*8 +: 8];
+                        else
+                            pixel_mem[input_mem_index][lane*8 +: 8] <= 8'd0;
+                    end
+                end
+
+                /* Semantic commit plane: only a fully legal beat can change
+                   slot publication or input progress. */
+                if (input_good) begin
                         if (!fill_active) begin
                             fill_active <= !input_last_batch;
                             fill_slot <= selected_fill_slot;
@@ -753,59 +766,73 @@ module pointwise_conv_pe (
                             fill_slot <= selected_fill_slot;
                             input_batch <= input_batch + 1'b1;
                         end
+                end
+
+                if (!sched_active && (slot_state[next_sched_slot] == SLOT_FULL)) begin
+                    sched_active <= 1'b1;
+                    sched_slot <= next_sched_slot;
+                    slot_state[next_sched_slot] <= SLOT_READ;
+                    next_sched_slot <= ~next_sched_slot;
+                    sched_group <= 7'd0;
+                    sched_batch <= 4'd0;
+                    pw_req_addr_cursor <= 11'd0;
+                end
+
+                case ({req_fire, rsp_fire})
+                    2'b10, 2'b11: begin
+                        pending_valid <= 1'b1;
+                        pending_slot <= sched_slot;
+                        pending_group <= sched_group;
+                        pending_batch <= sched_batch;
+                        pending_pixel_word_reg <= pixel_mem[sched_mem_index];
                     end
+                    2'b01: pending_valid <= 1'b0;
+                    default: pending_valid <= pending_valid;
+                endcase
 
-                    if (!sched_active && (slot_state[next_sched_slot] == SLOT_FULL)) begin
-                        sched_active <= 1'b1;
-                        sched_slot <= next_sched_slot;
-                        slot_state[next_sched_slot] <= SLOT_READ;
-                        next_sched_slot <= ~next_sched_slot;
-                        sched_group <= 7'd0;
-                        sched_batch <= 4'd0;
-                    end
-
-                    case ({req_fire, rsp_fire})
-                        2'b10, 2'b11: begin
-                            pending_valid <= 1'b1;
-                            pending_slot <= sched_slot;
-                            pending_group <= sched_group;
-                            pending_batch <= sched_batch;
-                            pending_pixel_word_reg <= pixel_mem[sched_mem_index];
-                        end
-                        2'b01: pending_valid <= 1'b0;
-                        default: pending_valid <= pending_valid;
-                    endcase
-
-                    if (req_fire) begin
-                        if ((sched_group == last_group_reg) &&
-                            (sched_batch == last_batch_reg)) begin
-                            if (slot_state[next_sched_slot] == SLOT_FULL) begin
-                                sched_active <= 1'b1;
-                                sched_slot <= next_sched_slot;
-                                slot_state[next_sched_slot] <= SLOT_READ;
-                                next_sched_slot <= ~next_sched_slot;
-                                sched_group <= 7'd0;
-                                sched_batch <= 4'd0;
-                            end else begin
-                                sched_active <= 1'b0;
-                            end
-                        end else if (sched_batch == last_batch_reg) begin
+                if (req_fire) begin
+                    if ((sched_group == last_group_reg) &&
+                        (sched_batch == last_batch_reg)) begin
+                        pw_req_addr_cursor <= 11'd0;
+                        if (slot_state[next_sched_slot] == SLOT_FULL) begin
+                            sched_active <= 1'b1;
+                            sched_slot <= next_sched_slot;
+                            slot_state[next_sched_slot] <= SLOT_READ;
+                            next_sched_slot <= ~next_sched_slot;
+                            sched_group <= 7'd0;
                             sched_batch <= 4'd0;
-                            sched_group <= sched_group + 1'b1;
                         end else begin
-                            sched_batch <= sched_batch + 1'b1;
-                        end
-                    end
-
-                    if (output_fire && tag_pipe[10][`TAG_GROUP_LAST_BIT]) begin
-                        slot_state[slot_pipe[10]] <= SLOT_EMPTY;
-                        if (tag_pipe[10][`TAG_FRAME_END_BIT]) begin
-                            active <= 1'b0;
-                            done_reg <= 1'b1;
                             sched_active <= 1'b0;
-                            pending_valid <= 1'b0;
                         end
+                    end else if (sched_batch == last_batch_reg) begin
+                        pw_req_addr_cursor <= pw_req_addr_cursor + 1'b1;
+                        sched_batch <= 4'd0;
+                        sched_group <= sched_group + 1'b1;
+                    end else begin
+                        pw_req_addr_cursor <= pw_req_addr_cursor + 1'b1;
+                        sched_batch <= sched_batch + 1'b1;
                     end
+                end
+
+                if (output_fire && tag_pipe[10][`TAG_GROUP_LAST_BIT]) begin
+                    slot_state[slot_pipe[10]] <= SLOT_EMPTY;
+                    if (tag_pipe[10][`TAG_FRAME_END_BIT]) begin
+                        active <= 1'b0;
+                        done_reg <= 1'b1;
+                        sched_active <= 1'b0;
+                        pending_valid <= 1'b0;
+                    end
+                end
+
+                /* Narrow final override.  It intentionally does not gate the
+                   detecting-edge request/response or compute pipeline. */
+                if (control_fault_event) begin
+                    fault_reg <= 1'b1;
+                    active <= 1'b1;
+                    done_reg <= 1'b0;
+                    sched_active <= 1'b0;
+                    pending_valid <= 1'b0;
+                    pw_req_addr_cursor <= 11'd0;
                 end
             end
         end
