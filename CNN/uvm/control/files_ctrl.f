@@ -2,6 +2,7 @@
 // Include Directories
 // ============================================================
 
++incdir+./overrides
 +incdir+../common
 +incdir+.
 +incdir+./sequences
