@@ -65,27 +65,8 @@ typedef struct {
     uint8_t valid, elbow_roll_observable, hand_fresh;
 } HumanForearmTarget;
 
-/* Calibrated robot command: robot_calibration -> output_controller.
- * legacy 6축(base/shoulder/elbow) 경로용. 보드는 아직 이 경로로만 돈다 --
- * 지우거나 필드를 바꾸지 않는다(ForearmJointCommand가 대체 아님). */
-typedef struct {
-    float base_deg;
-
-    float shoulder_deg;
-    float elbow_deg;
-    float wrist_pitch_deg;
-    float wrist_roll_deg;
-
-    float gripper_norm;
-
-    uint8_t valid;
-} JointCommand;
-
-/* Calibrated robot command, 새 5축(팔꿈치부터 시작하는 수평 설치) 경로:
- * robot_calibration -> output_controller. 2026-09-22 사용자 확인: Agent2/3
- * 실물 통합에 이 구조체로 교체한다. JointCommand는 legacy 경로가 계속
- * 쓰므로 그대로 둔다. 필드 의미는 include/robot_calibration/
- * forearm_safety_check.h, forearm_motion_control.h 주석 참고. */
+/* Active five-axis calibrated robot command: Agent2 -> Agent3.
+ * Geometry/mapping contract: forearm_safety_check.h, forearm_motion_control.h. */
 typedef struct {
     float elbow_roll_deg;   /* M0 */
     float elbow_pitch_deg;  /* M1 */

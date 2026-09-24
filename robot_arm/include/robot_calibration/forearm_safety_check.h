@@ -2,7 +2,7 @@
 #define ROBOT_CALIBRATION_FOREARM_SAFETY_CHECK_H
 
 #include <stdint.h>
-#include "robot_calibration/safety_check.h"
+#include "robot_calibration/robot_geometry.h"
 #include "robot_calibration/forearm_motion_control.h"
 
 /*
@@ -17,7 +17,7 @@
  * wrist_roll(비틀림)이 전완 축 주위로 돌리는 순서로 가정한다(사용자
  * 확인, 2026-09-22 — 기구학적으로 더 안정적이라는 판단).
  *
- * RobotPoint3D는 safety_check.h의 범용 3D 점 타입을 그대로 재사용한다
+ * RobotPoint3D는 robot_geometry.h의 범용 3D 점 타입을 그대로 재사용한다
  * (구 6축 전용 필드 이름이 없는 순수 {x_cm,y_cm,z_cm} 구조체이기 때문).
  * 중립 전완은 robot +Y, robot +X는 오른쪽이다. A1 Table (+X,+Y,+Z)는
  * robot (+Y,-X,+Z)에 대응한다. +yaw는 +Z 오른손 회전(+Y에서 -X쪽),

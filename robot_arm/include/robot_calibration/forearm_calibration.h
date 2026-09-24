@@ -7,9 +7,8 @@
 
 /*
  * Agent2 새 5축 공개 API. Agent1의 HumanForearmTarget을 받아 보정 및
- * 안전검사를 마친 ForearmJointCommand로 변환한다. 기존 robot_calibration.h의
- * legacy 6축 API(robot_calibration_apply 등)와 별개이며 서로 상태를
- * 공유하지 않는다.
+ * 안전검사를 마친 ForearmJointCommand로 변환한다.
+ * 현재 지원하는 유일한 로봇 보정 경로다.
  */
 int forearm_calibration_apply(
     const HumanForearmTarget *input,
