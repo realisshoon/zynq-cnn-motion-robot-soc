@@ -197,24 +197,22 @@ int main(int argc, char **argv)
 
     /* 2026-09-22: Agent1이 TableFrame->BodyFrame으로 바꾸면서 수치가 소폭
      * 달라졌다(카메라 데모 축과 사람 어깨 기반 축이 이 클립에서는 거의
-     * 비슷한 방향이라 크게 다르진 않음). 직접 실행해서 재확인한 값이다. */
+     * 비슷한 방향이라 크게 다르진 않음). 직접 실행해서 재확인한 값이다.
+     * 2026-09-23: dev/robot PR#57(Agent1 손목 기하 수정, 부모 이동/depth 지연
+     * 보정 + pitch 35도/frame 제한)이 병합되면서 hand_hold/A2 승인 수가 다시
+     * 바뀌었다 -- yaw/pitch 범위는 0.01도 이내로 그대로였고, 실행해서
+     * 재확인한 값으로 갱신했다. */
     assert(rows == 522);
     assert(fresh == 522);
     assert(invalid == 0);
     assert(hold == 0);
     assert(roll_unobservable == 1);
-    assert(hand_hold == 9);
+    assert(hand_hold == 2);
     assert(fabsf(yaw_min-(-176.24f))<0.01f && fabsf(yaw_max-179.11f)<0.01f);
     assert(fabsf(pitch_min-(-84.59f))<0.01f && fabsf(pitch_max-16.69f)<0.01f);
-    /* 2026-09-22 좌표계 수정(elbow_pitch=90=수직) 이후: [20,160] 클램프
-     * 범위에서는 테이블(-5cm)에 도달할 수 없다(test_forearm_calibration.c의
-     * test_clamped_envelope_never_reaches_table 참고) -- 테이블충돌 거부는
-     * 여전히 0이다. 다만 wrist_pitch=90=90도 굽힘으로 바뀌면서 자기충돌
-     * (wrist_pitch>155)이 [20,160] 범위 안에서 새로 도달 가능해졌고, 이
-     * 데모 데이터의 42프레임이 실제로 거기 걸린다(전부 SELF_COLLISION). */
-    assert(a2_accepted==480 && a2_rejected==42);
+    assert(a2_accepted==484 && a2_rejected==38);
     assert(reject_flags_seen==FOREARM_SAFETY_CHECK_SELF_COLLISION);
-    assert(self_collision==42 && wrist_below==0 && tip_only==0);
+    assert(self_collision==38 && wrist_below==0 && tip_only==0);
 
     puts("test_forearm_replay: PASS (A1 wiring cross-check + A2 accept/reject over real demo motion)");
     return 0;

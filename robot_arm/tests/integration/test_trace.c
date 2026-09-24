@@ -414,7 +414,7 @@ static void test_a1_p3(void)
     assert(fabs(field_num(a1, 10U) - (double)ctx.target.elbow_pitch_deg) <= 0.051);
     assert(fabs(field_num(a1, 11U) - (double)ctx.target.wrist_pitch_deg) <= 0.051);
     assert(fabs(field_num(a1, 12U) - (double)ctx.target.wrist_roll_deg) <= 0.051);
-    assert(strcmp(a1, "A1,42,1,250,50,1,63,1,1,63.3,-22.6,-22.5,-71.8,1.00") == 0);
+    assert(strcmp(a1, "A1,42,1,250,50,1,63,1,1,63.3,-22.6,-22.5,-67.8,1.00") == 0);
     printf("  sample %s\n", a1);
     assert(fabs(field_num(a1, 13U) - (double)ctx.target.gripper_norm) <= 0.0051);
 
@@ -808,7 +808,7 @@ static void test_pipeline_flow(void)
     drain();
 
     assert(s_dropped == 0U);
-    assert(s_hi == 323U);                    /* 새 레코드로 실행한 최대 사용량(motion.c 도입 후 재측정) */
+    assert(s_hi == 322U);                    /* 새 레코드로 실행한 최대 사용량(dev/robot PR#57 병합 후 재측정) */
     assert(count_lines("A1,") == frames && count_lines("P3,") == frames && count_lines("A2,") == frames);
     assert(count_lines("TK,") == ticks);
     assert(count_lines("SM,") >= 2U);
