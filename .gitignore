@@ -1,11 +1,12 @@
 # ============================================================
-# val/cnn/golden local development artifacts
-# Do not include this commit in final dev/cnn integration.
+# Common UVM / VCS development artifacts
 # ============================================================
 
 # Python virtual environments
-CNN/golden_py_model/.venv/
-CNN/golden_py_model/venv/
+.venv/
+**/.venv/
+venv/
+**/venv/
 
 # Python cache
 __pycache__/
@@ -18,9 +19,9 @@ __pycache__/
 .ruff_cache/
 
 # VCS simulation build artifacts
+csrc/
 simv
 simv.daidir/
-csrc/
 ucli.key
 
 # Simulation / waveform / tool logs
@@ -39,4 +40,3 @@ novas.rc
 *.tmp
 *.swp
 *~
-EOF

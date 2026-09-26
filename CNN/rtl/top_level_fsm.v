@@ -70,9 +70,13 @@ module top_level_fsm (
     output wire color_frame_start,
     output wire [23:0] color_red_cfg,
     output wire [23:0] color_blue_cfg,
+    output wire [23:0] color_green_cfg,
+    output wire [23:0] color_margin_cfg,
+    output wire [2:0] color_enable,
     output wire [17:0] color_min_count,
     input wire [31:0] color_red_word,
     input wire [31:0] color_blue_word,
+    input wire [31:0] color_green_word,
     input wire color_results_valid,
     input wire rom_fault,
     output wire rom_req_valid,
@@ -84,6 +88,9 @@ module top_level_fsm (
     input wire [7:0] threshold_cfg,
     input wire [23:0] red_thresh_cfg,
     input wire [23:0] blue_thresh_cfg,
+    input wire [23:0] green_thresh_cfg,
+    input wire [23:0] color_margin_cfg_in,
+    input wire [2:0] color_enable_cfg,
     input wire [17:0] min_count_cfg,
     input wire datapath_progress,
     input wire start,
@@ -105,8 +112,16 @@ module top_level_fsm (
     output wire [16:0] joint_flags,
     output wire [31:0] red_word,
     output wire [31:0] blue_word,
+    output wire [31:0] green_word,
     output wire [31:0] cycle_count,
     output wire image_read_done,
+    output wire [9:0] debug_fault_sources,
+    output wire [4:0] debug_state,
+    output wire [3:0] debug_stage,
+    output wire [3:0] debug_step,
+    output wire [2:0] debug_txn_state,
+    output wire [31:0] debug_txn_addr,
+    output wire [31:0] debug_txn_data,
     output wire [31:0] m_axil_awaddr,
     output wire m_axil_awvalid,
     input wire m_axil_awready,
@@ -147,7 +162,9 @@ reg [255:0] dw_desc, pw_desc;
 reg [31:0] snap_frame_id, snap_sg_base, snap_wgt_base;
 reg [31:0] snap_a_base, snap_b_base, snap_timeout;
 reg [7:0] snap_threshold;
-reg [23:0] snap_red_thresh, snap_blue_thresh;
+reg [23:0] snap_red_thresh, snap_blue_thresh, snap_green_thresh;
+reg [23:0] snap_color_margin;
+reg [2:0] snap_color_enable;
 reg [17:0] snap_min_count;
 reg [6:0] cfg_seen;
 reg [2:0] status_pending;
@@ -160,14 +177,14 @@ reg seen_color_results;
 reg seen_joint_last;
 reg [16:0] joint_seen, shadow_flags;
 reg [543:0] shadow_joints;
-reg [31:0] shadow_red, shadow_blue;
+reg [31:0] shadow_red, shadow_blue, shadow_green;
 reg load_inflight;
 reg busy_r, done_pending_r, error_pending_r, fault_lock;
 reg published_bank;
 reg [31:0] error_code_r, result_seq_r, result_frame_id_r;
 reg [543:0] joint_words_r;
 reg [16:0] joint_flags_r;
-reg [31:0] red_word_r, blue_word_r, cycle_count_r, watchdog;
+reg [31:0] red_word_r, blue_word_r, green_word_r, cycle_count_r, watchdog;
 reg image_read_done_r, color_frame_start_r;
 reg watchdog_timeout_pending;
 
@@ -235,6 +252,9 @@ assign coord_threshold=snap_threshold;
 assign color_frame_start=color_frame_start_r;
 assign color_red_cfg=snap_red_thresh;
 assign color_blue_cfg=snap_blue_thresh;
+assign color_green_cfg=snap_green_thresh;
+assign color_margin_cfg=snap_color_margin;
+assign color_enable=snap_color_enable;
 assign color_min_count=snap_min_count;
 assign rom_req_valid=(state==S_DESC_REQ);
 assign rom_req_op=requested_op;
@@ -253,8 +273,15 @@ assign joint_words=published_bank ? shadow_joints : joint_words_r;
 assign joint_flags=published_bank ? shadow_flags : joint_flags_r;
 assign red_word=published_bank ? shadow_red : red_word_r;
 assign blue_word=published_bank ? shadow_blue : blue_word_r;
+assign green_word=published_bank ? shadow_green : green_word_r;
 assign cycle_count=cycle_count_r;
 assign image_read_done=image_read_done_r;
+assign debug_state=state;
+assign debug_stage=stage;
+assign debug_step=step;
+assign debug_txn_state=txn_state;
+assign debug_txn_addr=txn_addr;
+assign debug_txn_data=txn_rdata;
 
 assign m_axil_awaddr=txn_addr;
 assign m_axil_awvalid=(txn_state==T_WRITE && !txn_aw_seen);
@@ -287,6 +314,8 @@ wire joint_protocol_fault=joint_accept &&
 wire module_fault=input_fault || line_fault || dw_fault || pw_fault ||
     fm_fault || down_fault || arg_fault || coord_fault || color_fault ||
     joint_protocol_fault;
+assign debug_fault_sources={joint_protocol_fault,color_fault,coord_fault,
+    arg_fault,down_fault,fm_fault,pw_fault,dw_fault,line_fault,input_fault};
 wire descriptor_fault=rom_rsp_valid && rom_rsp_ready &&
     rom_rsp_desc[4:0]!=requested_op;
 wire status_fault=txn_done && txn_status &&
@@ -351,6 +380,8 @@ always @(posedge clk) begin
         snap_a_base<=0; snap_b_base<=0; snap_timeout<=0;
         snap_threshold<=8'hd2;
         snap_red_thresh<=24'h6464a0; snap_blue_thresh<=24'ha06464;
+        snap_green_thresh<=24'h40a040; snap_color_margin<=24'h404010;
+        snap_color_enable<=3'b011;
         snap_min_count<=18'd8; cfg_seen<=0; status_pending<=0;
         weight_dma_idle<=0; image_dma_idle<=0;
         seen_down_done<=0; seen_input_done<=0; seen_line_done<=0;
@@ -361,12 +392,12 @@ always @(posedge clk) begin
         seen_feature_s2mm_done<=0; seen_color_results<=0;
         seen_joint_last<=0;
         joint_seen<=0; shadow_flags<=0; shadow_joints<=0;
-        shadow_red<=0; shadow_blue<=0; load_inflight<=0;
+        shadow_red<=0; shadow_blue<=0; shadow_green<=0; load_inflight<=0;
         busy_r<=0; done_pending_r<=0; error_pending_r<=0;
         published_bank<=0;
         fault_lock<=0; error_code_r<=0; result_seq_r<=0;
         result_frame_id_r<=0; joint_words_r<=0; joint_flags_r<=0;
-        red_word_r<=0; blue_word_r<=0; cycle_count_r<=0;
+        red_word_r<=0; blue_word_r<=0; green_word_r<=0; cycle_count_r<=0;
         watchdog<=0; watchdog_timeout_pending<=0;
         image_read_done_r<=0; color_frame_start_r<=0;
         txn_state<=T_IDLE; txn_aw_seen<=0; txn_w_seen<=0;
@@ -404,11 +435,13 @@ always @(posedge clk) begin
                 joint_words_r<=0;
                 red_word_r<=0;
                 blue_word_r<=0;
+                green_word_r<=0;
             end else begin
                 shadow_flags<=0;
                 shadow_joints<=0;
                 shadow_red<=0;
                 shadow_blue<=0;
+                shadow_green<=0;
             end
         end
 
@@ -452,9 +485,11 @@ always @(posedge clk) begin
                 if (published_bank) begin
                     red_word_r<=color_red_word;
                     blue_word_r<=color_blue_word;
+                    green_word_r<=color_green_word;
                 end else begin
                     shadow_red<=color_red_word;
                     shadow_blue<=color_blue_word;
+                    shadow_green<=color_green_word;
                 end
                 seen_color_results<=1;
             end
@@ -497,6 +532,9 @@ always @(posedge clk) begin
                 snap_threshold<=threshold_cfg;
                 snap_red_thresh<=red_thresh_cfg;
                 snap_blue_thresh<=blue_thresh_cfg;
+                snap_green_thresh<=green_thresh_cfg;
+                snap_color_margin<=color_margin_cfg_in;
+                snap_color_enable<=color_enable_cfg;
                 snap_min_count<=min_count_cfg;
                 color_frame_start_r<=1'b1;
                 stage<=0;
