@@ -40,6 +40,11 @@ class cnn_ctrl_base_seq extends cnn_base_sequence;
     localparam bit [11:0] REG_CONST_0A8 = 12'h0A8;
     localparam bit [11:0] REG_CONST_0AC = 12'h0AC;
 
+    localparam bit [11:0] REG_GREEN_THRESHOLD = 12'h0F4;
+    localparam bit [11:0] REG_GREEN_WORD = 12'h0F8;
+    localparam bit [11:0] REG_COLOR_ENABLE = 12'h0FC;
+    localparam bit [11:0] REG_COLOR_MARGIN = 12'h100;
+
 
     function new(string name = "cnn_ctrl_base_seq");
         super.new(name);
@@ -79,6 +84,51 @@ class cnn_ctrl_base_seq extends cnn_base_sequence;
         axil_write(addr, data, strb);
     endtask
 
+    task write_reg_resp(bit [11:0] addr, bit [31:0] data, bit [3:0] strb,
+                        output bit [1:0] resp);
+
+        cnn_seq_item req;
+
+        req = cnn_seq_item::type_id::create("req");
+
+        start_item(req);
+
+        req.kind   = CNN_AXIL_WRITE;
+        req.addr   = addr;
+        req.data32 = data;
+        req.strb   = strb;
+
+        finish_item(req);
+
+        resp = req.resp;
+
+    endtask
+
+    task write_resp_check(bit [11:0] addr, bit [31:0] data, bit [3:0] strb,
+                          bit [1:0] expected_resp, string reg_name);
+
+        bit [1:0] actual_resp;
+
+        write_reg_resp(addr, data, strb, actual_resp);
+
+        if (actual_resp != expected_resp) begin
+
+            `uvm_error(
+                "CTRL_WRITE_RESP",
+                $sformatf(
+                    "%s write response mismatch: addr=0x%03h expected_resp=%02b actual_resp=%02b",
+                    reg_name, addr, expected_resp, actual_resp))
+
+        end else begin
+
+            `uvm_info(
+                "CTRL_WRITE_PASS", $sformatf(
+                "%s PASS: addr=0x%03h resp=%02b", reg_name, addr, actual_resp),
+                UVM_LOW)
+
+        end
+
+    endtask
 
     // ---------------------------------------------------------
     // Register Check Helper
