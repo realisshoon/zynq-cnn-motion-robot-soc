@@ -1,0 +1,13 @@
+
+# Python virtual environments
+.venv/
+**/.venv/
+
+# Synopsys VCS generated files
+csrc/
+simv
+simv.daidir/
+ucli.key
+
+# Simulation logs
+*.log
