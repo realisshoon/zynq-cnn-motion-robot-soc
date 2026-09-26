@@ -9,4 +9,7 @@ package cnn_dma_stream_pkg;
     `include "cnn_dma_responder.sv"
     `include "cnn_dma_master_monitor.sv"
 
+    `include "cnn_dma_reference_model.sv"
+    `include "cnn_dma_stream_scoreboard.sv"
+
 endpackage
