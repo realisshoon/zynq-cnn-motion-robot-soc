@@ -28,4 +28,10 @@ class cnn_dma_stream_base_test extends cnn_base_test;
         end
     endfunction
 
+    function void end_of_elaboration_phase(uvm_phase phase);
+    super.end_of_elaboration_phase(phase);
+
+    uvm_top.print_topology();
+    endfunction
+
 endclass
