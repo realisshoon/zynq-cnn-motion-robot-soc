@@ -74,6 +74,9 @@ module cnn_accelerator_top (
     reg [7:0] threshold_cfg;
     reg [23:0] red_thresh_cfg;
     reg [23:0] blue_thresh_cfg;
+    reg [23:0] green_thresh_cfg;
+    reg [23:0] color_margin_cfg;
+    reg [2:0] color_enable_cfg;
     reg [17:0] min_count_cfg;
     reg [31:0] frame_id;
     reg [31:0] sg_desc_base;
@@ -151,9 +154,13 @@ module cnn_accelerator_top (
     wire color_frame_start;
     wire [23:0] color_red_cfg;
     wire [23:0] color_blue_cfg;
+    wire [23:0] color_green_cfg;
+    wire [23:0] color_margin_cfg_active;
+    wire [2:0] color_enable_active;
     wire [17:0] color_min_count;
     wire [31:0] color_red_word;
     wire [31:0] color_blue_word;
+    wire [31:0] color_green_word;
     wire color_results_valid;
     wire rom_fault;
     wire rom_req_valid;
@@ -173,8 +180,28 @@ module cnn_accelerator_top (
     wire [16:0] joint_flags;
     wire [31:0] red_word;
     wire [31:0] blue_word;
+    wire [31:0] green_word;
     wire [31:0] cycle_count;
     wire image_read_done;
+    wire [9:0] debug_fault_sources;
+    reg [9:0] debug_fault_sources_latched;
+    wire [4:0] debug_state;
+    wire [3:0] debug_stage;
+    wire [3:0] debug_step;
+    wire [2:0] debug_txn_state;
+    wire [31:0] debug_txn_addr;
+    wire [31:0] debug_txn_data;
+    wire [9:0] fm_debug_fault_reason;
+    wire [20:0] fm_debug_read_input_bytes;
+    wire [20:0] fm_debug_read_parsed_bytes;
+    wire [20:0] fm_debug_write_input_bytes;
+    wire [20:0] fm_debug_write_packed_bytes;
+    wire [20:0] fm_debug_write_output_bytes;
+    wire [31:0] fm_debug_stream_status;
+    wire [63:0] fm_debug_last_body_tag;
+    wire [31:0] fm_debug_protocol_misc;
+    wire [19:0] fm_debug_expected_src_bytes;
+    wire [19:0] fm_debug_expected_dst_bytes;
     wire [23:0] down_rgb_data;
     wire down_rgb_valid;
     wire down_rgb_ready;
@@ -184,6 +211,13 @@ module cnn_accelerator_top (
     wire [10:0] down_tap_col;
     wire down_tap_accept;
     wire down_tap_last;
+    // The DMA/downsample path already presents the detector's frozen
+    // The Bayer/Gamma/VDMA path stores each pixel as {R,B,G}.  The frozen
+    // color_marker_detect input contract is {B,G,R}, so reorder exactly once
+    // at this private tap boundary.  This does not alter the CNN RGB stream.
+    wire [23:0] color_tap_bgr = {down_tap_data[15:8],
+                                 down_tap_data[7:0],
+                                 down_tap_data[23:16]};
     wire [63:0] input_body_data;
     wire input_body_valid;
     wire input_body_ready;
@@ -302,6 +336,17 @@ module cnn_accelerator_top (
     assign core_rst_n = rst_n && !soft_reset_pulse;
     assign irq = irq_enable && (done_pending || error_pending);
 
+    // Diagnostic-only, read-only observability.  The released control and
+    // datapath contracts remain unchanged; the first asserted source is
+    // retained until core reset so firmware can identify a sticky fault.
+    always @(posedge clk) begin
+        if (!core_rst_n)
+            debug_fault_sources_latched <= 10'd0;
+        else if (|debug_fault_sources)
+            debug_fault_sources_latched <= debug_fault_sources_latched |
+                                            debug_fault_sources;
+    end
+
     always @(posedge clk) begin
         if (!core_rst_n) begin
             fm_body_from_input_reg <= 1'b0;
@@ -401,9 +446,32 @@ module cnn_accelerator_top (
                 12'h098: read_mux_data = sg_desc_base;
                 12'h09c: read_mux_data = frame_base;
                 12'h0a0: read_mux_data = timeout_cycles;
-                12'h0a4: read_mux_data = 32'h00040000;
-                12'h0a8: read_mux_data = 32'h00000005;
+                12'h0a4: read_mux_data = 32'h00040003;
+                12'h0a8: read_mux_data = 32'h0000000d;
                 12'h0ac: read_mux_data = 32'hc9854bb2;
+                12'h0b0: read_mux_data = {22'd0,debug_fault_sources_latched};
+                12'h0b4: read_mux_data = {8'hd1,6'd0,error_pending,busy,
+                                           debug_txn_state,debug_step,
+                                           debug_stage,debug_state};
+                12'h0b8: read_mux_data = debug_txn_addr;
+                12'h0bc: read_mux_data = debug_txn_data;
+                12'h0c0: read_mux_data = {22'd0,debug_fault_sources};
+                12'h0c4: read_mux_data = {22'd0,fm_debug_fault_reason};
+                12'h0c8: read_mux_data = {11'd0,fm_debug_read_input_bytes};
+                12'h0cc: read_mux_data = {11'd0,fm_debug_read_parsed_bytes};
+                12'h0d0: read_mux_data = {11'd0,fm_debug_write_input_bytes};
+                12'h0d4: read_mux_data = {11'd0,fm_debug_write_packed_bytes};
+                12'h0d8: read_mux_data = {11'd0,fm_debug_write_output_bytes};
+                12'h0dc: read_mux_data = fm_debug_stream_status;
+                12'h0e0: read_mux_data = fm_debug_last_body_tag[31:0];
+                12'h0e4: read_mux_data = fm_debug_last_body_tag[63:32];
+                12'h0e8: read_mux_data = fm_debug_protocol_misc;
+                12'h0ec: read_mux_data = {12'd0,fm_debug_expected_src_bytes};
+                12'h0f0: read_mux_data = {12'd0,fm_debug_expected_dst_bytes};
+                12'h0f4: read_mux_data = {8'd0,green_thresh_cfg};
+                12'h0f8: read_mux_data = green_word;
+                12'h0fc: read_mux_data = {29'd0,color_enable_cfg};
+                12'h100: read_mux_data = {8'd0,color_margin_cfg};
                 default: begin
                     read_mux_data = 32'd0;
                     read_mux_resp = 2'b10;
@@ -432,6 +500,9 @@ module cnn_accelerator_top (
             threshold_cfg <= 8'hd2;
             red_thresh_cfg <= 24'h6464a0;
             blue_thresh_cfg <= 24'ha06464;
+            green_thresh_cfg <= 24'h406040;
+            color_margin_cfg <= 24'h402010;
+            color_enable_cfg <= 3'b111;
             min_count_cfg <= 18'd8;
             frame_id <= 32'd0;
             sg_desc_base <= 32'h11200000;
@@ -499,6 +570,27 @@ module cnn_accelerator_top (
                             if (busy || error_pending || merged_value[31:24] != 0)
                                 bresp_reg <= 2'b10;
                             else blue_thresh_cfg <= merged_value[23:0];
+                        end
+                        12'h0f4: begin
+                            merged_value = merge_wstrb({8'd0, green_thresh_cfg},
+                                                       wdata_hold, wstrb_hold);
+                            if (busy || error_pending || merged_value[31:24] != 0)
+                                bresp_reg <= 2'b10;
+                            else green_thresh_cfg <= merged_value[23:0];
+                        end
+                        12'h0fc: begin
+                            merged_value = merge_wstrb({29'd0, color_enable_cfg},
+                                                       wdata_hold, wstrb_hold);
+                            if (busy || error_pending || merged_value[31:3] != 0)
+                                bresp_reg <= 2'b10;
+                            else color_enable_cfg <= merged_value[2:0];
+                        end
+                        12'h100: begin
+                            merged_value = merge_wstrb({8'd0, color_margin_cfg},
+                                                       wdata_hold, wstrb_hold);
+                            if (busy || error_pending || merged_value[31:24] != 0)
+                                bresp_reg <= 2'b10;
+                            else color_margin_cfg <= merged_value[23:0];
                         end
                         12'h070: begin
                             if (busy || error_pending) bresp_reg <= 2'b10;
@@ -634,9 +726,13 @@ module cnn_accelerator_top (
         .color_frame_start(color_frame_start),
         .color_red_cfg(color_red_cfg),
         .color_blue_cfg(color_blue_cfg),
+        .color_green_cfg(color_green_cfg),
+        .color_margin_cfg(color_margin_cfg_active),
+        .color_enable(color_enable_active),
         .color_min_count(color_min_count),
         .color_red_word(color_red_word),
         .color_blue_word(color_blue_word),
+        .color_green_word(color_green_word),
         .color_results_valid(color_results_valid),
         .rom_fault(rom_fault),
         .rom_req_valid(rom_req_valid),
@@ -648,6 +744,9 @@ module cnn_accelerator_top (
         .threshold_cfg(threshold_cfg),
         .red_thresh_cfg(red_thresh_cfg),
         .blue_thresh_cfg(blue_thresh_cfg),
+        .green_thresh_cfg(green_thresh_cfg),
+        .color_margin_cfg_in(color_margin_cfg),
+        .color_enable_cfg(color_enable_cfg),
         .min_count_cfg(min_count_cfg),
         .datapath_progress(datapath_progress),
         .start(start),
@@ -669,8 +768,16 @@ module cnn_accelerator_top (
         .joint_flags(joint_flags),
         .red_word(red_word),
         .blue_word(blue_word),
+        .green_word(green_word),
         .cycle_count(cycle_count),
         .image_read_done(image_read_done),
+        .debug_fault_sources(debug_fault_sources),
+        .debug_state(debug_state),
+        .debug_stage(debug_stage),
+        .debug_step(debug_step),
+        .debug_txn_state(debug_txn_state),
+        .debug_txn_addr(debug_txn_addr),
+        .debug_txn_data(debug_txn_data),
         .m_axil_awaddr(m_axil_awaddr),
         .m_axil_awvalid(m_axil_awvalid),
         .m_axil_awready(m_axil_awready),
@@ -781,7 +888,18 @@ module cnn_accelerator_top (
         .m_dma_write_valid(m_feature_valid),
         .m_dma_write_ready(m_feature_ready),
         .m_dma_write_last(m_feature_last),
-        .m_dma_write_keep(m_feature_keep)
+        .m_dma_write_keep(m_feature_keep),
+        .debug_fault_reason(fm_debug_fault_reason),
+        .debug_read_input_bytes(fm_debug_read_input_bytes),
+        .debug_read_parsed_bytes(fm_debug_read_parsed_bytes),
+        .debug_write_input_bytes(fm_debug_write_input_bytes),
+        .debug_write_packed_bytes(fm_debug_write_packed_bytes),
+        .debug_write_output_bytes(fm_debug_write_output_bytes),
+        .debug_stream_status(fm_debug_stream_status),
+        .debug_last_body_tag(fm_debug_last_body_tag),
+        .debug_protocol_misc(fm_debug_protocol_misc),
+        .debug_expected_src_bytes(fm_debug_expected_src_bytes),
+        .debug_expected_dst_bytes(fm_debug_expected_dst_bytes)
     );
     line_buffer u_line_buffer (
         .clk(clk),
@@ -952,7 +1070,7 @@ module cnn_accelerator_top (
         .clk(clk),
         .rst_n(core_rst_n),
         .fault(color_fault),
-        .tap_data(down_tap_data),
+        .tap_data(color_tap_bgr),
         .tap_row(down_tap_row),
         .tap_col(down_tap_col),
         .tap_accept(down_tap_accept),
@@ -960,9 +1078,13 @@ module cnn_accelerator_top (
         .frame_start(color_frame_start),
         .red_cfg(color_red_cfg),
         .blue_cfg(color_blue_cfg),
+        .green_cfg(color_green_cfg),
+        .margin_cfg(color_margin_cfg_active),
+        .color_enable(color_enable_active),
         .min_count(color_min_count),
         .red_word(color_red_word),
         .blue_word(color_blue_word),
+        .green_word(color_green_word),
         .results_valid(color_results_valid)
     );
 

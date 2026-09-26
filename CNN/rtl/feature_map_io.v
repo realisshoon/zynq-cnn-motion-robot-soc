@@ -38,7 +38,18 @@ module feature_map_io (
     output wire m_dma_write_valid,
     input wire m_dma_write_ready,
     output wire m_dma_write_last,
-    output wire [7:0] m_dma_write_keep
+    output wire [7:0] m_dma_write_keep,
+    output wire [9:0] debug_fault_reason,
+    output wire [20:0] debug_read_input_bytes,
+    output wire [20:0] debug_read_parsed_bytes,
+    output wire [20:0] debug_write_input_bytes,
+    output wire [20:0] debug_write_packed_bytes,
+    output wire [20:0] debug_write_output_bytes,
+    output wire [31:0] debug_stream_status,
+    output wire [63:0] debug_last_body_tag,
+    output wire [31:0] debug_protocol_misc,
+    output wire [19:0] debug_expected_src_bytes,
+    output wire [19:0] debug_expected_dst_bytes
 );
 
     (* ram_style = "block" *) reg [63:0] read_fifo [0:511];
@@ -79,6 +90,14 @@ module feature_map_io (
     reg [7:0] write_keep_reg;
     reg write_last_reg, write_valid_reg;
     reg final_write_accept_seen, write_dma_done_seen;
+
+    // Diagnostic-only sticky context. These registers do not participate in
+    // datapath control and are cleared for every accepted configuration.
+    reg [9:0] debug_fault_reason_reg;
+    reg [63:0] debug_last_body_tag_reg;
+    reg [3:0] debug_last_body_mask_reg;
+    reg [7:0] debug_last_read_keep_reg;
+    reg debug_last_read_last_reg;
 
     wire cfg_accept = cfg_valid && cfg_ready;
     wire read_push = s_dma_read_valid && s_dma_read_ready;
@@ -138,10 +157,12 @@ module feature_map_io (
          s_dma_read_last != (read_beat_end == {1'b0, src_bytes_reg}));
     wire read_extra_input_fault = read_path_en && read_last_seen &&
                                   s_dma_read_valid;
-    wire read_dma_done_fault = read_dma_sample &&
-        (read_push ?
-            (!s_dma_read_last || read_beat_end != {1'b0, src_bytes_reg}) :
-            (!read_last_seen || read_input_bytes != {1'b0, src_bytes_reg}));
+    // AXI DMA MM2S Idle may assert after the memory mover has filled its
+    // internal stream FIFO, before those buffered AXIS beats are accepted.
+    // Keep DMA completion ordering-independent; validate TLAST/keep/count on
+    // each real AXIS accept edge instead.
+    wire read_dma_done_fault = read_dma_sample && read_last_seen &&
+        (read_input_bytes != {1'b0, src_bytes_reg});
     wire read_after_frame_fault = read_byte_step && read_frame_generated;
     wire read_protocol_fault = active &&
         (read_accept_fault || read_extra_input_fault ||
@@ -182,6 +203,23 @@ module feature_map_io (
     assign m_dma_write_keep = write_keep_reg;
     assign m_dma_write_last = write_last_reg;
     assign m_dma_write_valid = write_valid_reg;
+    assign debug_fault_reason = debug_fault_reason_reg;
+    assign debug_read_input_bytes = read_input_bytes;
+    assign debug_read_parsed_bytes = read_parsed_bytes;
+    assign debug_write_input_bytes = write_input_bytes;
+    assign debug_write_packed_bytes = write_packed_bytes;
+    assign debug_write_output_bytes = write_output_bytes;
+    assign debug_stream_status = {fault_reg, active,
+        final_write_accept_seen, final_pixel_accept_seen,
+        write_dma_done_seen, read_dma_done_seen, write_valid_reg, body_busy,
+        read_frame_generated, pixel_valid_reg, read_word_valid, read_last_seen,
+        write_count, read_count};
+    assign debug_last_body_tag = debug_last_body_tag_reg;
+    assign debug_protocol_misc = {7'd0, op_id_reg, 2'd0,
+        expected_body_op_id, debug_last_body_mask_reg,
+        debug_last_read_last_reg, debug_last_read_keep_reg};
+    assign debug_expected_src_bytes = src_bytes_reg;
+    assign debug_expected_dst_bytes = dst_bytes_reg;
 
     // BRAM data arrays retain contents across reset; pointers and valid bits do not.
     always @(posedge clk) begin
@@ -249,6 +287,11 @@ module feature_map_io (
             write_valid_reg <= 1'b0;
             final_write_accept_seen <= 1'b0;
             write_dma_done_seen <= 1'b0;
+            debug_fault_reason_reg <= 10'd0;
+            debug_last_body_tag_reg <= 64'd0;
+            debug_last_body_mask_reg <= 4'd0;
+            debug_last_read_keep_reg <= 8'd0;
+            debug_last_read_last_reg <= 1'b0;
         end else if (cfg_accept) begin
             done_reg <= 1'b0;
             read_done_reg <= 1'b0;
@@ -300,6 +343,11 @@ module feature_map_io (
             write_valid_reg <= 1'b0;
             final_write_accept_seen <= 1'b0;
             write_dma_done_seen <= 1'b0;
+            debug_fault_reason_reg <= 10'd0;
+            debug_last_body_tag_reg <= 64'd0;
+            debug_last_body_mask_reg <= 4'd0;
+            debug_last_read_keep_reg <= 8'd0;
+            debug_last_read_last_reg <= 1'b0;
             if ((!read_en && !write_en) ||
                 (read_en && (cfg_desc[17:9] == 0 || cfg_desc[26:18] == 0 ||
                              cfg_desc[17:9] > 9'd256 ||
@@ -309,6 +357,7 @@ module feature_map_io (
                 (write_en && dst_bytes == 0)) begin
                 active <= 1'b0;
                 fault_reg <= 1'b1;
+                debug_fault_reason_reg <= 10'b0000000001;
             end else begin
                 active <= 1'b1;
             end
@@ -332,6 +381,8 @@ module feature_map_io (
                 if (write_dma_sample)
                     write_dma_done_seen <= 1'b1;
                 if (read_push && read_state_commit_ok) begin
+                    debug_last_read_keep_reg <= s_dma_read_keep;
+                    debug_last_read_last_reg <= s_dma_read_last;
                     read_wr_ptr <= read_wr_ptr + 1'b1;
                     read_input_bytes <= read_input_bytes + 21'd8;
                     if (s_dma_read_last)
@@ -393,6 +444,10 @@ module feature_map_io (
                     body_busy <= 1'b1;
                     write_input_bytes <= write_input_bytes + body_bytes;
                 end
+                if (body_accept) begin
+                    debug_last_body_tag_reg <= s_body_tag;
+                    debug_last_body_mask_reg <= s_body_mask;
+                end
                 if (write_lane_step) begin
                     if (body_lane == 3'd3)
                         body_busy <= 1'b0;
@@ -438,6 +493,17 @@ module feature_map_io (
                 end
             end
             if (fault_accept) begin
+                debug_fault_reason_reg <= {
+                    write_extra_input_fault,
+                    write_body_count_fault,
+                    body_tag_mismatch,
+                    read_after_frame_fault,
+                    read_underflow,
+                    read_dma_done_fault,
+                    read_extra_input_fault,
+                    read_accept_fault,
+                    dma_fault,
+                    1'b0};
                 fault_reg <= 1'b1;
                 active <= 1'b0;
                 done_reg <= 1'b0;

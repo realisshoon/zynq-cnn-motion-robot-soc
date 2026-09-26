@@ -1236,7 +1236,7 @@
     "fm": {
       "title": "feature_map_io",
       "owner": "이영현",
-      "body": "## 역할\nDDR FM_A/FM_B 사이의 stage input/output 을 AXI DMA(피처맵용)로 이동한다. custom AXI-Full master 는 없다. DDR master 는 외부 DMA 가 담당한다. 본 모듈은 DMA64bit AXIS 와 PE 4lane/32lane stream 사이에서 pack/unpack 한다.\n## 주소와 전송\nFM_A=0x11000000, FM_B=0x11100000,각 1MiB reserve. 유효 payload 최대 786432bytes. stage0 conv0 출력은 A. stage1 은 A→B,stage2 B→A 로 번갈아 사용. stage13 결과는 B 이고 두 head 는 B 를 각각읽는다. head 는 DDR output write 하지 않는다. 모든 source/destination 영역은 분리한다. ARM linker 는 0x10000000..0x1120FFFF 를 예약하고 VDMA 영역과 겹치지 않도록 한다.\n## 쓰기\n입력 s_body_data64(4×16)에서 body 각 lane 의하위 8bit 만 꺼내 HWC 순으로 append. body Cout 는 24/48/96/192/384 라 모든 그룹 mask=F. 2group=64bit AXIS1beat 로 출력,keep=FF. 마지막 beat 에 last=1. accumulator 결과를 다시 변환하지 않는다. 출력 FIFO 는 4KiB(1RAMB36 data64) 이하, full 이면 PW/input_conv 에 ready=0. accepted output bytes 와 DMA S2MM completion 이 모두 충족되어야 write_done. S2MM 은 PE 연산 시작 전에 arm 한다.\n## 읽기\nMM2S64bit 를 byte 순서로 HWC buffer 에 수집하여 32channel beat 를 생성한다. pixel 마다 Cin 바이트에서 flush. Cin24 면 24byte+8zero, Cin48 이면 32+16zero. 다음 pixel 의 byte 를 tail 에 섞지 않는다. tag 는수락된 출력 row/col/batch 에서 생성, batch_last 는 현재 batch 가 ceil(Cin/32)-1 인지의 비교 결과 1bit 다. 4KiB read FIFO 는별도 1RAMB36. head stage 는 이출력을 PW 에,body stage 는 line_buffer 에 라우팅한다. read_done 은최종 32channelbeat 가소비되고 DMA 읽기완료까지 확인한 뒤 발생한다.\n## 제어\ncfg_valid/ready 에 src_addr,dst_addr,src_bytes,dst_bytes,read_en,write_en 를함께래치한다. top 이 DMA 를제어하며 read_dma_done/write_dma_done/error 를입력한다. 인터페이스완료와 DDR 완료를혼동하지않는다. read_complete=(!read_en)||(final_pixel_accept_seen&&read_dma_done_seen), write_complete=(!write_en)||(final_write_accept_seen&&write_dma_done_seen)이다. read_done/write_done 은 각 활성 경로가 완료된 다음 cycle 부터 다음 cfg 까지 유지하고 비활성 경로의 출력은 0 이다. done 은 read_complete&&write_complete 가 처음 성립한 상승에지를 샘플한 다음 cycle 에 정확히 1cycle pulse 한다. read-only 는 read, write-only 는 write, read+write 는 양쪽 완료를 기다린다. 새 cfg accept 에서 enable 과 모든 seen/path-done/operation-done 상태를 clear 하며 read_en=0&&write_en=0 은 protocol fault 다. fault 가 우선하며 done 을 만들지 않고 새 cfg 를 차단한다. 이미 set 된 path done 은 reset 까지 유지될 수 있고 top 은 !fault 로 완료를 qualify 한다. reset 은 모든 완료 상태를 0 으로 clear 한다. 잘못된 keep/last/bytecount=stickyfault.\n## 시험\n24/48channel partial packet,64bit endian,read/writebackpressure 독립,소스 패턴 보존,마지막 beat,두헤드가같은 conv13 tensor 를읽는지 검증. reset/abort 후 partialwrite 를다음 stage 의정상입력으로사용금지.",
+      "body": "## 역할\nDDR FM_A/FM_B 사이의 stage input/output 을 AXI DMA(피처맵용)로 이동한다. custom AXI-Full master 는 없다. DDR master 는 외부 DMA 가 담당한다. 본 모듈은 DMA64bit AXIS 와 PE 4lane/32lane stream 사이에서 pack/unpack 한다.\n## 주소와 전송\nFM_A=0x11000000, FM_B=0x11100000,각 1MiB reserve. 유효 payload 최대 786432bytes. stage0 conv0 출력은 A. stage1 은 A→B,stage2 B→A 로 번갈아 사용. stage13 결과는 B 이고 두 head 는 B 를 각각읽는다. head 는 DDR output write 하지 않는다. 모든 source/destination 영역은 분리한다. ARM linker 는 0x10000000..0x1120FFFF 를 예약하고 VDMA 영역과 겹치지 않도록 한다.\n## 쓰기\n입력 s_body_data64(4×16)에서 body 각 lane 의하위 8bit 만 꺼내 HWC 순으로 append. body Cout 는 24/48/96/192/384 라 모든 그룹 mask=F. 2group=64bit AXIS1beat 로 출력,keep=FF. 마지막 beat 에 last=1. accumulator 결과를 다시 변환하지 않는다. 출력 FIFO 는 4KiB(1RAMB36 data64) 이하, full 이면 PW/input_conv 에 ready=0. accepted output bytes 와 DMA S2MM completion 이 모두 충족되어야 write_done. S2MM 은 PE 연산 시작 전에 arm 한다.\n## 읽기\nMM2S64bit 를 byte 순서로 HWC buffer 에 수집하여 32channel beat 를 생성한다. pixel 마다 Cin 바이트에서 flush. Cin24 면 24byte+8zero, Cin48 이면 32+16zero. 다음 pixel 의 byte 를 tail 에 섞지 않는다. tag 는수락된 출력 row/col/batch 에서 생성, batch_last 는 현재 batch 가 ceil(Cin/32)-1 인지의 비교 결과 1bit 다. 4KiB read FIFO 는별도 1RAMB36. head stage 는 이출력을 PW 에,body stage 는 line_buffer 에 라우팅한다. read_done 은최종 32channelbeat 가소비되고 DMA 읽기완료까지 확인한 뒤 발생한다.\n## 제어\ncfg_valid/ready 에 src_addr,dst_addr,src_bytes,dst_bytes,read_en,write_en 를함께래치한다. top 이 DMA 를제어하며 read_dma_done/write_dma_done/error 를입력한다. 인터페이스완료와 DDR 완료를혼동하지않는다. read_complete=(!read_en)||(final_pixel_accept_seen&&read_dma_done_seen), write_complete=(!write_en)||(final_write_accept_seen&&write_dma_done_seen)이다. read_done/write_done 은 각 활성 경로가 완료된 다음 cycle 부터 다음 cfg 까지 유지하고 비활성 경로의 출력은 0 이다. done 은 read_complete&&write_complete 가 처음 성립한 상승에지를 샘플한 다음 cycle 에 정확히 1cycle pulse 한다. read-only 는 read, write-only 는 write, read+write 는 양쪽 완료를 기다린다. 새 cfg accept 에서 enable 과 모든 seen/path-done/operation-done 상태를 clear 하며 read_en=0&&write_en=0 은 protocol fault 다. fault 가 우선하며 done 을 만들지 않고 새 cfg 를 차단한다. 이미 set 된 path done 은 reset 까지 유지될 수 있고 top 은 !fault 로 완료를 qualify 한다. reset 은 모든 완료 상태를 0 으로 clear 한다. 잘못된 keep/last/bytecount=stickyfault.\n## 시험\n24/48channel partial packet,64bit endian,read/writebackpressure 독립,소스 패턴 보존,마지막 beat,두헤드가같은 conv13 tensor 를읽는지 검증. reset/abort 후 partialwrite 를다음 stage 의정상입력으로사용금지.\n## Current hardware revision 0x00040003\nMM2S DMA idle/done은 DMA 내부 FIFO가 비기 전에 보일 수 있으므로 `read_dma_done`만으로 미수신 beat를 fault 처리하지 않는다. 실제 AXIS accept edge에서 keep/last/count를 검증하고 `read_last_seen` 이후에만 byte-count 종료를 확정한다. read/write fault term을 분리하여 fault edge의 상태 commit과 public transaction을 원자적으로 차단한다. 공개 진단 출력은 fault reason, read/write byte counters, stream state, last body tag, protocol snapshot과 expected byte count를 제공하며 datapath 기능에는 참여하지 않는다.",
       "ports": [
         {
           "name": "clk",
@@ -1579,6 +1579,105 @@
           "meaning": "유효바이트,현재 shape 모두 FF",
           "timing": "valid && ready 에서 수락; stall 동안 payload 유지",
           "reset": "0"
+        },
+        {
+          "name": "debug_fault_reason",
+          "direction": "out",
+          "width": 10,
+          "peer": "cnn_accelerator_top",
+          "meaning": "feature-map first/live protocol fault reason bitmap",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_read_input_bytes",
+          "direction": "out",
+          "width": 21,
+          "peer": "cnn_accelerator_top",
+          "meaning": "accepted MM2S input byte count",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_read_parsed_bytes",
+          "direction": "out",
+          "width": 21,
+          "peer": "cnn_accelerator_top",
+          "meaning": "bytes converted to pixel stream",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_write_input_bytes",
+          "direction": "out",
+          "width": 21,
+          "peer": "cnn_accelerator_top",
+          "meaning": "accepted body-stream byte count",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_write_packed_bytes",
+          "direction": "out",
+          "width": 21,
+          "peer": "cnn_accelerator_top",
+          "meaning": "bytes packed into write FIFO",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_write_output_bytes",
+          "direction": "out",
+          "width": 21,
+          "peer": "cnn_accelerator_top",
+          "meaning": "accepted S2MM output byte count",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_stream_status",
+          "direction": "out",
+          "width": 32,
+          "peer": "cnn_accelerator_top",
+          "meaning": "active/fault/FIFO/valid progress snapshot",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_last_body_tag",
+          "direction": "out",
+          "width": 64,
+          "peer": "cnn_accelerator_top",
+          "meaning": "last accepted body tag",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_protocol_misc",
+          "direction": "out",
+          "width": 32,
+          "peer": "cnn_accelerator_top",
+          "meaning": "op/tag/mask/keep/last protocol snapshot",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_expected_src_bytes",
+          "direction": "out",
+          "width": 20,
+          "peer": "cnn_accelerator_top",
+          "meaning": "latched expected source byte count",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_expected_dst_bytes",
+          "direction": "out",
+          "width": 20,
+          "peer": "cnn_accelerator_top",
+          "meaning": "latched expected destination byte count",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
         }
       ]
     },
@@ -1781,7 +1880,7 @@
     "color": {
       "title": "color_marker_detect",
       "owner": "한승훈",
-      "body": "## 역할\ndownsample 내부의원본 RGB accept tap 을관찰한다. ready 를출력하지않지만 tap_accept=1 일때만처리한다. 입력 row/col 은이미원본 720p 좌표이며 row 는 0,5,...715 다. letterbox 패딩은입력되지 않는다.\n## 판정\nred24={B_max[23:16],G_max[15:8],R_min[7:0]},default0x6464A0. blue24={B_min[23:16],G_max[15:8],R_max[7:0]},default0xA06464. 빨강 R>=R_min&&G<=Gmax&&B<=Bmax,파랑 R<=Rmax&&G<=Gmax&&B>=Bmin. 두조건동시충족시두 count 에모두포함. threshold 는 frame start 에서 snapshot 한다.\n색상별 count18bit(최대 184320),sumx28bit,sumy28bit 를사용한다. 최대 sumx235,745,280,sumy131,788,800 으로 28bit 안에들어간다. 마지막 pixel 도합산한후 divider 를시작한다. count>=MIN_COUNT(default8)일때 found1,아니면 x=y=0.\n## 나눗셈\nunsigned restoring divider1 개를공유,28bit numerator/18bit denominator,28iteration+load/output2=30cycle/division. redx/redy/bluex/bluey 순서최대 120cycle. quotient 는 floor,동작 중새 frame 거부. count0 은 divider 실행안함. DSP0,use_dsp=no. results_valid 는마지막 division 결과를 register 한후 1cyclepulse,결과는다음 frame 완료까지 hold. top 은동일 frame_id 의 CNN 결과와함께 commit 한다.\n## 결과\nword={found bit31,reserved30:21=0,y20:11,x10:0}. grayscale/임계경계/최소 count/0count/마지막 pixel 색상/긴 CNN stall 을시험한다. 이검출은 2 개색상마커이며손가락개수 5 개인식모델이아니다.",
+      "body": "## 역할과 입력 계약\ndownsample의 실제 accepted RGB tap만 관찰한다. `tap_accept=1`인 cycle만 누산하며 `tap_data={B,G,R}` 계약을 사용한다. 현재 camera/VDMA 경계의 `{R,B,G}`는 cnn_accelerator_top에서 한 번만 `{B,G,R}`로 재배열한다. 좌표는 원본 1280x720 좌표다.\n## 색상 판정\nred, blue, green을 독립 검출한다. `color_enable[0/1/2]`로 색별 검출을 켜고 끈다. `margin_cfg={blue_margin,green_margin,red_margin}`이며 각 색의 주 채널이 최소 threshold 이상이고 다른 두 채널보다 해당 margin 이상 클 때만 hit다. threshold, margin, enable, min_count는 frame_start에서 snapshot한다.\n## 누산과 결과\n색별 count18, sum_x28, sum_y28을 유지한다. count가 min_count 이상이면 centroid를 계산하고 아니면 found=0, x=y=0이다. 하나의 unsigned restoring divider를 red x/y, blue x/y, green x/y 순서로 공유하며 각 division은 30cycle이다. 결과 word는 `{found[31],reserved[30:21],y[20:11],x[10:0]}`다.\n## fault 범위\nlocal fault는 `tap_last&&!tap_accept`, active 중 frame_start, accepted 좌표 범위 위반만 포함한다. raster 순서, duplicate/missing tap, exact tap count는 producer/integration 책임이다.",
       "ports": [
         {
           "name": "clk",
@@ -1883,6 +1982,33 @@
           "reset": "0xA06464"
         },
         {
+          "name": "green_cfg",
+          "direction": "in",
+          "width": 24,
+          "peer": "top_level_fsm",
+          "meaning": "green minimum threshold; G_min is [15:8]",
+          "timing": "frame_start에서 snapshot",
+          "reset": "0"
+        },
+        {
+          "name": "margin_cfg",
+          "direction": "in",
+          "width": 24,
+          "peer": "top_level_fsm",
+          "meaning": "{blue,green,red} channel-dominance margins",
+          "timing": "frame_start에서 snapshot",
+          "reset": "0"
+        },
+        {
+          "name": "color_enable",
+          "direction": "in",
+          "width": 3,
+          "peer": "top_level_fsm",
+          "meaning": "bit0 red, bit1 blue, bit2 green detector enable",
+          "timing": "frame_start에서 snapshot",
+          "reset": "0"
+        },
+        {
           "name": "min_count",
           "direction": "in",
           "width": 18,
@@ -1910,6 +2036,15 @@
           "reset": "0"
         },
         {
+          "name": "green_word",
+          "direction": "out",
+          "width": 32,
+          "peer": "top_level_fsm",
+          "meaning": "found/y/x green centroid result",
+          "timing": "results_valid까지 hold",
+          "reset": "0"
+        },
+        {
           "name": "results_valid",
           "direction": "out",
           "width": 1,
@@ -1921,7 +2056,7 @@
       ]
     },
     "arg": {
-      "title": "argmax_threshold",
+      "title": "argmax_offset_select",
       "owner": "조정민",
       "body": "## 두 단계\nstage14 heatmap 전체 16×16×17 을먼저스캔한다. stage15 offset 전체 16×16×34 를별도로스캔한다. 관절마다 best_score signed8,best_row4,best_col4,seen1 을저장한다. 처음유효값또는 score>best 일때갱신하고동점은기존값유지(row-major first tie). 모두-128 이어도첫 pixel 좌표로결정한다.\nheatmap cfg 수락 때만 best/seen/got 상태를 초기화한다. heatmap 마지막 beat 수락 후 done 을 1cycle 내고 idle 로 복귀하되 best 배열은 유지한다. offset cfg 수락 때는 got_x/got_y 만 초기화한다. 이 규칙이 없으면 stage14 완료 대기가 교착된다.\n## offset 선택\nstage15 에서 c=4*group+lane. c<17 이면 joint=c 의 yoffset,17<=c<34 이면 joint=c-17 의 xoffset. 그 joint 의 best row/col 과일치할때만 signed16 offset 을 capture 한다. 각각 got_y/got_x 를확인한다. 더미 lane mask0 은무시. heatmap 이확정되기전에 offset 이오면 fault. stream4lane 은항상받을수있도록 17register 뱅크로구현,head 간 stage 상태분리.\n## 출력\noffset 마지막 beat 수락후 17joint 를 index0..16 순으로내보낸다. result_data64=[7:0]grid_col,[15:8]grid_row,[31:16]offset_x_signed,[47:32]offset_y_signed,[55:48]score_signed8,[63:56]reserved0. result_joint5 를함께출력. threshold 판정은 coord_restore 가원본 bounds 와결합한다. 입력 threshold 를중복계산하지않는다. result_last 는 joint16. backpressure 시현재 jointhold. done 은최종 result accept 후 1cycle.\n## 시험\n전부음수/전부-128/동점/마지막 pixel 최대,17 채널마지막 groupmask1,34 채널마지막 groupmask3,offset 채널배치,c+17,score 부호를검증한다. 전체 head tensors 를 BRAM 에저장하지않으며 DSP0 이다.",
       "ports": [
@@ -2349,7 +2484,7 @@
     "top": {
       "title": "top_level_fsm",
       "owner": "이영현",
-      "body": "## frame 제어\nPS 가완성된 VDMA frame 을확보하고 FRAME_BASE/SG_DESC_BASE/FRAME_ID 와설정값을쓴후 CTRL.START 를쓴다. IP 가 write 수락으로내부 1cyclepulse 를만든다. busy 중 start/configwrite 는 SLVERR,실행중설정불변.10fpspacing 은 PS 가 100ms 주기로수행한다. 완료직후무조건자동재시작하지않는다. IMAGE_READ_DONE 이후 PS 는 sourceframe 을 release 가능하다.\n## stage FSM\nIDLE→SNAPSHOT→ROM_FETCH→LOAD_W→CONFIG→ARM_DEST→ARM_SOURCE→RUN→WAIT_COMMIT→NEXT_STAGE→POSTPROCESS→PUBLISH→IDLE. body(stage1..13)는 DW/PW 파라미터둘을조회/로드후같은 stage 에서 DW→PW 동작. stage0 은 imageSG→downsample→conv0→FM_A. stage1A→B,stage2B→A...stage13A→B. stage14/15 는 B 에서 PW 로각각읽고 argmax 로출력. stage14 에서는 heatmapstate 보존,stage15 후 argmax→coord17joint 를수집한다.\n현재 stage 의 PE done, FM generic done, FM read_done/write_done, DMA idle, weight load_done 을 sticky 로 기억한다. fm_done 은 활성 경로의 stream 최종 accept 와 DMA completion 을 모두 포함한 operation-completion pulse 이므로 수신 시 sticky-capture 한다. fm_read_done/fm_write_done 은 각 활성 경로의 완료 level 로 함께 확인한다. 비활성 경로는 top 내부 완료조건만 true 로 취급하며 비활성 read_done/write_done 출력의 assert 를 요구하지 않는다. fault 가 있으면 완료조건을 무효화한다. count/byte/tag 로최종 transfer 를확인한다. stage 가끝나고 DDR 쓰기까지완료돼야 WGT reload 와 FM swap. row/tap/batch/group 계수는각데이터패스모듈소유이며 top 이 valid 없는 last 만보고증가시키지않는다.\n## DMA controller(본 모듈 내부 sub-FSM)\n외부 DMA 주소 IMAGE=0x40400000,WEIGHT=0x40410000,FEATURE=0x40420000 을 BD 와고정한다.32bit AXI-Lite master 완전한 AW/W/B 및 AR/R 를사용한다. write transaction 은 AW 와 W 각각독립적으로수락확인 후 B 응답을기다린다. WSTRB=F,PROT=0. read 도 AR 수락후 R 을받고 RESP!=OKAY 면 fault. 한번에 1 개 registertransaction 만발행한다.\nSimpleMM2S(weight,feature read): DMASR0x04 의기존 IRQ pending[14:12]만 W1C 처리; error status[10:8,6:4]는 RO 이므로 set 이면 DMA reset 필요,DMACR0x00.RS=1,SA0x18, LENGTH0x28 순서. SimpleS2MM: DMASR0x34 확인/clear,DMACR0x30.RS=1,DA0x48,LENGTH0x58 을마지막으로써서 arm. S2MM 을먼저준비하고 MM2S/PE 를시작한다. DONE 은해당 stream 의마지막 bytecount 와 DMASR.idlebit1&&errorbits 없음을함께확인;IOCbit12 를보조사용. error mask=0x770. IOC 를단독으로전체 frame 끝으로사용하지않는다.\nImageSG: PS 가 idle 때 64byte aligned144BD ring 이아닌유한 chain 을구성한다. CURDESC0x08 은 DMAhalted 때만설정,RS1 후 TAILDESC0x10=base+143*64. 각 BDbuffer=FRAME_BASE+5*k*3840,length3840,TXSOF/TXEOF 둘다 1,next=base+(k+1)*64(마지막은 base 로연결해도 tail 에서정지). reserved/status 초기화,descriptorflush 후 START. 이미지 552960bytes 수신과 144rowlast 및 DMASR.IDLE 을모두기다린다. stage0 의 downsample/conv0/FM 완료와 SG Idle 을 확인한 후 PL controller 가 IMAGE DMACR.RS=0 을 쓰고 Halted=1 을 기다린다. 이때 IMAGE_READ_DONE=1 로 공개하고 다음 stage 로 진행한다. 다음 frame 에서 PL 이 halted 상태의 CURDESC 를 다시 설정한다. PS 는 다음 START 전 완료된 BD 의 status 를 0 으로 초기화하고 flush 하며, 정상 frame 사이에도 DMA register 제어는 PL 이 소유한다.\n## 오류와 통지\nTIMEOUT(default100000000cycle)동안진행없거나 DMARESP/protocolfault 발생 시 ERROR sticky,busy0,newstart 차단. PS 가세 DMA 를 reset 하고 coreSOFT_RESET 후재시작한다. timeout 누산은 payload accept, MAC issue 또는 실제 FSM 단계 전진에서 0 으로 복귀한다. 같은 DMASR 상태를 반복 읽는 polling 응답은 progress 가 아니다,wrapper 가 모든 내부 stream accept 와 MAC issue 를 OR 한 datapath_progress 입력도 포함한다. abort 는즉시출력 valid 를취소하지않고 core 를 error 로격리하며 DMAreset 을 PS 에요청한다. abortedFM 결과는 publish 하지않는다.\nIRQ=(DONE_PENDING||ERROR_PENDING)&&IRQ_ENABLE,levelhigh;W1Cclear,동시새 event 우선. CortexGIClevel 설정. 결과 17joint 와색상 2word,frame_id 를 shadow 에서한번에 commit 한다. RESULT_SEQ 를 commit 때증가. PS 는 SEQ→전체결과→SEQ 순으로같은값인지확인한다. normaldone 후 PS 가 pending 을 clear 하고다음 START. 결과는다음 publish 전까지유지.\n## 리소스\nDSP0. 모든 adder/count/address 상수식 use_dsp=no. DMA/FIFO 는 wrapper 전체예산에포함한다. PS 와 PLmaster 동시 write 를금지하는 ownership 규칙:PS 는 boot/error 복구때만 DMA 제어,normal frame 진행 중 PL 단독소유. status read 는허용.",
+      "body": "## frame 제어\nPS 가완성된 VDMA frame 을확보하고 FRAME_BASE/SG_DESC_BASE/FRAME_ID 와설정값을쓴후 CTRL.START 를쓴다. IP 가 write 수락으로내부 1cyclepulse 를만든다. busy 중 start/configwrite 는 SLVERR,실행중설정불변.10fpspacing 은 PS 가 100ms 주기로수행한다. 완료직후무조건자동재시작하지않는다. IMAGE_READ_DONE 이후 PS 는 sourceframe 을 release 가능하다.\n## stage FSM\nIDLE→SNAPSHOT→ROM_FETCH→LOAD_W→CONFIG→ARM_DEST→ARM_SOURCE→RUN→WAIT_COMMIT→NEXT_STAGE→POSTPROCESS→PUBLISH→IDLE. body(stage1..13)는 DW/PW 파라미터둘을조회/로드후같은 stage 에서 DW→PW 동작. stage0 은 imageSG→downsample→conv0→FM_A. stage1A→B,stage2B→A...stage13A→B. stage14/15 는 B 에서 PW 로각각읽고 argmax 로출력. stage14 에서는 heatmapstate 보존,stage15 후 argmax→coord17joint 를수집한다.\n현재 stage 의 PE done, FM generic done, FM read_done/write_done, DMA idle, weight load_done 을 sticky 로 기억한다. fm_done 은 활성 경로의 stream 최종 accept 와 DMA completion 을 모두 포함한 operation-completion pulse 이므로 수신 시 sticky-capture 한다. fm_read_done/fm_write_done 은 각 활성 경로의 완료 level 로 함께 확인한다. 비활성 경로는 top 내부 완료조건만 true 로 취급하며 비활성 read_done/write_done 출력의 assert 를 요구하지 않는다. fault 가 있으면 완료조건을 무효화한다. count/byte/tag 로최종 transfer 를확인한다. stage 가끝나고 DDR 쓰기까지완료돼야 WGT reload 와 FM swap. row/tap/batch/group 계수는각데이터패스모듈소유이며 top 이 valid 없는 last 만보고증가시키지않는다.\n## DMA controller(본 모듈 내부 sub-FSM)\n외부 DMA 주소 IMAGE=0x40400000,WEIGHT=0x40410000,FEATURE=0x40420000 을 BD 와고정한다.32bit AXI-Lite master 완전한 AW/W/B 및 AR/R 를사용한다. write transaction 은 AW 와 W 각각독립적으로수락확인 후 B 응답을기다린다. WSTRB=F,PROT=0. read 도 AR 수락후 R 을받고 RESP!=OKAY 면 fault. 한번에 1 개 registertransaction 만발행한다.\nSimpleMM2S(weight,feature read): DMASR0x04 의기존 IRQ pending[14:12]만 W1C 처리; error status[10:8,6:4]는 RO 이므로 set 이면 DMA reset 필요,DMACR0x00.RS=1,SA0x18, LENGTH0x28 순서. SimpleS2MM: DMASR0x34 확인/clear,DMACR0x30.RS=1,DA0x48,LENGTH0x58 을마지막으로써서 arm. S2MM 을먼저준비하고 MM2S/PE 를시작한다. DONE 은해당 stream 의마지막 bytecount 와 DMASR.idlebit1&&errorbits 없음을함께확인;IOCbit12 를보조사용. error mask=0x770. IOC 를단독으로전체 frame 끝으로사용하지않는다.\nImageSG: PS 가 idle 때 64byte aligned144BD ring 이아닌유한 chain 을구성한다. CURDESC0x08 은 DMAhalted 때만설정,RS1 후 TAILDESC0x10=base+143*64. 각 BDbuffer=FRAME_BASE+5*k*3840,length3840,TXSOF/TXEOF 둘다 1,next=base+(k+1)*64(마지막은 base 로연결해도 tail 에서정지). reserved/status 초기화,descriptorflush 후 START. 이미지 552960bytes 수신과 144rowlast 및 DMASR.IDLE 을모두기다린다. stage0 의 downsample/conv0/FM 완료와 SG Idle 을 확인한 후 PL controller 가 IMAGE DMACR.RS=0 을 쓰고 Halted=1 을 기다린다. 이때 IMAGE_READ_DONE=1 로 공개하고 다음 stage 로 진행한다. 다음 frame 에서 PL 이 halted 상태의 CURDESC 를 다시 설정한다. PS 는 다음 START 전 완료된 BD 의 status 를 0 으로 초기화하고 flush 하며, 정상 frame 사이에도 DMA register 제어는 PL 이 소유한다.\n## 오류와 통지\nTIMEOUT(default100000000cycle)동안진행없거나 DMARESP/protocolfault 발생 시 ERROR sticky,busy0,newstart 차단. PS 가세 DMA 를 reset 하고 coreSOFT_RESET 후재시작한다. timeout 누산은 payload accept, MAC issue 또는 실제 FSM 단계 전진에서 0 으로 복귀한다. 같은 DMASR 상태를 반복 읽는 polling 응답은 progress 가 아니다,wrapper 가 모든 내부 stream accept 와 MAC issue 를 OR 한 datapath_progress 입력도 포함한다. abort 는즉시출력 valid 를취소하지않고 core 를 error 로격리하며 DMAreset 을 PS 에요청한다. abortedFM 결과는 publish 하지않는다.\nIRQ=(DONE_PENDING||ERROR_PENDING)&&IRQ_ENABLE,levelhigh;W1Cclear,동시새 event 우선. CortexGIClevel 설정. 결과 17joint 와색상 2word,frame_id 를 shadow 에서한번에 commit 한다. RESULT_SEQ 를 commit 때증가. PS 는 SEQ→전체결과→SEQ 순으로같은값인지확인한다. normaldone 후 PS 가 pending 을 clear 하고다음 START. 결과는다음 publish 전까지유지.\n## 리소스\nDSP0. 모든 adder/count/address 상수식 use_dsp=no. DMA/FIFO 는 wrapper 전체예산에포함한다. PS 와 PLmaster 동시 write 를금지하는 ownership 규칙:PS 는 boot/error 복구때만 DMA 제어,normal frame 진행 중 PL 단독소유. status read 는허용.\n## Current hardware revision 0x00040003\ngreen threshold/result, per-color enable과 R/G/B dominance margin을 frame 단위로 snapshot하고 red/blue/green 결과를 joint 결과와 함께 atomic publish한다. fault source/state/stage/step/private AXI-Lite transaction context를 read-only debug 출력으로 제공한다. 현재 top_level_fsm 공개 포트 수는 140개다.",
       "ports": [
         {
           "name": "clk",
@@ -2973,6 +3108,33 @@
           "reset": "0xA06464"
         },
         {
+          "name": "color_green_cfg",
+          "direction": "out",
+          "width": 24,
+          "peer": "color_marker_detect",
+          "meaning": "latched green threshold",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0x40A040"
+        },
+        {
+          "name": "color_margin_cfg",
+          "direction": "out",
+          "width": 24,
+          "peer": "color_marker_detect",
+          "meaning": "latched B/G/R dominance margins",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0x404010"
+        },
+        {
+          "name": "color_enable",
+          "direction": "out",
+          "width": 3,
+          "peer": "color_marker_detect",
+          "meaning": "latched red/blue/green enable bits",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0x3"
+        },
+        {
           "name": "color_min_count",
           "direction": "out",
           "width": 18,
@@ -2997,6 +3159,15 @@
           "peer": "color_marker_detect",
           "meaning": "found/y/x",
           "timing": "완료 후 hold",
+          "reset": "0"
+        },
+        {
+          "name": "color_green_word",
+          "direction": "in",
+          "width": 32,
+          "peer": "color_marker_detect",
+          "meaning": "green centroid result",
+          "timing": "설정 snapshot/진단 관찰",
           "reset": "0"
         },
         {
@@ -3096,6 +3267,33 @@
           "peer": "cnn_accelerator_top",
           "meaning": "BLUE_THRESH register snapshot",
           "timing": "frame snapshot / status hold",
+          "reset": "0"
+        },
+        {
+          "name": "green_thresh_cfg",
+          "direction": "in",
+          "width": 24,
+          "peer": "cnn_accelerator_top",
+          "meaning": "AXI-Lite green threshold setting",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "color_margin_cfg_in",
+          "direction": "in",
+          "width": 24,
+          "peer": "cnn_accelerator_top",
+          "meaning": "AXI-Lite B/G/R margin setting",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "color_enable_cfg",
+          "direction": "in",
+          "width": 3,
+          "peer": "cnn_accelerator_top",
+          "meaning": "AXI-Lite color enable setting",
+          "timing": "설정 snapshot/진단 관찰",
           "reset": "0"
         },
         {
@@ -3288,6 +3486,15 @@
           "reset": "0"
         },
         {
+          "name": "green_word",
+          "direction": "out",
+          "width": 32,
+          "peer": "cnn_accelerator_top",
+          "meaning": "atomically published green centroid",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
           "name": "cycle_count",
           "direction": "out",
           "width": 32,
@@ -3303,6 +3510,69 @@
           "peer": "cnn_accelerator_top",
           "meaning": "sourcebufferreleaseallowed",
           "timing": "frame snapshot / status hold",
+          "reset": "0"
+        },
+        {
+          "name": "debug_fault_sources",
+          "direction": "out",
+          "width": 10,
+          "peer": "cnn_accelerator_top",
+          "meaning": "live child fault-source bitmap",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_state",
+          "direction": "out",
+          "width": 5,
+          "peer": "cnn_accelerator_top",
+          "meaning": "current top FSM state",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_stage",
+          "direction": "out",
+          "width": 4,
+          "peer": "cnn_accelerator_top",
+          "meaning": "current CNN stage",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_step",
+          "direction": "out",
+          "width": 4,
+          "peer": "cnn_accelerator_top",
+          "meaning": "current stage/DMA control step",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_txn_state",
+          "direction": "out",
+          "width": 3,
+          "peer": "cnn_accelerator_top",
+          "meaning": "private AXI-Lite transaction FSM state",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_txn_addr",
+          "direction": "out",
+          "width": 32,
+          "peer": "cnn_accelerator_top",
+          "meaning": "last/current private AXI-Lite address",
+          "timing": "설정 snapshot/진단 관찰",
+          "reset": "0"
+        },
+        {
+          "name": "debug_txn_data",
+          "direction": "out",
+          "width": 32,
+          "peer": "cnn_accelerator_top",
+          "meaning": "last private AXI-Lite read data",
+          "timing": "설정 snapshot/진단 관찰",
           "reset": "0"
         },
         {
@@ -3481,7 +3751,7 @@
     "integration": {
       "title": "cnn_accelerator_top",
       "owner": "이영현",
-      "body": "## BD 경계\nCNN wrapper 안에는 12 개기존내부모듈을인스턴스화한다. AXI DMA3 개와 VDMA/카메라/HDMI 는 wrapper 밖 BD 에둔다. 외부포트는 S_AXI_CTRL32, M_AXI_DMA_CTRL32, imageMM2S64,weightMM2S64,featureMM2S64,featureS2MM64,IRQ. DMAbyte stream 에영상 TUSER 를직결하지않는다. IMAGE unpacker 는 downsample 안에있다.\n## 연결\nstage0 downsample.m_rgb→input_conv.s_rgb→feature_map_io.s_body. stage1..13 feature_map_io.m_pixel→line_buffer.s_pixel→DW.s_tap→PW.s_pixel→feature_map_io.s_body. stage14/15 feature_map_io.m_pixel→PW.s_pixel→argmax.s_head. argmax.m_result→coord.s_result→top.shadow. downsample.tap→color 관찰. weightbank 는각 PE 별독립 request/response 로연결. 선택되지않은 mux 입력 ready=0. selected op/desc 를 valid 수락전에고정하며진행 중선택변경금지.\n## clocks/reset\n모든 CNN 모듈 100MHz 하나. DMAstream/control 도가능하면같은 100MHz. 카메라/HDMIclock 은기존영상 IP 의검증된 CDC 경계를사용. IRQ 는 PS 권장동기화경로로연결. resetdeassert 는 CNNclock 동기,동기 reset4cycle 이상. RAM 초기화대신 validreset. 모든외부 AXIreset 은해당 IP 명세와일치시킨다.\n## DDR/IP 설정\nIMAGE:AXIDMA MM2S64,MM64,SGon,S2MMoff,DREoff,length23,microoff. WEIGHT:MM2S64,simple,S2MMoff,DREoff,length23. FEATURE:MM2S64/S2MM64,simple,DREoff,length23. burst16 부터시작.IMAGE SGmaster 도 PS HP/Interconnect 로연결. HP 포트분리는대역폭보장아님. main.c/linker 에서 0x10000000..0x1120FFFF 예약. 모든 buffer 주소 64bytealigned. PS 가쓴 WGT/BD 는 flush,PL 이쓴 DDR 를 PS 가읽을때 invalidate. DMAregister 는 device/uncached mapping.\n## 구현 예산/게이트\nCNN arithmetic193DSP=conv028+DW33+PW132. CNN DSPhardcap196,전체 hardcap220. CNN BRAM 예상 79RAMB36 이하(가중치 62+line8+inputline1+FIFO/보조 8),hardcap90. 외부영상+DMA 예산 40RAMB36,전체 140. DSP 외부예산 16,reserve8(196+16+8=220). LUT CNN 예산 32000,외부 16000,reserve5200. 이것은합성상한계약이며실제합성결과가아니다. Vivado Tcl 게이트로 report_utilization/timing 을검사한다. 각 owner 는자신의목표초과 시병렬회로를추가하지말고공용사양변경으로해결한다.\n## 통합 시험\ncompile/lint→MAC+WGT 소규모합성→각 module TB→DW/PW/DDR 통합→seed4 전체 29operationtensor 비교→실카메라와 HDMI 동시부하. correctness 는 cycle 수가아니라 accepted transaction/tag 와정수값으로비교. 실제 RTL 이아직없으므로 Python 과 RTL 동일성확인완료라고표시하지않는다. 100MHzWNS>=0,TNS=0,resourcecap 통과후 bitstream.10fps 는 worst-caseframe100ms 이내실측후확정.\n## AXI4-Lite slave 와 레지스터 동작\n4KiB aperture, 32bit little-endian register, 4byte 정렬만 허용한다. AW 와 W 는 순서와 간격에 관계없이 각각 1 개씩 래치한다. 둘 다 모인 뒤 한 번만 write 를 실행하고 BVALID 를 올린다. BVALID && !BREADY 동안 BRESP 를 유지한다. outstanding write/read 는 각각 1 개이며 서로 독립이다. AR 수락 시 주소를 래치하고 다음 cycle 에 RVALID/RDATA/RRESP 를 등록한다. stall 중 read snapshot 은 바뀌지 않는다.\nRW write 는 WSTRB 가 1 인 바이트만 갱신한다. W1P/W1C 도 byte strobe 가 1 인 비트만 작동한다. WSTRB=0 은 부작용 없는 OKAY 다. RO write, 미정의 주소, 비정렬 접근은 SLVERR; 실패한 write 는 부작용이 없다. 미정의 read 는 RDATA=0/SLVERR. reserved write bit 가 1 이면 SLVERR, reserved read bit 는 0 이다. 설정 write 는 idle && !ERROR 일 때만 허용한다. DONE_CLEAR/IRQ_ENABLE/ERROR_STATUS 는 busy 상태에서도 접근 가능하지만 error latch 를 clear 해도 fault 원인 및 START 차단은 SOFT_RESET 전까지 남는다.\nCTRL 은 write-only pulse 이고 read=0/OKAY. START/DONE_CLEAR/SOFT_RESET 중 한 번에 하나만 쓸 수 있다. START 는 DONE_PENDING 이 clear 된 idle 정상 상태에서만 허용한다. SOFT_RESET 은 PS 가 DMA 를 reset/halt 한 뒤만 발행하는 소프트웨어 계약이며, wrapper 가 외부 DMA halt 를 자동 보증하지 않는다. reset 은 모든 결과·상태·설정을 명세의 reset 값으로 복귀시킨다. START 시 IMAGE_READ_DONE=0, shadow valid=0, frame/config snapshot. PUBLISH 시 전체 결과와 RESULT_SEQ 를 원자적으로 갱신한다. reset 과 신규 이벤트가 겹치면 reset 우선, W1C 와 새 이벤트가 겹치면 새 이벤트 우선이다.\nTHRESHOLD [7:0]은 signed8 이며 나머지는 0. RED_THRESH/BLUE_THRESH 는 [23:0]만 사용한다. IRQ_ENABLE 은 bit0 만 사용한다. MIN_COUNT 는 1..184320. 모든 base 는 64byte 정렬, FM_A/FM_B 는 각 1MiB 범위가 서로 겹치지 않아야 한다. STRIDE/PAD 는 RO 고정값이다. RESULT_SEQ 는 uint32 wrap 이며 PS 가 SEQ→전체 결과→SEQ 를 읽어 같은 값인지 확인한다. ERROR_STATUS 는 최초 오류 종류의 bit 한 개만 latch 하고 후속 오류는 덮어쓰지 않는다.\n## Configuration barrier 와 태그 변환\nstage 마다 top 은 소비자 cfg 부터 준비하고 모든 필수 cfg handshake 를 기억한 뒤 DMA 를 시작한다. stage0 에서만 downsample/input/color 를 시작하고, stage1..13 은 line/DW/PW/FM, stage14 는 PW/argmax/FM, stage15 는 PW/argmax/coord/FM 을 설정한다. FM 은 stage0 write-only, body read+write, head read-only 다. feature_map_io.done 은 활성 read/write 경로 모두의 stream 최종 accept 와 DMA completion 을 포함한 operation-completion pulse 다. read_done/write_done 은 각 활성 경로 완료 level 이며 다음 cfg 까지 유지한다. 비활성 경로는 feature_map_io 내부 complete=true, 해당 path-done 출력=0 이고 top 내부 조건만 true 로 취급한다. color 에는 frame_start 를 딱 한 번 전달한다.\n각 생산자는 자신의 cfg.op_id 를 출력 tag 에 기록한다. 수신자는 predecessor op_id 를 검사하고 자기 출력에는 자기 op_id 로 바꾼다. FM→line 은 현재 DW op_id, line→DW 는 DW op_id, DW→PW 는 PW op_id-1, FM→head PW 는 head op_id, PW→argmax 는 27/28 이다. conv0 입력 tag 는 op0 이다. row/col/batch/group 의 의미는 각 생산자 포트 명세를 따른다.\n",
+      "body": "## BD 경계\nCNN wrapper 안에는 12 개기존내부모듈을인스턴스화한다. AXI DMA3 개와 VDMA/카메라/HDMI 는 wrapper 밖 BD 에둔다. 외부포트는 S_AXI_CTRL32, M_AXI_DMA_CTRL32, imageMM2S64,weightMM2S64,featureMM2S64,featureS2MM64,IRQ. DMAbyte stream 에영상 TUSER 를직결하지않는다. IMAGE unpacker 는 downsample 안에있다.\n## 연결\nstage0 downsample.m_rgb→input_conv.s_rgb→feature_map_io.s_body. stage1..13 feature_map_io.m_pixel→line_buffer.s_pixel→DW.s_tap→PW.s_pixel→feature_map_io.s_body. stage14/15 feature_map_io.m_pixel→PW.s_pixel→argmax.s_head. argmax.m_result→coord.s_result→top.shadow. downsample.tap→color 관찰. weightbank 는각 PE 별독립 request/response 로연결. 선택되지않은 mux 입력 ready=0. selected op/desc 를 valid 수락전에고정하며진행 중선택변경금지.\n## clocks/reset\n모든 CNN 모듈 100MHz 하나. DMAstream/control 도가능하면같은 100MHz. 카메라/HDMIclock 은기존영상 IP 의검증된 CDC 경계를사용. IRQ 는 PS 권장동기화경로로연결. resetdeassert 는 CNNclock 동기,동기 reset4cycle 이상. RAM 초기화대신 validreset. 모든외부 AXIreset 은해당 IP 명세와일치시킨다.\n## DDR/IP 설정\nIMAGE:AXIDMA MM2S64,MM64,SGon,S2MMoff,DREoff,length23,microoff. WEIGHT:MM2S64,simple,S2MMoff,DREoff,length23. FEATURE:MM2S64/S2MM64,simple,DREoff,length23. burst16 부터시작.IMAGE SGmaster 도 PS HP/Interconnect 로연결. HP 포트분리는대역폭보장아님. main.c/linker 에서 0x10000000..0x1120FFFF 예약. 모든 buffer 주소 64bytealigned. PS 가쓴 WGT/BD 는 flush,PL 이쓴 DDR 를 PS 가읽을때 invalidate. DMAregister 는 device/uncached mapping.\n## 구현 예산/게이트\nCNN arithmetic193DSP=conv028+DW33+PW132. CNN DSPhardcap196,전체 hardcap220. CNN BRAM 예상 79RAMB36 이하(가중치 62+line8+inputline1+FIFO/보조 8),hardcap90. 외부영상+DMA 예산 40RAMB36,전체 140. DSP 외부예산 16,reserve8(196+16+8=220). LUT CNN 예산 32000,외부 16000,reserve5200. 이것은합성상한계약이며실제합성결과가아니다. Vivado Tcl 게이트로 report_utilization/timing 을검사한다. 각 owner 는자신의목표초과 시병렬회로를추가하지말고공용사양변경으로해결한다.\n## 통합 시험\ncompile/lint→MAC+WGT 소규모합성→각 module TB→DW/PW/DDR 통합→seed4 전체 29operationtensor 비교→실카메라와 HDMI 동시부하. correctness 는 cycle 수가아니라 accepted transaction/tag 와정수값으로비교. 실제 RTL 이아직없으므로 Python 과 RTL 동일성확인완료라고표시하지않는다. 100MHzWNS>=0,TNS=0,resourcecap 통과후 bitstream.10fps 는 worst-caseframe100ms 이내실측후확정.\n## AXI4-Lite slave 와 레지스터 동작\n4KiB aperture, 32bit little-endian register, 4byte 정렬만 허용한다. AW 와 W 는 순서와 간격에 관계없이 각각 1 개씩 래치한다. 둘 다 모인 뒤 한 번만 write 를 실행하고 BVALID 를 올린다. BVALID && !BREADY 동안 BRESP 를 유지한다. outstanding write/read 는 각각 1 개이며 서로 독립이다. AR 수락 시 주소를 래치하고 다음 cycle 에 RVALID/RDATA/RRESP 를 등록한다. stall 중 read snapshot 은 바뀌지 않는다.\nRW write 는 WSTRB 가 1 인 바이트만 갱신한다. W1P/W1C 도 byte strobe 가 1 인 비트만 작동한다. WSTRB=0 은 부작용 없는 OKAY 다. RO write, 미정의 주소, 비정렬 접근은 SLVERR; 실패한 write 는 부작용이 없다. 미정의 read 는 RDATA=0/SLVERR. reserved write bit 가 1 이면 SLVERR, reserved read bit 는 0 이다. 설정 write 는 idle && !ERROR 일 때만 허용한다. DONE_CLEAR/IRQ_ENABLE/ERROR_STATUS 는 busy 상태에서도 접근 가능하지만 error latch 를 clear 해도 fault 원인 및 START 차단은 SOFT_RESET 전까지 남는다.\nCTRL 은 write-only pulse 이고 read=0/OKAY. START/DONE_CLEAR/SOFT_RESET 중 한 번에 하나만 쓸 수 있다. START 는 DONE_PENDING 이 clear 된 idle 정상 상태에서만 허용한다. SOFT_RESET 은 PS 가 DMA 를 reset/halt 한 뒤만 발행하는 소프트웨어 계약이며, wrapper 가 외부 DMA halt 를 자동 보증하지 않는다. reset 은 모든 결과·상태·설정을 명세의 reset 값으로 복귀시킨다. START 시 IMAGE_READ_DONE=0, shadow valid=0, frame/config snapshot. PUBLISH 시 전체 결과와 RESULT_SEQ 를 원자적으로 갱신한다. reset 과 신규 이벤트가 겹치면 reset 우선, W1C 와 새 이벤트가 겹치면 새 이벤트 우선이다.\nTHRESHOLD [7:0]은 signed8 이며 나머지는 0. RED_THRESH/BLUE_THRESH 는 [23:0]만 사용한다. IRQ_ENABLE 은 bit0 만 사용한다. MIN_COUNT 는 1..184320. 모든 base 는 64byte 정렬, FM_A/FM_B 는 각 1MiB 범위가 서로 겹치지 않아야 한다. STRIDE/PAD 는 RO 고정값이다. RESULT_SEQ 는 uint32 wrap 이며 PS 가 SEQ→전체 결과→SEQ 를 읽어 같은 값인지 확인한다. ERROR_STATUS 는 최초 오류 종류의 bit 한 개만 latch 하고 후속 오류는 덮어쓰지 않는다.\n## Configuration barrier 와 태그 변환\nstage 마다 top 은 소비자 cfg 부터 준비하고 모든 필수 cfg handshake 를 기억한 뒤 DMA 를 시작한다. stage0 에서만 downsample/input/color 를 시작하고, stage1..13 은 line/DW/PW/FM, stage14 는 PW/argmax/FM, stage15 는 PW/argmax/coord/FM 을 설정한다. FM 은 stage0 write-only, body read+write, head read-only 다. feature_map_io.done 은 활성 read/write 경로 모두의 stream 최종 accept 와 DMA completion 을 포함한 operation-completion pulse 다. read_done/write_done 은 각 활성 경로 완료 level 이며 다음 cfg 까지 유지한다. 비활성 경로는 feature_map_io 내부 complete=true, 해당 path-done 출력=0 이고 top 내부 조건만 true 로 취급한다. color 에는 frame_start 를 딱 한 번 전달한다.\n각 생산자는 자신의 cfg.op_id 를 출력 tag 에 기록한다. 수신자는 predecessor op_id 를 검사하고 자기 출력에는 자기 op_id 로 바꾼다. FM→line 은 현재 DW op_id, line→DW 는 DW op_id, DW→PW 는 PW op_id-1, FM→head PW 는 head op_id, PW→argmax 는 27/28 이다. conv0 입력 tag 는 op0 이다. row/col/batch/group 의 의미는 각 생산자 포트 명세를 따른다.\n\n## Current board integration revision 0x00040003\n외부 cnn_accelerator_top 포트는 기존 61개와 동일하다. VERSION=0x00040003, CAPS/FEATURES=0x0000000D, MODEL_TAG=0xC9854BB2다. 0x0B0..0x0F0은 read-only diagnostic, 0x0F4/0x0F8/0x0FC/0x100은 green threshold/result, color enable, dominance margin이다. color tap은 camera/VDMA `{R,B,G}`에서 detector `{B,G,R}`로 wrapper 내부에서 한 번만 재배열한다. 이 revision의 보드 기능 bring-up은 확인됐으며 final timing release는 별도 gate다.",
       "ports": [
         {
           "name": "clk",
