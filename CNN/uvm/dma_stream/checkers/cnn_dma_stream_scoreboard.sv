@@ -2,7 +2,7 @@
 // scoreboard가 받을 item 구분을 위해 아래 코드 사용
 `uvm_analysis_imp_decl(_dma)
 
-class cnn_dma_stream_scoreboard extends cnn_scoreboard
+class cnn_dma_stream_scoreboard extends cnn_scoreboard;
     `uvm_component_utils(cnn_dma_stream_scoreboard)
 
     // DMA monitor -> scoreboard 
@@ -15,7 +15,7 @@ class cnn_dma_stream_scoreboard extends cnn_scoreboard
     int unsigned dma_write_count;
     int unsigned dma_read_count;
 
-    function new (string name = "cnn_dma_stream_scoreboard", uvm_component parent = null);
+    function new(string name = "cnn_dma_stream_scoreboard", uvm_component parent = null);
         super.new(name, parent);
 
         dma_imp = new("dma_imp", this);
@@ -53,6 +53,5 @@ class cnn_dma_stream_scoreboard extends cnn_scoreboard
         super.report_phase(phase);
         `uvm_info(get_type_name(), $sformatf("DMA SCOREBOARD SUMMARY: writes = %0d, reads = %0d", dma_write_count, dma_read_count), UVM_LOW)
     endfunction
-
     
 endclass

@@ -17,7 +17,7 @@ class cnn_dma_stream_env extends cnn_env;
         cnn_scoreboard::type_id::set_type_override(cnn_dma_stream_scoreboard::get_type());
 
         // override를 먼저 해야 상속 가능
-        super.buiid_phase(phase);
+        super.build_phase(phase);
         
         // DMA 전용 monitor 생성
         dma_mon = cnn_dma_master_monitor::type_id::create("dma_mon", this);

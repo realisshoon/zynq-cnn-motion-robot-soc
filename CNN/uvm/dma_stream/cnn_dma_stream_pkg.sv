@@ -16,5 +16,6 @@ package cnn_dma_stream_pkg;
 
     `include "cnn_dma_stream_env.sv"
     `include "cnn_dma_stream_base_seq.sv"
+    `include "cnn_dma_stream_base_test.sv"
 
 endpackage

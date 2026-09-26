@@ -30,15 +30,22 @@ class cnn_dma_stream_cfg extends uvm_object;
 
     function new(string name = "cnn_dma_stream_cfg");
         super.new(name);
-        image_gap_enable    = 0;
-        weight_gap_enable   = 0;
-        feature_gap_enable  = 0;
-        output_stall_enable = 0;
+        image_gap_enable     = 0;
+        weight_gap_enable    = 0;
+        feature_gap_enable   = 0;
+        output_stall_enable  = 0;
 
-        min_gap_cycles      = 0;
-        max_gap_cycles      = 0;
+        min_gap_cycles       = 0;
+        max_gap_cycles       = 0;
 
-        min_stall_cycles    = 0;
+        min_stall_cycles     = 0;
+        max_stall_cycles     = 0;
+
+        dma_read_latency     = 0;
+        dma_write_latency    = 0;
+        dma_complete_latency = 0;
+
+        inject_dma_error     = 0;
     endfunction
 
 endclass
