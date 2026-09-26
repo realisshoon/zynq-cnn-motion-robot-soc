@@ -1,4 +1,3 @@
-
 # Python virtual environments
 .venv/
 **/.venv/
@@ -11,3 +10,6 @@ ucli.key
 
 # Simulation logs
 *.log
+
+# UVM per-role simulation outputs
+/CNN/uvm/*/output/
