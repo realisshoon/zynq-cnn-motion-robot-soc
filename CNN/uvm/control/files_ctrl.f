@@ -4,6 +4,8 @@
 
 +incdir+../common
 +incdir+.
++incdir+./items
++incdir+./drivers
 +incdir+./sequences
 +incdir+./tests
 +incdir+../../rtl

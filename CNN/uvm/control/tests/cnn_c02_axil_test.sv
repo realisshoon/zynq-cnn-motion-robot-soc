@@ -3,13 +3,18 @@ class cnn_c02_axil_test extends cnn_ctrl_base_test;
     `uvm_component_utils(cnn_c02_axil_test)
 
 
-    function new(
-        string name = "cnn_c02_axil_test",
-        uvm_component parent = null
-    );
+    function new(string name = "cnn_c02_axil_test",
+                 uvm_component parent = null);
         super.new(name, parent);
     endfunction
 
+    function void build_phase(uvm_phase phase);
+
+        cnn_driver::type_id::set_type_override(cnn_c02_driver::get_type());
+
+        super.build_phase(phase);
+
+    endfunction
 
     task run_phase(uvm_phase phase);
 
