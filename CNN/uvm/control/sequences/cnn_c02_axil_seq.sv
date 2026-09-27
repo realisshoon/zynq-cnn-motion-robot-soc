@@ -129,6 +129,31 @@ class cnn_c02_axil_seq extends cnn_ctrl_base_seq;
         read_check(12'h0A4, 32'h0004_0003, "VERSION AFTER RO WRITE");
 
         // -----------------------------------------------------
+        // C02-6. Illegal Register Value
+        //
+        // THRESHOLD is an 8-bit configuration register.
+        // Upper 24 bits must be zero.
+        //
+        // Write 0x0000015A:
+        //   [31:8] != 0  -> illegal
+        //
+        // Expected:
+        //   BRESP = SLVERR (2'b10)
+        //   THRESHOLD remains 0x000000D2
+        // -----------------------------------------------------
+
+        read_check(REG_THRESHOLD, 32'h0000_00D2,
+                   "THRESHOLD BEFORE ILLEGAL VALUE");
+
+
+        write_resp_check(REG_THRESHOLD, 32'h0000_015A, 4'hF, 2'b10,
+                         "THRESHOLD ILLEGAL VALUE");
+
+
+        read_check(REG_THRESHOLD, 32'h0000_00D2,
+                   "THRESHOLD AFTER ILLEGAL VALUE");
+
+        // -----------------------------------------------------
         // Restore Reset Default
         // -----------------------------------------------------
 
