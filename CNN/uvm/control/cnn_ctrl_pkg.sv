@@ -20,6 +20,7 @@ package cnn_ctrl_pkg;
     `include "cnn_c01_reset_seq.sv"
     `include "cnn_c02_axil_seq.sv"
     `include "cnn_c03_start_seq.sv"
+    `include "cnn_c04_config_seq.sv"
 
     // ---------------------------------------------------------
     // Control Tests
@@ -28,5 +29,6 @@ package cnn_ctrl_pkg;
     `include "cnn_c01_reset_test.sv"
     `include "cnn_c02_axil_test.sv"
     `include "cnn_c03_start_test.sv"
+    `include "cnn_c04_config_test.sv"
 
 endpackage
