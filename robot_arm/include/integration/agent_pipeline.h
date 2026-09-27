@@ -52,6 +52,7 @@ typedef struct {
     /* 틱 경로 */
     ForearmJointCommand output;       /* 이번 틱의 Agent2 출력 */
     ServoPwmCommand pwm;       /* 마지막으로 변환에 성공한 PWM 명령 */
+    uint8_t output_enabled;    /* 0: compute/trace only; robot PWM remains disabled */
 
     /* 디버그용 통계 */
     uint32_t frames_in;
@@ -76,6 +77,7 @@ typedef struct {
  * platform_init()(servo_hal_init 포함)이 먼저 성공해 있어야 한다.
  */
 int agent_pipeline_init(AgentPipelineContext *ctx);
+int agent_pipeline_init_mode(AgentPipelineContext *ctx, int enable_robot_pwm);
 
 /* HumanPose2D -> HumanForearmTarget. Agent1이 valid 타겟을 냈으면 1. */
 int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec);

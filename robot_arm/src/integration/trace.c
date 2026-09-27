@@ -51,6 +51,11 @@ static const char *const k_schema[] = {
     "#TK,tick,t_ms,dur_us,er,ep,wp,wr,g,per,pep,pwp,pwr,pg,rem,w,err",
     "#SM,t_ms,fr,tv,acc,rej,rt,tk,sw,se,ovr,crc,fmt,rng,ow,drop,hi",
     "#EV,t_ms,code,arg"
+    ,"#CN,fid,t_ms,seq,irq,elapsed_us,flags,overwritten"
+    ,"#CAM,fid,t_ms,state,pan_us,tilt_us,pan_target_us,tilt_target_us"
+    ,"#IN,fid,t_ms,slx,sly,slv,srx,sry,srv,ex,ey,ev,wx,wy,wv,f1x,f1y,f1v,f2x,f2y,f2v"
+    ,"#CS,t_ms,irq,ok,error,timeout,last_us,max_us,overwritten"
+    ,"#CE,fid,t_ms,error"
 };
 #define TRACE_SCHEMA_COUNT ((unsigned)(sizeof(k_schema) / sizeof(k_schema[0])))
 
@@ -76,6 +81,13 @@ static uint32_t s_prev_servo_errors;
 static uint32_t s_prev_overruns;
 static uint32_t s_prev_uart_errors;
 static uint32_t s_prev_dropped;
+static uint32_t s_cnn_irq;
+static uint32_t s_cnn_ok;
+static uint32_t s_cnn_error;
+static uint32_t s_cnn_timeout;
+static uint32_t s_cnn_last_us;
+static uint32_t s_cnn_max_us;
+static uint32_t s_cnn_overwritten;
 
 /* ---- 줄 만들기 ---- */
 typedef struct {
@@ -236,15 +248,16 @@ static void line_end(TraceLine *l)
 /* 링버퍼의 연속 구간을 TX FIFO에 들어가는 만큼만 보낸다. 기다리지 않는다. */
 static void pump(void)
 {
-    uint32_t used = s_head - s_tail;
-    uint32_t idx;
-    uint32_t chunk;
-
-    if (used == 0U) return;
-    idx = s_tail & TRACE_RING_MASK;
-    chunk = TRACE_RING_SIZE - idx;
-    if (chunk > used) chunk = used;
-    s_tail += platform_trace_tx(&s_ring[idx], chunk);
+    while (s_head != s_tail) {
+        uint32_t used = s_head - s_tail;
+        uint32_t idx = s_tail & TRACE_RING_MASK;
+        uint32_t chunk = TRACE_RING_SIZE - idx;
+        uint32_t sent;
+        if (chunk > used) chunk = used;
+        sent = platform_trace_tx(&s_ring[idx], chunk);
+        s_tail += sent;
+        if (sent != chunk) break;
+    }
 }
 
 /* ---- 시간 ---- */
@@ -532,6 +545,96 @@ void trace_tick(const AgentPipelineContext *ctx)
     s_prev_servo_errors = ctx->servo_errors;
 }
 
+void trace_cnn_frame(uint32_t frame_id, uint32_t result_seq,
+                     uint32_t irq_count, uint32_t elapsed_us,
+                     uint32_t joint_flags, uint32_t overwritten)
+{
+    TraceLine l;
+    uint32_t t_ms = ms_update(platform_trace_time_us());
+    ++s_cnn_ok;
+    s_cnn_irq = irq_count;
+    s_cnn_last_us = elapsed_us;
+    if (elapsed_us > s_cnn_max_us) s_cnn_max_us = elapsed_us;
+    s_cnn_overwritten = overwritten;
+    line_begin(&l, "CN");
+    f_u32(&l, frame_id);
+    f_u32(&l, t_ms);
+    f_u32(&l, result_seq);
+    f_u32(&l, irq_count);
+    f_u32(&l, elapsed_us);
+    f_hex(&l, joint_flags);
+    f_u32(&l, overwritten);
+    line_end(&l);
+}
+
+void trace_cnn_error(uint32_t frame_id, int error, uint32_t irq_count)
+{
+    TraceLine l;
+    uint32_t t_ms = ms_update(platform_trace_time_us());
+    ++s_cnn_error;
+    s_cnn_irq = irq_count;
+    if (error == -14) ++s_cnn_timeout; /* CNN_ERR_TIMEOUT */
+    line_begin(&l, "CE");
+    f_u32(&l, frame_id);
+    f_u32(&l, t_ms);
+    f_i32(&l, error);
+    line_end(&l);
+}
+
+void trace_camera(uint32_t frame_id, uint32_t state,
+                  uint32_t pan_us, uint32_t tilt_us,
+                  uint32_t pan_target_us, uint32_t tilt_target_us)
+{
+    TraceLine l;
+    line_begin(&l, "CAM");
+    f_u32(&l, frame_id);
+    f_u32(&l, ms_update(platform_trace_time_us()));
+    f_u32(&l, state);
+    f_u32(&l, pan_us);
+    f_u32(&l, tilt_us);
+    f_u32(&l, pan_target_us);
+    f_u32(&l, tilt_target_us);
+    line_end(&l);
+}
+
+void trace_input(const HumanPose2D *pose)
+{
+    const Point2D *points[6];
+    TraceLine l;
+    unsigned i;
+    if (pose == NULL) return;
+    points[0] = &pose->shoulder_l;
+    points[1] = &pose->shoulder_r;
+    points[2] = &pose->elbow;
+    points[3] = &pose->wrist;
+    points[4] = &pose->finger1;
+    points[5] = &pose->finger2;
+    line_begin(&l, "IN");
+    f_u32(&l, pose->frame_id);
+    f_u32(&l, ms_update(platform_trace_time_us()));
+    for (i = 0U; i < 6U; ++i) {
+        f_fx(&l, points[i]->x, 1U);
+        f_fx(&l, points[i]->y, 1U);
+        f_u32(&l, points[i]->valid);
+    }
+    line_end(&l);
+}
+
+static void emit_cs(uint32_t t_ms)
+{
+    TraceLine l;
+    line_begin(&l, "CS");
+    f_u32(&l, t_ms);
+    f_u32(&l, s_cnn_irq);
+    f_u32(&l, s_cnn_ok);
+    f_u32(&l, s_cnn_error);
+    f_u32(&l, s_cnn_timeout);
+    f_u32(&l, s_cnn_last_us);
+    f_u32(&l, s_cnn_max_us);
+    f_u32(&l, s_cnn_overwritten);
+    line_end(&l);
+}
+
 static void emit_sm(const AgentPipelineContext *ctx, const TracePlatformStats *ps, uint32_t t_ms)
 {
     TraceLine l;
@@ -572,6 +675,7 @@ static void periodic(const AgentPipelineContext *ctx)
     }
     if ((int32_t)(t_ms - s_next_sm_ms) >= 0) {
         emit_sm(ctx, &ps, t_ms);
+        emit_cs(t_ms);
         s_next_sm_ms = t_ms + TRACE_SM_PERIOD_MS;
     }
 
@@ -604,6 +708,13 @@ void trace_init(void)
     s_prev_servo_writes = 0U;
     s_prev_servo_errors = 0U;
     s_prev_dropped = 0U;
+    s_cnn_irq = 0U;
+    s_cnn_ok = 0U;
+    s_cnn_error = 0U;
+    s_cnn_timeout = 0U;
+    s_cnn_last_us = 0U;
+    s_cnn_max_us = 0U;
+    s_cnn_overwritten = 0U;
 
     s_ms = 0U;
     s_us_rem = 0U;

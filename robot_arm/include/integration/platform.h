@@ -21,5 +21,7 @@ int platform_init(void);
  * ISR 안에서 Agent를 직접 실행하면 안 된다.
  */
 int platform_tick_due(void);
+/* Drain shared CNN-console and ROBOT_TRACE output without waiting for UART. */
+void platform_uart_service(void);
 
 #endif /* INTEGRATION_PLATFORM_H */

@@ -1,5 +1,7 @@
 # robot_arm
 
+> 현재 CNN + 5축 로봇 통합 빌드와 검증 상태는 [CNN 통합 안내](docs/cnn_integration.md)를 보세요. 아래의 UART 입력·옛 XSA 설명은 이전 개발 단계의 기록입니다.
+
 > Agent1 **사람 몸 좌표계 기반 5축 전완 경로**는 [README_AGENT1_TEST.md](README_AGENT1_TEST.md)를 참조하세요.
 > 현재 A1/A2/A3 파이프라인은 **5축 forearm 경로**를 사용합니다.
 > 수정 정책: [AGENTS.md](AGENTS.md). A2 설정: [forearm_calibration_config.c](src/robot_calibration/forearm_calibration_config.c).

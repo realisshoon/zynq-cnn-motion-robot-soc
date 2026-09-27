@@ -1,9 +1,9 @@
 /*
  * Vitis(Zynq-7000 PS, standalone) 전용 플랫폼/입력 구현.
  *
- * integration/platform.h 와 integration/input_pose.h 에 선언만 있던 훅 5개를 구현한다.
- *   platform_init, platform_tick_due      : 20ms 제어 틱 (AXI Timer 인터럽트)
- *   input_pose_init/ready/take            : PC UART 입력 (Agent1의 uart_pose_rx_* 재사용)
+ * platform_init/platform_tick_due: 20ms 제어 틱 (AXI Timer 인터럽트).
+ * CNN 인터럽트는 공유 GIC를 통해 cnn_bringup이 등록한다.
+ * input_pose_* 구현은 input_pose_cnn.c에 있다.
  *
  * 호스트 빌드에는 포함하지 않는다. 호스트 테스트는 이 훅의 가짜 구현을 스스로 제공하고,
  * 루트 CMake에도 이 파일을 등록하지 않는다(uart_pose_rx_vitis.c 와 같은 취급).
@@ -12,22 +12,20 @@
  *  - 인터럽트 서비스 루틴(ISR)은 카운터만 올린다. Agent1/2/3은 ISR에서 절대 실행하지 않는다.
  *  - main이 platform_tick_due()로 카운터를 읽어 한 틱만 소비한다. 처리가 길어져 틱이 여러 개
  *    밀리면 따라잡지 않고 버린다(램프가 몰아서 진행하는 것을 막고, 밀린 횟수만 센다).
- *  - UART 수신은 폴링이다. 한 프레임(36B)은 수신 FIFO(64B)에 들어가므로 main 루프가 자주 돌면 충분하다.
- *  - 로그는 부팅과 오류에만 한 줄씩 남긴다. xil_printf는 %f를 지원하지 않고,
- *    프레임마다 찍으면 그 시간만큼 틱이 늦어진다.
+ *  - UART는 CNN 설정 명령과 TRACE 출력에 사용한다. 자세 입력은 CNN 결과에서 온다.
+ *  - xil_printf와 TRACE는 공유 TX 링을 통해 메인 루프에서 전송한다.
  *  - [TRACE] ROBOT_TRACE를 정의하면 UART를 921600 baud로 열고, 맨 아래의 trace 플랫폼 경계 3개를 구현한다
  *    (integration/trace.h). 프레임/틱 로그는 링버퍼에 쌓았다가 main 루프에서 TX FIFO로 논블로킹 전송한다.
  */
 
-#include "integration/input_pose.h"
 #include "integration/platform.h"
+#include "integration/platform_vitis.h"
 #include "integration/trace.h"
 
 #include <stddef.h>
 #include <stdint.h>
 
 #include "output_controller/servo_hal.h"
-#include "uart_pose/uart_pose_rx_vitis.h"
 
 #include "xil_exception.h"
 #include "xil_printf.h"
@@ -36,6 +34,8 @@
 #include "xstatus.h"
 #include "xtime_l.h"
 #include "xtmrctr.h"
+#include "xuartps.h"
+#include "xuartps_hw.h"
 
 /* ---- 설정값 (XSA가 만든 xparameters.h 기준) ---- */
 #define PLATFORM_UART_DEVICE_ID   XPAR_XUARTPS_0_DEVICE_ID              /* PS UART1 (USB-UART) */
@@ -47,21 +47,23 @@
 #endif
 #define PLATFORM_GIC_DEVICE_ID    XPAR_SCUGIC_0_DEVICE_ID
 #define PLATFORM_TIMER_DEVICE_ID  XPAR_AXI_TIMER_0_DEVICE_ID
-#define PLATFORM_TIMER_IRQ_ID     XPAR_FABRIC_AXI_TIMER_0_INTERRUPT_INTR /* IRQ_F2P[0] = 61 */
+#define PLATFORM_TIMER_IRQ_ID     XPAR_FABRIC_AXI_TIMER_0_INTERRUPT_INTR /* CNN XSA: IRQ 62 */
 
 #define PLATFORM_TICK_MS          20U                                   /* 제어 주기 20ms = 50Hz */
 /* 다운 카운트 자동 재적재 값: 100MHz x 20ms = 2,000,000. 실제 주기와의 차이는 수 클럭(수십 ns)이라 무시한다. */
 #define PLATFORM_TIMER_RELOAD     ((XPAR_AXI_TIMER_0_CLOCK_FREQ_HZ / 1000U) * PLATFORM_TICK_MS)
 
-#define PLATFORM_IRQ_PRIORITY     0xA0U /* 0(높음)~0xF8(낮음). 쓰는 인터럽트가 이것 하나라 값은 크게 중요하지 않다. */
+#define PLATFORM_IRQ_PRIORITY     0xA0U /* CNN IRQ와 같은 우선순위. */
 #define PLATFORM_IRQ_LEVEL_HIGH   0x1U  /* AXI Timer의 interrupt 출력은 레벨 하이다(XSA hwh에서 확인). */
-
-/* 첫 프레임의 dt: 공칭 프레임 주기(20Hz = 0.05초). Agent1 담당자 권고. */
-#define INPUT_NOMINAL_DT_SEC      0.05f
 
 static XScuGic s_gic;
 static XTmrCtr s_timer;
-static UartPoseReceiver s_rx;
+static XUartPs s_uart;
+#define PLATFORM_TX_RING_SIZE 32768U
+static uint8_t s_uart_tx_ring[PLATFORM_TX_RING_SIZE];
+static uint32_t s_uart_tx_head;
+static uint32_t s_uart_tx_tail;
+static int s_uart_ready;
 
 /*
  * 틱 상태. s_tick_count는 ISR만 올리고 나머지는 main만 갱신한다.
@@ -71,10 +73,6 @@ static volatile uint32_t s_tick_count;
 static uint32_t s_tick_seen;
 static uint32_t s_tick_overruns; /* 한 틱보다 더 밀려서 버린 틱 수. 디버거로 확인한다. */
 static int s_tick_armed;
-
-/* 입력 상태 */
-static XTime s_last_frame_time;
-static int s_have_last_frame;
 
 /* XTmrCtr 드라이버 핸들러가 호출한다. 인터럽트 확인응답(플래그 해제)은 이 함수가 끝난 뒤 드라이버가 한다. */
 static void tick_isr(void *ref, u8 timer_no)
@@ -119,14 +117,22 @@ static int tick_timer_start(void)
 
 int platform_init(void)
 {
-    /* PWM enable는 여기서 하지 않는다. 홈 자세를 쓴 뒤 agent_pipeline_init()이 한다. */
+    XUartPs_Config *uart_cfg;
+
+    /* 로봇 PWM enable 여부는 agent_pipeline_init_mode()가 결정한다. */
     servo_hal_init();
 
     /* UART 초기화가 실패하면 서보를 켜기 전에 끝낸다(RTL reset 상태라 PWM 출력은 꺼져 있다). */
-    if (uart_pose_rx_init(&s_rx, PLATFORM_UART_DEVICE_ID, PLATFORM_UART_BAUD) != XST_SUCCESS) {
+    uart_cfg = XUartPs_LookupConfig(PLATFORM_UART_DEVICE_ID);
+    if (uart_cfg == NULL ||
+        XUartPs_CfgInitialize(&s_uart, uart_cfg, uart_cfg->BaseAddress) != XST_SUCCESS ||
+        XUartPs_SetBaudRate(&s_uart, PLATFORM_UART_BAUD) != XST_SUCCESS) {
         xil_printf("[platform] UART init failed\r\n");
         return -1;
     }
+    s_uart_tx_head = 0U;
+    s_uart_tx_tail = 0U;
+    s_uart_ready = 1;
     if (tick_timer_start() != 0) {
         xil_printf("[platform] tick timer init failed\r\n");
         return -1;
@@ -140,6 +146,36 @@ int platform_init(void)
     xil_printf("[platform] ready (tick %d ms)\r\n", (int)PLATFORM_TICK_MS);
 #endif
     return 0;
+}
+
+XScuGic *platform_vitis_gic(void)
+{
+    return &s_gic;
+}
+
+void platform_uart_service(void)
+{
+    UINTPTR base;
+    if (!s_uart_ready) return;
+    base = s_uart.Config.BaseAddress;
+    while (s_uart_tx_head != s_uart_tx_tail && !XUartPs_IsTransmitFull(base)) {
+        XUartPs_WriteReg(base, XUARTPS_FIFO_OFFSET,
+                        s_uart_tx_ring[s_uart_tx_tail & (PLATFORM_TX_RING_SIZE - 1U)]);
+        ++s_uart_tx_tail;
+    }
+}
+
+/* Xilinx xil_printf calls outbyte. Keep its output and ROBOT_TRACE ordered. */
+void outbyte(char c)
+{
+    if (!s_uart_ready) {
+        XUartPs_SendByte(STDOUT_BASEADDRESS, (u8)c);
+        return;
+    }
+    while (s_uart_tx_head - s_uart_tx_tail == PLATFORM_TX_RING_SIZE)
+        platform_uart_service();
+    s_uart_tx_ring[s_uart_tx_head & (PLATFORM_TX_RING_SIZE - 1U)] = (uint8_t)c;
+    ++s_uart_tx_head;
 }
 
 int platform_tick_due(void)
@@ -163,37 +199,6 @@ int platform_tick_due(void)
     return 1;
 }
 
-void input_pose_init(void)
-{
-    /* 수신기 자체는 platform_init()에서 초기화했다. 여기서는 프레임 간격 기준만 리셋한다. */
-    s_have_last_frame = 0;
-}
-
-int input_pose_ready(void)
-{
-    uart_pose_rx_poll(&s_rx); /* 수신 FIFO를 비우며 파싱한다. */
-    return s_rx.pose_ready ? 1 : 0;
-}
-
-int input_pose_take(HumanPose2D *pose, float *dt_sec)
-{
-    XTime now;
-
-    if (pose == NULL || dt_sec == NULL) return 0;
-    if (!uart_pose_rx_take_frame(&s_rx, pose)) return 0;
-
-    /* dt는 직전에 넘긴 프레임과의 실제 간격이다. 첫 프레임은 공칭 주기를 쓴다. */
-    XTime_GetTime(&now);
-    if (s_have_last_frame) {
-        *dt_sec = (float)((double)(now - s_last_frame_time) / (double)COUNTS_PER_SECOND);
-    } else {
-        *dt_sec = INPUT_NOMINAL_DT_SEC;
-    }
-    s_last_frame_time = now;
-    s_have_last_frame = 1;
-    return 1;
-}
-
 #ifdef ROBOT_TRACE
 /*
  * [TRACE] trace 플랫폼 경계 (integration/trace.h). 호스트 테스트는 이 3개의 가짜 구현을 제공한다.
@@ -211,22 +216,20 @@ uint32_t platform_trace_time_us(void)
 void platform_trace_stats(TracePlatformStats *out)
 {
     out->tick_overruns = s_tick_overruns;
-    out->uart_crc_errors = s_rx.parser.crc_errors;
-    out->uart_format_errors = s_rx.parser.format_errors;
-    out->uart_range_errors = s_rx.parser.range_errors;
-    out->uart_overwritten = s_rx.overwritten_frames;
+    out->uart_crc_errors = 0U;
+    out->uart_format_errors = 0U;
+    out->uart_range_errors = 0U;
+    out->uart_overwritten = 0U;
 }
 
 uint32_t platform_trace_tx(const uint8_t *data, uint32_t len)
 {
-    UINTPTR base = s_rx.uart.Config.BaseAddress; /* 수신기가 쓰는 UART와 같은 장치 */
-    uint32_t sent = 0U;
-
-    /* TX FIFO(64B)에 자리가 있을 때만 넣고 바로 돌아온다. xil_printf와 달리 기다리지 않는다. */
-    while (sent < len && !XUartPs_IsTransmitFull(base)) {
-        XUartPs_WriteReg(base, XUARTPS_FIFO_OFFSET, data[sent]);
-        ++sent;
-    }
-    return sent;
+    uint32_t i;
+    if (data == NULL || len > PLATFORM_TX_RING_SIZE -
+                               (s_uart_tx_head - s_uart_tx_tail)) return 0U;
+    for (i = 0U; i < len; ++i)
+        s_uart_tx_ring[(s_uart_tx_head + i) & (PLATFORM_TX_RING_SIZE - 1U)] = data[i];
+    s_uart_tx_head += len;
+    return len;
 }
 #endif /* ROBOT_TRACE */

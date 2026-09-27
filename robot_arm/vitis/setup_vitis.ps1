@@ -5,8 +5,8 @@
   하는 일 (새 워크스페이스에서 처음부터):
     1) XSA로 플랫폼(standalone, ps7_cortexa9_0)을 만들고 BSP를 빌드한다.
     2) 빈 앱 프로젝트를 만들고 저장소의 robot_arm/src 를 "링크"(복사 아님)로 붙인다.
-    3) include 경로 2개, 컴파일 심볼, 링크 라이브러리(-lm)를 설정한다.
-    4) 빌드에서 빼야 할 파일 2개(main.c, main_integration_shape.c)를 .cproject 에 등록한다.
+    3) include 경로, 컴파일 심볼, 링크 라이브러리(-lm)를 설정한다.
+    4) 별도 main 3개를 빌드에서 제외하고 앱 DDR을 CNN 프레임 버퍼 아래로 제한한다.
     5) 앱을 빌드한다.
 
   주의
@@ -15,15 +15,15 @@
     - xsct 임시폴더(.Xil)와 로그는 "<워크스페이스>_setup_logs" 폴더에 만들어져서 저장소를 더럽히지 않는다.
     - 링크 안의 파일을 Vitis에서 편집/삭제하면 저장소 원본이 바뀐다. 편집은 다른 편집기에서 한다.
 
-  사용 예 (XSA는 기본으로 robot_arm\vitis\xsa\robot_test_wrapper.xsa 를 쓴다):
+  사용 예 (기본 XSA는 CNN + camera/robot PWM 통합 하드웨어):
     powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Workspace,
-    [string]$Xsa,                        # 기본값: 이 스크립트 옆의 xsa\robot_test_wrapper.xsa
+    [string]$Xsa,                        # 기본값: xsa\cnn_camera_gimbal.xsa
     [string]$RepoRoot,                   # 기본값: 이 스크립트의 상위 폴더(robot_arm)
     [string]$VitisBin = "C:\Xilinx\Vitis\2020.2\bin",
-    [string]$PlatformName = "robot_test_wrapper",
+    [string]$PlatformName = "cnn_camera_gimbal",
     [string]$AppName = "robot_testbench"
 )
 
@@ -31,7 +31,7 @@ $ErrorActionPreference = "Stop"
 
 # Windows PowerShell 5.1 에서는 param 기본값 안의 $PSScriptRoot 가 비어 있어서 본문에서 계산한다.
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-if (-not $Xsa) { $Xsa = Join-Path $scriptDir "xsa\robot_test_wrapper.xsa" }
+if (-not $Xsa) { $Xsa = Join-Path $scriptDir "xsa\cnn_camera_gimbal.xsa" }
 if (-not $RepoRoot) { $RepoRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path }
 function ToTcl([string]$p) { return ($p -replace '\\', '/') }
 
@@ -81,12 +81,17 @@ Write-Host "1/3 플랫폼 생성(BSP 빌드 포함, 몇 분 걸림), 앱 생성,
 $phase1 = @"
 setws $ws
 platform create -name $PlatformName -hw $xsaT -proc ps7_cortexa9_0 -os standalone
+domain active standalone_domain
+bsp setlib -name xilffs
+bsp write
 platform generate
 app create -name $AppName -platform $PlatformName -domain standalone_domain -template {Empty Application}
 importsources -name $AppName -path $repo/src -soft-link
 app config -name $AppName -add include-path $repo/include
 app config -name $AppName -add include-path $repo/config
+app config -name $AppName -add include-path $repo/src/cnn_firmware
 app config -name $AppName -add define-compiler-symbols SERVO_PWM_DRIVER_USE_XILINX
+app config -name $AppName -add define-compiler-symbols ROBOT_TRACE
 app config -name $AppName -add libraries m
 puts "include-path: [app config -name $AppName include-path]"
 puts "symbols: [app config -name $AppName define-compiler-symbols]"
@@ -99,9 +104,20 @@ Write-Host "2/3 빌드 제외 파일 등록"
 $cp = Join-Path (Join-Path $Workspace $AppName) ".cproject"
 $txt = [IO.File]::ReadAllText($cp)
 if (([regex]::Matches($txt, 'excluding="_ide"')).Count -ne 2) { throw ".cproject 형식이 예상과 다릅니다(excluding=""_ide"" 2개 필요)" }
-$txt = $txt.Replace('excluding="_ide"', 'excluding="_ide|src/main.c|src/human_target_angle/main_integration_shape.c"')
+$txt = $txt.Replace('excluding="_ide"', 'excluding="_ide|src/main.c|src/app/main_uart_agent1_test.c|src/human_target_angle/main_integration_shape.c"')
 [IO.File]::WriteAllText($cp, $txt, (New-Object Text.UTF8Encoding($false)))
 Write-Host "  [OK] .cproject 제외 항목 추가"
+
+# CNN 프레임 버퍼는 0x0A000000, 가중치/작업 버퍼는 0x10000000 이상에 고정된다.
+# 앱 이미지/스택/힙이 그 영역으로 자라면 링크 단계에서 실패하게 한다.
+$ld = Join-Path (Join-Path (Join-Path $Workspace $AppName) "src") "lscript.ld"
+$ldText = [IO.File]::ReadAllText($ld)
+$oldRegion = 'ps7_ddr_0 : ORIGIN = 0x100000, LENGTH = 0x3FF00000'
+$newRegion = 'ps7_ddr_0 : ORIGIN = 0x100000, LENGTH = 0x09F00000'
+if (-not $ldText.Contains($oldRegion)) { throw "lscript.ld DDR 영역이 예상과 다릅니다: $ld" }
+$ldText = $ldText.Replace($oldRegion, $newRegion)
+[IO.File]::WriteAllText($ld, $ldText, (New-Object Text.UTF8Encoding($false)))
+Write-Host "  [OK] 앱 DDR 상한 0x0A000000 설정 (CNN 버퍼와 분리)"
 
 # ---- 3단계: 앱 빌드 ----
 Write-Host "3/3 앱 빌드"
@@ -115,6 +131,6 @@ if (Test-Path $elf) {
 } else {
     Write-Host "ELF 가 만들어지지 않았습니다. 링크 에러를 확인하세요:"
     Write-Host "  cd $dbg ; make all   (Vitis 의 gnuwin/toolchain 이 PATH 에 있는 셸에서)"
-    Write-Host "  (src/integration/platform_vitis.c 가 저장소에 없으면 platform_init 등 5개가 미정의로 나옵니다)"
+    Write-Host "  (CNN 소스, xilffs BSP, 제외 파일 설정을 함께 확인하세요)"
     exit 1
 }

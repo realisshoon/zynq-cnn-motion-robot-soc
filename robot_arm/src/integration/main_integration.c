@@ -2,11 +2,12 @@
 #include "integration/input_pose.h"
 #include "integration/platform.h"
 #include "integration/trace.h"
+#include "integration/cnn_app.h"
 
 /*
  * 통합 진입점: HumanPose2D -> Agent1 -> Agent2 -> Agent3.
  * src/main.c(Agent3의 HAL 데모)는 그대로 두고, 이 파일을 Vitis 통합 단계에서 main으로 쓴다.
- * 입력(UART/CNN)과 플랫폼(타이머 등)은 선언만 되어 있고 구현은 Vitis workspace 확정 후에 붙는다.
+ * CNN 완료 결과가 input_pose_cnn을 통해 프레임 경로로 들어온다.
  *
  * [TRACE] 표시가 붙은 줄은 UART 디버그 로그용이다. ROBOT_TRACE를 정의하지 않으면 아무것도 하지 않는다
  * (integration/trace.h). 켜면 UART가 921600 baud로 바뀐다.
@@ -19,12 +20,20 @@ int main(void)
 
     if (platform_init() != 0) return -1;
     input_pose_init();
-    if (agent_pipeline_init(&pipeline) != 0) return -1;
+    /* Enable robot PWM only in a separately reviewed servo-test build. */
+#ifdef ROBOT_ARM_PWM_ENABLE
+    if (agent_pipeline_init_mode(&pipeline, 1) != 0) return -1;
+#else
+    if (agent_pipeline_init_mode(&pipeline, 0) != 0) return -1;
+#endif
     TRACE_INIT(); /* [TRACE] 컬럼 정의(# 줄)와 BOOT 이벤트 */
+    if (cnn_app_init() != 0) return -1;
 
     for (;;) {
+        cnn_app_service();
         /* 프레임 경로(가변 주기): 새 pose가 오면 목표를 갱신한다. */
         if (input_pose_ready() && input_pose_take(&pose, &dt_sec)) {
+            TRACE_IN(&pose);
             TRACE_MARK(); /* [TRACE] 실행시간 측정 시작 */
             agent1_run(&pipeline, &pose, dt_sec);
             TRACE_A1(&pipeline); /* [TRACE] A1, P3. agent2_run 전에 찍어야 원본이다(unwrap이 타겟을 고친다) */
@@ -41,5 +50,6 @@ int main(void)
         }
 
         TRACE_POLL(&pipeline); /* [TRACE] 링버퍼를 UART로 비운다(논블로킹). 1초마다 SM 줄 */
+        platform_uart_service();
     }
 }

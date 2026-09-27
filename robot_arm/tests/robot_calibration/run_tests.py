@@ -39,6 +39,14 @@ def main():
     for name in ("test_pose_mapping", "test_body_frame"):
         cases.append((name, a1 + [f"tests/human_target_angle/{name}.c"], [], []))
     cases += [
+        ("test_input_pose_cnn", ["src/integration/input_pose_cnn.c",
+         "tests/integration/test_input_pose_cnn.c"],
+         ["-Itests/integration/stubs"], []),
+        ("test_cnn_trace", ["src/integration/trace.c",
+         "tests/integration/test_cnn_trace.c"],
+         ["-DROBOT_TRACE", "-ffunction-sections", "-fdata-sections", "-Wl,--gc-sections"], []),
+        ("test_robot_pwm_disabled", pipeline +
+         ["tests/integration/test_robot_pwm_disabled.c"], [], []),
         ("test_integration_smoke", pipeline + uart + ["tests/integration/test_integration_smoke.c"], [], []),
         ("test_trace", pipeline + ["tests/integration/test_trace.c"], ["-DROBOT_TRACE"], []),
         ("test_axis_replay", pipeline + uart + ["tests/robot_calibration/test_axis_replay.c"], [],

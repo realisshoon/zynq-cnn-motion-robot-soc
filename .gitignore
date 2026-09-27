@@ -7,3 +7,6 @@
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Xilinx tools can create this cache at the process working directory.
+.Xil/

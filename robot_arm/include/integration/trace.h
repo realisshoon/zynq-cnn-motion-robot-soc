@@ -68,6 +68,14 @@ void trace_tick(const AgentPipelineContext *ctx);
 
 /* main 루프 한 바퀴의 맨 끝: 링버퍼를 UART로 비우고, 1초마다 SM 줄을 쌓는다. */
 void trace_poll(const AgentPipelineContext *ctx);
+void trace_cnn_frame(uint32_t frame_id, uint32_t result_seq,
+                     uint32_t irq_count, uint32_t elapsed_us,
+                     uint32_t joint_flags, uint32_t overwritten);
+void trace_cnn_error(uint32_t frame_id, int error, uint32_t irq_count);
+void trace_camera(uint32_t frame_id, uint32_t state,
+                  uint32_t pan_us, uint32_t tilt_us,
+                  uint32_t pan_target_us, uint32_t tilt_target_us);
+void trace_input(const HumanPose2D *pose);
 
 #define TRACE_INIT()   trace_init()
 #define TRACE_MARK()   trace_mark()
@@ -75,6 +83,12 @@ void trace_poll(const AgentPipelineContext *ctx);
 #define TRACE_A2(p)    trace_a2(p)
 #define TRACE_TK(p)    trace_tick(p)
 #define TRACE_POLL(p)  trace_poll(p)
+#define TRACE_CN(fid, seq, irq, dur, flags, overwritten) \
+    trace_cnn_frame((fid), (seq), (irq), (dur), (flags), (overwritten))
+#define TRACE_CNN_ERROR(fid, error, irq) trace_cnn_error((fid), (error), (irq))
+#define TRACE_CAM(fid, state, pan, tilt, pan_target, tilt_target) \
+    trace_camera((fid), (state), (pan), (tilt), (pan_target), (tilt_target))
+#define TRACE_IN(p) trace_input(p)
 
 #else /* !ROBOT_TRACE */
 
@@ -84,6 +98,10 @@ void trace_poll(const AgentPipelineContext *ctx);
 #define TRACE_A2(p)    ((void)0)
 #define TRACE_TK(p)    ((void)0)
 #define TRACE_POLL(p)  ((void)0)
+#define TRACE_CN(fid, seq, irq, dur, flags, overwritten) ((void)0)
+#define TRACE_CNN_ERROR(fid, error, irq) ((void)0)
+#define TRACE_CAM(fid, state, pan, tilt, pan_target, tilt_target) ((void)0)
+#define TRACE_IN(p) ((void)0)
 
 #endif /* ROBOT_TRACE */
 

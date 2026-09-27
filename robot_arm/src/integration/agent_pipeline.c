@@ -71,11 +71,12 @@ static int home_is_safe(void)
     return forearm_safety_check_apply(&k_home_pose, NULL);
 }
 
-int agent_pipeline_init(AgentPipelineContext *ctx)
+int agent_pipeline_init_mode(AgentPipelineContext *ctx, int enable_robot_pwm)
 {
     if (ctx == NULL) return -1;
 
     memset(ctx, 0, sizeof(*ctx));
+    ctx->output_enabled = enable_robot_pwm ? 1U : 0U;
 
     if (agent1_forearm_stage_init() != 0) return -1;
     forearm_motion_control_unwrap_state_init(&ctx->unwrap);
@@ -94,10 +95,19 @@ int agent_pipeline_init(AgentPipelineContext *ctx)
 
     /* 홈 shadow 쓰기 + UPDATE 후 enable 순서로 부팅 직후 서보가 튀지 않게 한다. */
     if (!output_control_update(&ctx->output, &ctx->pwm)) return -1;
-    if (!servo_hal_apply(&ctx->pwm)) return -1;
-    if (!servo_hal_enable()) return -1;
+    if (ctx->output_enabled) {
+        if (!servo_hal_apply(&ctx->pwm)) return -1;
+        if (!servo_hal_enable()) return -1;
+    } else {
+        if (!servo_hal_disable()) return -1;
+    }
 
     return 0;
+}
+
+int agent_pipeline_init(AgentPipelineContext *ctx)
+{
+    return agent_pipeline_init_mode(ctx, 1);
 }
 
 int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec)
@@ -196,6 +206,7 @@ int agent3_run(AgentPipelineContext *ctx)
         ctx->servo_errors++;
         return 0;
     }
+    if (!ctx->output_enabled) return 1;
     if (!servo_hal_apply(&ctx->pwm)) {
         ctx->servo_errors++;
         return 0;

@@ -63,8 +63,14 @@ static const float max_delta_deg[JOINTS] = {0.6f, 0.6f, 0.6f, 0.6f};
 
 /* 통합 진입점의 호출 순서와 본문을 그대로 실행한다. */
 #define main robot_main
+#define ROBOT_ARM_PWM_ENABLE
 #include "../../src/integration/main_integration.c"
+#undef ROBOT_ARM_PWM_ENABLE
 #undef main
+
+/* This host suite exercises the existing UART script; CNN hardware is absent. */
+int cnn_app_init(void) { return 0; }
+void cnn_app_service(void) { }
 
 static void pwm_values(const ServoPwmCommand *pwm, uint16_t values[CHANNELS])
 {
@@ -282,6 +288,7 @@ int platform_init(void)
     servo_hal_init();
     return 0;
 }
+void platform_uart_service(void) { }
 
 void input_pose_init(void)
 {
