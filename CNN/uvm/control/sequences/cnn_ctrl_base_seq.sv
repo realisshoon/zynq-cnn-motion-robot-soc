@@ -161,6 +161,32 @@ class cnn_ctrl_base_seq extends cnn_base_sequence;
 
     endtask
 
+    task read_resp_check(bit [11:0] addr, bit [1:0] expected_resp,
+                         string reg_name);
+
+        bit [31:0] actual;
+        bit [ 1:0] actual_resp;
+
+        read_reg(addr, actual, actual_resp);
+
+        if (actual_resp != expected_resp) begin
+
+            `uvm_error(
+                "CTRL_READ_RESP",
+                $sformatf(
+                    "%s read response mismatch: addr=0x%03h expected_resp=%02b actual_resp=%02b",
+                    reg_name, addr, expected_resp, actual_resp))
+
+        end else begin
+
+            `uvm_info(
+                "CTRL_READ_RESP_PASS", $sformatf(
+                "%s PASS: addr=0x%03h resp=%02b", reg_name, addr, actual_resp),
+                UVM_LOW)
+
+        end
+
+    endtask
 
     task body();
         // Base sequence itself does not run a scenario.
