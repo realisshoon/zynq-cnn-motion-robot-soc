@@ -1,0 +1,431 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="Codex" version="24.7.5" type="device">
+  <diagram name="01 전체 개요" id="01">
+    <mxGraphModel dx="2300" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="1100" background="#F8FAFC" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="n1" value="&lt;div style=&quot;font-size:38px;font-weight:bold;line-height:145%&quot;&gt;사람의 움직임에서 로봇팔 구동까지&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#172B4D;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="35" width="2170" height="70" />
+        </mxCell>
+        <mxCell id="n2" value="&lt;div style=&quot;font-size:23px;line-height:145%;margin-top:0px&quot;&gt;Agent 1 · 자세 해석    →    Agent 2 · 로봇 명령 생성    →    Agent 3 · 모드 선택과 하드웨어 출력&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#52637A;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="105" width="2170" height="50" />
+        </mxCell>
+        <mxCell id="n3" value="&lt;div style=&quot;font-size:23px;font-weight:bold;line-height:145%&quot;&gt;영상 인식&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:145%;margin-top:7px&quot;&gt;카메라&lt;br&gt;PoseNet /&lt;br&gt;Color Detection&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#172B4D;fillColor=#EDF2F7;strokeColor=#172B4D;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="380" width="190" height="170" />
+        </mxCell>
+        <mxCell id="n4" value="" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="290" y="210" width="450" height="585" />
+        </mxCell>
+        <mxCell id="n5" value="&lt;div style=&quot;font-size:28px;font-weight:bold;line-height:145%&quot;&gt;Agent 1&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="305" y="235" width="420" height="50" />
+        </mxCell>
+        <mxCell id="n6" value="&lt;div style=&quot;font-size:23px;font-weight:bold;line-height:145%&quot;&gt;사람 관절 목표 생성&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="305" y="290" width="420" height="45" />
+        </mxCell>
+        <mxCell id="n7" value="" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#EAF7F3;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="800" y="210" width="450" height="585" />
+        </mxCell>
+        <mxCell id="n8" value="&lt;div style=&quot;font-size:28px;font-weight:bold;line-height:145%&quot;&gt;Agent 2  ·  사용자 담당&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="815" y="235" width="420" height="50" />
+        </mxCell>
+        <mxCell id="n9" value="&lt;div style=&quot;font-size:23px;font-weight:bold;line-height:145%&quot;&gt;로봇 보정과 모션 생성&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="815" y="290" width="420" height="45" />
+        </mxCell>
+        <mxCell id="n10" value="" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=#FFF5EA;strokeColor=#C66A13;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1310" y="210" width="450" height="585" />
+        </mxCell>
+        <mxCell id="n11" value="&lt;div style=&quot;font-size:28px;font-weight:bold;line-height:145%&quot;&gt;Agent 3&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1325" y="235" width="420" height="50" />
+        </mxCell>
+        <mxCell id="n12" value="&lt;div style=&quot;font-size:23px;font-weight:bold;line-height:145%&quot;&gt;모드 관리와 서보 출력&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1325" y="290" width="420" height="45" />
+        </mxCell>
+        <mxCell id="n13" value="&lt;div style=&quot;font-size:23px;font-weight:bold;line-height:145%&quot;&gt;2D → 3D → 사람 관절각&lt;/div&gt;&lt;div style=&quot;font-size:21px;line-height:145%;margin-top:7px&quot;&gt;프레임 중복 확인 / 제어 팔 전환&lt;br&gt;2D Landmark 안정화 · 시간 기반 EMA&lt;br&gt;링크 길이 제약으로 3D 위치 복원&lt;br&gt;Base · Shoulder · Elbow 계산&lt;br&gt;Wrist · Gripper 계산&lt;br&gt;누락 시 hold 또는 부분 갱신&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="315" y="360" width="400" height="375" />
+        </mxCell>
+        <mxCell id="n14" value="&lt;div style=&quot;font-size:23px;font-weight:bold;line-height:145%&quot;&gt;사람 관절각 → 로봇 명령&lt;/div&gt;&lt;div style=&quot;font-size:21px;line-height:145%;margin-top:7px&quot;&gt;입력 검증 / 각도 경계 unwrap&lt;br&gt;5개 관절 보정과 가동 범위 제한&lt;br&gt;2D 정기구학 기반 목표 안전검사&lt;br&gt;5개 관절 공통 이동 시간 계산&lt;br&gt;고정 제어 틱 · 스무딩 / 변화량 제한&lt;br&gt;그리퍼 값은 변경 없이 전달&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#FFFFFF;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="825" y="360" width="400" height="375" />
+        </mxCell>
+        <mxCell id="n15" value="&lt;div style=&quot;font-size:23px;font-weight:bold;line-height:145%&quot;&gt;로봇 명령 → PWM 설정&lt;/div&gt;&lt;div style=&quot;font-size:21px;line-height:145%;margin-top:7px&quot;&gt;FOLLOW / RECORD / PLAYBACK&lt;br&gt;실시간 명령 선택 · 기록 또는 재생&lt;br&gt;서보별 범위 · 방향 · 보정 적용&lt;br&gt;각도 → 펄스 폭 변환&lt;br&gt;servo_hw → AXI 레지스터&lt;br&gt;PL PWM IP → 6채널 출력&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=#FFFFFF;strokeColor=#C66A13;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1335" y="360" width="400" height="375" />
+        </mxCell>
+        <mxCell id="n16" value="&lt;div style=&quot;font-size:26px;font-weight:bold;line-height:145%&quot;&gt;로봇팔 · 서보 ×6&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:145%;margin-top:7px&quot;&gt;Base / Shoulder / Elbow&lt;br&gt;Wrist Pitch / Wrist Roll / Gripper&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#172B4D;fillColor=#EDF2F7;strokeColor=#172B4D;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1820" y="380" width="430" height="170" />
+        </mxCell>
+        <mxCell id="e17" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#2563EB;endArrow=block;endFill=1;exitX=1.0;exitY=0.5;exitPerimeter=0;entryX=0.0;entryY=0.28;entryPerimeter=0;" edge="1" parent="1" source="n3" target="n13">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e18" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#087F6B;endArrow=block;endFill=1;exitX=1.0;exitY=0.28;exitPerimeter=0;entryX=0.0;entryY=0.28;entryPerimeter=0;" edge="1" parent="1" source="n13" target="n14">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e19" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#C66A13;endArrow=block;endFill=1;exitX=1.0;exitY=0.28;exitPerimeter=0;entryX=0.0;entryY=0.28;entryPerimeter=0;" edge="1" parent="1" source="n14" target="n15">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e20" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#C66A13;endArrow=block;endFill=1;exitX=1.0;exitY=0.28;exitPerimeter=0;entryX=0.0;entryY=0.5;entryPerimeter=0;" edge="1" parent="1" source="n15" target="n16">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="n21" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;HumanPose2D → HumanJointTarget&lt;/div&gt;&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:7px&quot;&gt;2D 좌표 → 사람의 5개 관절각 + 그리퍼&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="290" y="815" width="450" height="95" />
+        </mxCell>
+        <mxCell id="n22" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;HumanJointTarget → JointCommand&lt;/div&gt;&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:7px&quot;&gt;로봇의 5개 관절각 + 원래 그리퍼 값&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#EAF7F3;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="800" y="815" width="450" height="95" />
+        </mxCell>
+        <mxCell id="n23" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;JointCommand → ServoPwmCommand&lt;/div&gt;&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:7px&quot;&gt;펄스 폭 설정 → AXI → PWM ×6&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=#FFF5EA;strokeColor=#C66A13;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1310" y="815" width="450" height="95" />
+        </mxCell>
+        <mxCell id="n24" value="&lt;div style=&quot;font-size:24px;font-weight:bold;line-height:145%&quot;&gt;통합 동작 검증&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:145%;margin-top:7px&quot;&gt;실제 로봇팔 동작과 명령 비교&lt;br&gt;통합 검증 결과&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#172B4D;fillColor=#FFFFFF;strokeColor=#172B4D;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1820" y="650" width="430" height="145" />
+        </mxCell>
+        <mxCell id="e25" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#65768B;endArrow=block;endFill=1;exitX=0.5;exitY=1.0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="n16" target="n24">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e25label" value="관찰·검증" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#65768B;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="2057.5" y="586" width="75" height="28" />
+        </mxCell>
+        <mxCell id="n26" value="&lt;div style=&quot;font-size:21px;line-height:145%;margin-top:0px&quot;&gt;읽는 순서  01 전체 개요 → 02 기능 상세 흐름   |   실선: 데이터·처리 흐름   점선: 예외·설정·검증&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#52637A;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="955" width="2170" height="55" />
+        </mxCell>
+        <mxCell id="n27" value="&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:0px&quot;&gt;통합 설계도 · Agent 1/3: 제공된 기능 요약 기준 · Agent 2: 현재 코드와 설계 로그 기준 · 2026-09-17&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#52637A;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="1015" width="2170" height="45" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="02 기능 상세 흐름" id="02">
+    <mxGraphModel dx="2300" dy="2040" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="2040" background="#F8FAFC" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="n1" value="&lt;div style=&quot;font-size:36px;font-weight:bold;line-height:145%&quot;&gt;전체 기능 흐름 · 입력부터 PWM 출력까지&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#172B4D;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="28" width="2180" height="65" />
+        </mxCell>
+        <mxCell id="n2" value="&lt;div style=&quot;font-size:21px;line-height:145%;margin-top:0px&quot;&gt;각 Agent 영역은 왼쪽 → 오른쪽으로 읽습니다. 영역 사이 연결선은 다음 Agent의 첫 단계로 이어집니다.&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#52637A;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="95" width="2180" height="40" />
+        </mxCell>
+        <mxCell id="n3" value="" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="175" width="2220" height="650" />
+        </mxCell>
+        <mxCell id="n4" value="" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#EAF7F3;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="905" width="2220" height="470" />
+        </mxCell>
+        <mxCell id="n5" value="" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=#FFF5EA;strokeColor=#C66A13;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="1460" width="2220" height="400" />
+        </mxCell>
+        <mxCell id="n6" value="&lt;div style=&quot;font-size:25px;font-weight:bold;line-height:145%&quot;&gt;AGENT 1   |   영상 좌표를 사람 관절 목표로 변환&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="190" width="2140" height="45" />
+        </mxCell>
+        <mxCell id="n7" value="&lt;div style=&quot;font-size:25px;font-weight:bold;line-height:145%&quot;&gt;AGENT 2   |   사람 관절 목표를 로봇의 실행 명령으로 변환&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="920" width="2140" height="45" />
+        </mxCell>
+        <mxCell id="n8" value="&lt;div style=&quot;font-size:25px;font-weight:bold;line-height:145%&quot;&gt;AGENT 3   |   실행 모드 선택 → 서보 변환 → 하드웨어 출력&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="1475" width="2140" height="45" />
+        </mxCell>
+        <mxCell id="n9" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;2D 인식 결과&lt;/div&gt;&lt;div style=&quot;font-size:16px;line-height:145%;margin-top:7px&quot;&gt;PoseNet / Color Detection&lt;br&gt;HumanPose2D · frame_id&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="75" y="265" width="240" height="125" />
+        </mxCell>
+        <mxCell id="n10" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;프레임·제어 팔 관리&lt;/div&gt;&lt;div style=&quot;font-size:15px;line-height:145%;margin-top:7px&quot;&gt;같은 frame_id는 재계산 생략&lt;br&gt;제어 팔 변경 시 이전 상태 초기화&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="365" y="265" width="245" height="125" />
+        </mxCell>
+        <mxCell id="n11" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;Landmark 안정화&lt;/div&gt;&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:7px&quot;&gt;좌표 업데이트&lt;br&gt;시간 기반 EMA&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="660" y="265" width="245" height="125" />
+        </mxCell>
+        <mxCell id="n12" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;주요 Landmark 확인&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;어깨 · 팔꿈치 · 손목 등&lt;br&gt;필수 좌표 확보 여부&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="955" y="265" width="245" height="125" />
+        </mxCell>
+        <mxCell id="n13" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;상대 3D 위치 복원&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;카메라 ray + 링크 길이 sphere&lt;br&gt;부모 관절 중심으로 depth 결정&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1250" y="265" width="345" height="125" />
+        </mxCell>
+        <mxCell id="n14" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;팔 관절각 계산&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;복원한 3D 벡터 사용&lt;br&gt;Base / Shoulder / Elbow&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1650" y="265" width="255" height="125" />
+        </mxCell>
+        <mxCell id="n15" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;Finger 유무 확인&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;손가락 좌표가 있으면&lt;br&gt;Wrist / Gripper 추가 계산&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1960" y="265" width="245" height="125" />
+        </mxCell>
+        <mxCell id="e16" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#2563EB;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n9" target="n10">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e17" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#2563EB;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n10" target="n11">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e18" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#2563EB;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n11" target="n12">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e19" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#2563EB;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n12" target="n13">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e20" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#2563EB;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n13" target="n14">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e21" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#2563EB;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n14" target="n15">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="n22" value="&lt;div style=&quot;font-size:20px;font-weight:bold;line-height:145%&quot;&gt;중복 프레임&lt;/div&gt;&lt;div style=&quot;font-size:16px;line-height:145%;margin-top:7px&quot;&gt;계산 생략 · 다음 프레임 대기&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#B34747;fillColor=#FFF1F1;strokeColor=#B34747;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="365" y="450" width="245" height="95" />
+        </mxCell>
+        <mxCell id="n23" value="&lt;div style=&quot;font-size:20px;font-weight:bold;line-height:145%&quot;&gt;정상 목표 잠깐 hold&lt;/div&gt;&lt;div style=&quot;font-size:16px;line-height:145%;margin-top:7px&quot;&gt;주요 좌표 누락 / 팔 계산 실패&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#B34747;fillColor=#FFF1F1;strokeColor=#B34747;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="955" y="450" width="245" height="95" />
+        </mxCell>
+        <mxCell id="e24" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#B34747;endArrow=block;endFill=1;exitX=0.49795918367346936;exitY=1.0;exitPerimeter=0;entryX=0.49795918367346936;entryY=0.0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="n10" target="n22">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e24label" value="중복" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#B34747;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="494.0" y="408" width="60" height="28" />
+        </mxCell>
+        <mxCell id="e25" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#B34747;endArrow=block;endFill=1;exitX=0.49795918367346936;exitY=1.0;exitPerimeter=0;entryX=0.49795918367346936;entryY=0.0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="n12" target="n23">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e25label" value="누락" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#B34747;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1084.0" y="408" width="60" height="28" />
+        </mxCell>
+        <mxCell id="e26" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#B34747;endArrow=block;endFill=1;exitX=0.4980392156862745;exitY=1.0;exitPerimeter=0;entryX=0.8367346938775511;entryY=0.0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="n14" target="n23">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1777" y="420" />
+              <mxPoint x="1160" y="420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e26label" value="복원·관절 계산 실패" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#B34747;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1477.5" y="406" width="165" height="28" />
+        </mxCell>
+        <mxCell id="n27" value="&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:0px&quot;&gt;3D 복원 규칙&lt;br&gt;하나의 카메라 좌표계 유지 · 양 Shoulder의 Z 일치 강제 없음&lt;br&gt;정확한 교점이 없으면 허용 오차 내 최적 depth 후보 선택&lt;br&gt;soft fallback: PM_RAY_SOFT_LINK_TOLERANCE_RATIO&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1250" y="445" width="620" height="140" />
+        </mxCell>
+        <mxCell id="n28" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;손목·그리퍼 계산&lt;/div&gt;&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:7px&quot;&gt;Pitch: finger_center · atan 기반&lt;br&gt;Roll: 법선 안정화 → 각도 안정화 → 영점 보정&lt;br&gt;Gripper: 손가락 두 점의 pixel 거리&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1360" y="650" width="545" height="125" />
+        </mxCell>
+        <mxCell id="n29" value="&lt;div style=&quot;font-size:20px;font-weight:bold;line-height:145%&quot;&gt;팔 계산 결과 유지&lt;/div&gt;&lt;div style=&quot;font-size:16px;line-height:145%;margin-top:7px&quot;&gt;Finger만 누락 시&lt;br&gt;손목·그리퍼 갱신 생략&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#B34747;fillColor=#FFF1F1;strokeColor=#B34747;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1960" y="450" width="245" height="95" />
+        </mxCell>
+        <mxCell id="n30" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;HumanJointTarget&lt;/div&gt;&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:7px&quot;&gt;5개 사람 관절각&lt;br&gt;+ gripper_norm + valid&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#DBEAFE;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1960" y="650" width="245" height="125" />
+        </mxCell>
+        <mxCell id="e31" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#B34747;endArrow=block;endFill=1;exitX=0.49795918367346936;exitY=1.0;exitPerimeter=0;entryX=0.49795918367346936;entryY=0.0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="n15" target="n29">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e31label" value="없음" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#B34747;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="2095.0" y="408" width="60" height="28" />
+        </mxCell>
+        <mxCell id="e32" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#2563EB;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.4990825688073395;entryY=0.0;entryPerimeter=0;" edge="1" parent="1" source="n15" target="n28">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="2230" y="327" />
+              <mxPoint x="2230" y="610" />
+              <mxPoint x="1632" y="610" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e32label" value="있음" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#2563EB;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1800.0" y="596" width="60" height="28" />
+        </mxCell>
+        <mxCell id="e33" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#2563EB;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n28" target="n30">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e34" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#B34747;endArrow=block;endFill=1;exitX=0.49795918367346936;exitY=1.0;exitPerimeter=0;entryX=0.49795918367346936;entryY=0.0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="n29" target="n30">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e34label" value="팔 결과 반영" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#B34747;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="2029.5" y="566" width="105" height="28" />
+        </mxCell>
+        <mxCell id="e35" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#B34747;endArrow=block;endFill=1;exitX=0.49795918367346936;exitY=1.0;exitPerimeter=0;entryX=0.49795918367346936;entryY=1.0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="n23" target="n30">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1077" y="605" />
+              <mxPoint x="1315" y="605" />
+              <mxPoint x="1315" y="800" />
+              <mxPoint x="2082" y="800" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e35label" value="직전 정상 목표 · 일시 유지" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#B34747;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1255.0" y="786" width="240" height="28" />
+        </mxCell>
+        <mxCell id="n36" value="&lt;div style=&quot;font-size:22px;font-weight:bold;line-height:145%&quot;&gt;Wrist Roll 안정화 순서&lt;/div&gt;&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:7px&quot;&gt;Hand normal sign flip 보정 → Normal EMA → ±180° unwrap&lt;br&gt;→ Spike suppression (변화량 최대 35°) → Roll EMA → Zero calibration&lt;br&gt;주의: spike 억제 결과에 EMA가 다시 적용되므로 최종 wrist_roll_deg는 더 완만하게 변함&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#2563EB;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="75" y="620" width="1200" height="155" />
+        </mxCell>
+        <mxCell id="n37" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;입력 유효성 검증&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;valid · NaN / Inf 확인&lt;br&gt;유효한 입력만 상태 갱신&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#FFFFFF;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="75" y="995" width="245" height="135" />
+        </mxCell>
+        <mxCell id="n38" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;각도 경계 연속화&lt;/div&gt;&lt;div style=&quot;font-size:16px;line-height:145%;margin-top:7px&quot;&gt;Base / Wrist Pitch / Roll&lt;br&gt;179° → −179°를 +2°로 해석&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#FFFFFF;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="365" y="995" width="245" height="135" />
+        </mxCell>
+        <mxCell id="n39" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;로봇 좌표 보정&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;5개 각도 × 배율 × 방향&lt;br&gt;+ 영점 오프셋&lt;br&gt;관절별 min / max 제한&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#FFFFFF;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="655" y="995" width="245" height="135" />
+        </mxCell>
+        <mxCell id="n40" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;목표 자세 안전검사&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;2D 정기구학으로 위치 계산&lt;br&gt;자기·바닥 충돌 / 특이점 근접&lt;br&gt;최대 도달 경계 검사&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#FFFFFF;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="945" y="995" width="285" height="135" />
+        </mxCell>
+        <mxCell id="n41" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;5개 관절 이동 계획&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;가장 느린 관절 기준 공통 틱&lt;br&gt;smoothstep용 시간 1.5배 확장&lt;br&gt;현재 자세에서 새 목표로 계획&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#FFFFFF;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1275" y="995" width="285" height="135" />
+        </mxCell>
+        <mxCell id="n42" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;매 제어 틱 명령 생성&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;공통 진행률 → smoothstep&lt;br&gt;틱당 최대 변화량 제한&lt;br&gt;목표 도달 후 자세 유지&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#FFFFFF;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1605" y="995" width="285" height="135" />
+        </mxCell>
+        <mxCell id="n43" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;JointCommand&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;5개 로봇 관절각&lt;br&gt;+ 원래 gripper_norm&lt;br&gt;+ valid&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#CCEFE4;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1950" y="995" width="255" height="135" />
+        </mxCell>
+        <mxCell id="e44" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#087F6B;endArrow=block;endFill=1;exitX=1.0;exitY=0.4962962962962963;exitPerimeter=0;entryX=0.0;entryY=0.4962962962962963;entryPerimeter=0;" edge="1" parent="1" source="n37" target="n38">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e45" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#087F6B;endArrow=block;endFill=1;exitX=1.0;exitY=0.4962962962962963;exitPerimeter=0;entryX=0.0;entryY=0.4962962962962963;entryPerimeter=0;" edge="1" parent="1" source="n38" target="n39">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e46" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#087F6B;endArrow=block;endFill=1;exitX=1.0;exitY=0.4962962962962963;exitPerimeter=0;entryX=0.0;entryY=0.4962962962962963;entryPerimeter=0;" edge="1" parent="1" source="n39" target="n40">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e47" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#087F6B;endArrow=block;endFill=1;exitX=1.0;exitY=0.4962962962962963;exitPerimeter=0;entryX=0.0;entryY=0.4962962962962963;entryPerimeter=0;" edge="1" parent="1" source="n40" target="n41">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e48" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#087F6B;endArrow=block;endFill=1;exitX=1.0;exitY=0.4962962962962963;exitPerimeter=0;entryX=0.0;entryY=0.4962962962962963;entryPerimeter=0;" edge="1" parent="1" source="n41" target="n42">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e49" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#087F6B;endArrow=block;endFill=1;exitX=1.0;exitY=0.4962962962962963;exitPerimeter=0;entryX=0.0;entryY=0.4962962962962963;entryPerimeter=0;" edge="1" parent="1" source="n42" target="n43">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e50" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#087F6B;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.4962962962962963;entryPerimeter=0;" edge="1" parent="1" source="n30" target="n37">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="2240" y="712" />
+              <mxPoint x="2240" y="865" />
+              <mxPoint x="55" y="865" />
+              <mxPoint x="55" y="1062" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e50label" value="HumanJointTarget · 새 목표 도착 시" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#087F6B;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="910.0" y="851" width="420" height="28" />
+        </mxCell>
+        <mxCell id="n51" value="&lt;div style=&quot;font-size:19px;font-weight:bold;line-height:145%&quot;&gt;거부한 목표는 등록하지 않음&lt;/div&gt;&lt;div style=&quot;font-size:16px;line-height:145%;margin-top:7px&quot;&gt;입력 오류 또는 위험 목표&lt;br&gt;직전 명령 유지: 호출자 처리 계약&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#B34747;fillColor=#FFF1F1;strokeColor=#B34747;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="945" y="1200" width="285" height="100" />
+        </mxCell>
+        <mxCell id="e52" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#B34747;endArrow=block;endFill=1;exitX=0.49795918367346936;exitY=1.0;exitPerimeter=0;entryX=0.24561403508771928;entryY=0.0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="n37" target="n51">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="197" y="1165" />
+              <mxPoint x="1015" y="1165" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e52label" value="입력 오류" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#B34747;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="537.5" y="1151" width="75" height="28" />
+        </mxCell>
+        <mxCell id="e53" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#B34747;endArrow=block;endFill=1;exitX=0.4982456140350877;exitY=1.0;exitPerimeter=0;entryX=0.4982456140350877;entryY=0.0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="n40" target="n51">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e53label" value="위험" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#B34747;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1090.0" y="1156" width="60" height="28" />
+        </mxCell>
+        <mxCell id="n54" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;그리퍼 별도 전달 경로&lt;/div&gt;&lt;div style=&quot;font-size:16px;line-height:145%;margin-top:7px&quot;&gt;승인된 목표의 gripper_norm을 보정·제한·동기화·스무딩 없이 전달&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=#FFFFFF;strokeColor=#087F6B;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1275" y="1200" width="615" height="100" />
+        </mxCell>
+        <mxCell id="e55" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#087F6B;endArrow=block;endFill=1;exitX=0.4982456140350877;exitY=1.0;exitPerimeter=0;entryX=0.23089430894308943;entryY=0.0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="n41" target="n54">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e56" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#087F6B;endArrow=block;endFill=1;exitX=1.0;exitY=0.5;exitPerimeter=0;entryX=0.4980392156862745;entryY=1.0;entryPerimeter=0;" edge="1" parent="1" source="n54" target="n43">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="2077" y="1250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e56label" value="값 그대로" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#087F6B;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1962.5" y="1236" width="75" height="28" />
+        </mxCell>
+        <mxCell id="n57" value="&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:0px&quot;&gt;새 목표 수신: 검증 → unwrap → 보정 → 안전검사 → 이동 계획&lt;br&gt;고정 제어 틱: 저장된 목표를 향해 관절 명령 생성&lt;br&gt;설정값: 관절별 배율 · 방향 · 영점 · 가동 범위 · 틱당 최대 변화량&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="75" y="1190" width="820" height="100" />
+        </mxCell>
+        <mxCell id="n58" value="&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:0px&quot;&gt;보간 대상은 5개 관절이며 그리퍼는 제외 · 제어 주기는 통합 시 결정&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#087F6B;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1275" y="1310" width="925" height="40" />
+        </mxCell>
+        <mxCell id="n59" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;명령 수신·모드 선택&lt;/div&gt;&lt;div style=&quot;font-size:16px;line-height:145%;margin-top:7px&quot;&gt;Agent 2의 JointCommand&lt;br&gt;FOLLOW / RECORD / PLAYBACK&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=#FFFFFF;strokeColor=#C66A13;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="75" y="1550" width="285" height="125" />
+        </mxCell>
+        <mxCell id="n60" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;출력 명령 선택&lt;/div&gt;&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:7px&quot;&gt;실시간 또는 저장된&lt;br&gt;JointCommand&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=#FFFFFF;strokeColor=#C66A13;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="640" y="1550" width="255" height="125" />
+        </mxCell>
+        <mxCell id="n61" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;서보 설정·펄스 변환&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;출력용 범위 · 방향 · 보정 적용&lt;br&gt;각도 → 펄스 폭&lt;br&gt;ServoPwmCommand&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=#FFFFFF;strokeColor=#C66A13;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="945" y="1550" width="295" height="125" />
+        </mxCell>
+        <mxCell id="n62" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;하드웨어 전달&lt;/div&gt;&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:7px&quot;&gt;servo_hw&lt;br&gt;AXI 레지스터 쓰기&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=#FFFFFF;strokeColor=#C66A13;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1290" y="1550" width="275" height="125" />
+        </mxCell>
+        <mxCell id="n63" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;PWM 생성&lt;/div&gt;&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:7px&quot;&gt;PL의 PWM IP&lt;br&gt;6채널 파형 출력&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=#FFFFFF;strokeColor=#C66A13;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1615" y="1550" width="255" height="125" />
+        </mxCell>
+        <mxCell id="n64" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;로봇팔 동작&lt;/div&gt;&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:7px&quot;&gt;PWM ×6 → 서보 ×6&lt;br&gt;실제 관절·그리퍼 구동&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=#FFFFFF;strokeColor=#C66A13;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1920" y="1550" width="285" height="125" />
+        </mxCell>
+        <mxCell id="e65" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#C66A13;endArrow=block;endFill=1;exitX=1.0;exitY=0.4962962962962963;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n43" target="n59">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="2240" y="1062" />
+              <mxPoint x="2240" y="1415" />
+              <mxPoint x="55" y="1415" />
+              <mxPoint x="55" y="1612" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e65label" value="JointCommand · 매 제어 틱" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#C66A13;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="962.5" y="1401" width="315" height="28" />
+        </mxCell>
+        <mxCell id="e66" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#C66A13;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n59" target="n60">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e66label" value="FOLLOW / RECORD: 실시간" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#C66A13;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="350.0" y="1568" width="300" height="28" />
+        </mxCell>
+        <mxCell id="n67" value="&lt;div style=&quot;font-size:20px;font-weight:bold;line-height:145%&quot;&gt;명령 기록 버퍼&lt;/div&gt;&lt;div style=&quot;font-size:16px;line-height:145%;margin-top:7px&quot;&gt;JointCommand 순서 저장&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=#FFFFFF;strokeColor=#C66A13;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="380" y="1740" width="220" height="90" />
+        </mxCell>
+        <mxCell id="e68" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#C66A13;endArrow=block;endFill=1;exitX=0.4982456140350877;exitY=1.0;exitPerimeter=0;entryX=0.0;entryY=0.5;entryPerimeter=0;" edge="1" parent="1" source="n59" target="n67">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="217" y="1785" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e68label" value="RECORD: 저장" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#C66A13;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="195.0" y="1733" width="150" height="28" />
+        </mxCell>
+        <mxCell id="e69" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#C66A13;endArrow=block;endFill=1;exitX=1.0;exitY=0.5;exitPerimeter=0;entryX=0.4980392156862745;entryY=1.0;entryPerimeter=0;" edge="1" parent="1" source="n67" target="n60">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="767" y="1785" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e69label" value="PLAYBACK: 순서 재생" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontSize=16;fontColor=#C66A13;fillColor=#F8FAFC;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="654.5" y="1728" width="225" height="28" />
+        </mxCell>
+        <mxCell id="e70" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#C66A13;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n60" target="n61">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e71" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#C66A13;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n61" target="n62">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e72" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#C66A13;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n62" target="n63">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e73" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#C66A13;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitPerimeter=0;entryX=0.0;entryY=0.496;entryPerimeter=0;" edge="1" parent="1" source="n63" target="n64">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="n74" value="&lt;div style=&quot;font-size:21px;font-weight:bold;line-height:145%&quot;&gt;통합 동작 검증&lt;/div&gt;&lt;div style=&quot;font-size:17px;line-height:145%;margin-top:7px&quot;&gt;명령과 실제 동작 일치 확인&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#172B4D;fillColor=#FFFFFF;strokeColor=#172B4D;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1920" y="1740" width="285" height="90" />
+        </mxCell>
+        <mxCell id="e75" style="edgeStyle=segmentEdgeStyle;rounded=0;html=1;strokeWidth=2;strokeColor=#65768B;endArrow=block;endFill=1;exitX=0.4982456140350877;exitY=1.0;exitPerimeter=0;entryX=0.4982456140350877;entryY=0.0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="n64" target="n74">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="n76" value="&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:0px&quot;&gt;Agent 2 보정: 사람 관절각 → 로봇의 목표 관절각&lt;br&gt;Agent 3 보정: 로봇 관절 명령 → 각 서보의 펄스 폭&lt;br&gt;동작 검증은 통합 시험 흐름이며, 자동 센서 피드백 루프를 뜻하지 않음&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#C66A13;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="945" y="1720" width="925" height="115" />
+        </mxCell>
+        <mxCell id="n77" value="&lt;div style=&quot;font-size:19px;line-height:145%;margin-top:0px&quot;&gt;실선: 정상 처리·데이터 전달    점선: 예외 처리·보조 경로·검증    EMA: 이전 값에 새 값을 조금씩 섞어 흔들림을 줄이는 필터&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#52637A;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="1890" width="2170" height="50" />
+        </mxCell>
+        <mxCell id="n78" value="&lt;div style=&quot;font-size:18px;line-height:145%;margin-top:0px&quot;&gt;기준: Agent 1/3은 사용자 제공 기능 요약, Agent 2는 현재 코드·설계 로그. 이 그림은 통합 설계도이며 main 연결 완료를 의미하지 않습니다.&lt;br&gt;Agent 2의 안전검사는 목표 자세 기준입니다. 직전 명령 유지와 고정 제어 틱 호출은 main 통합 시 연결할 계약입니다.&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fontFamily=Malgun Gothic;fontColor=#52637A;fillColor=none;strokeColor=none;strokeWidth=1.5;spacing=8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="1945" width="2170" height="70" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

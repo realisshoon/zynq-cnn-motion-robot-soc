@@ -1,0 +1,121 @@
+<mxfile host="app.diagrams.net" agent="claude-code" version="24.7.5" type="device">
+  <diagram name="Agent2 Block Diagram" id="agent2-block-diagram">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1170" pageHeight="720" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== top context strip ===== -->
+        <mxCell id="n1" value="카메라 + CNN&lt;br&gt;(PCam5, PoseNet-lite)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n2" value="Agent 1&lt;br&gt;human_target_angle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="210" y="20" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e_n1n2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;" edge="1" parent="1" source="n1" target="n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n4" value="Agent 3&lt;br&gt;output_controller" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="990" y="380" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n5" value="서보 ×6 &#8594; 로봇팔" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="990" y="470" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e_n4n5" value="PWM 50Hz" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="n4" target="n5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Agent 2 outer container (background, drawn first = behind) ===== -->
+        <mxCell id="cAgent2" value="Agent 2 &#8212; robot_calibration (이 프로젝트에서 사용자 담당 모듈)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#333333;dashed=0;strokeWidth=2;verticalAlign=top;align=left;fontSize=14;fontStyle=1;spacingLeft=10;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="20" y="110" width="920" height="530" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cGroupA" value="가변주기 &#8212; 새 HumanJointTarget 도착 시 (robot_calibration_apply)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fafafa;strokeColor=#999999;dashed=1;verticalAlign=top;align=left;fontSize=12;fontStyle=2;spacingLeft=10;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="50" y="150" width="860" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cGroupB" value="고정주기 &#8212; 매 제어 틱 (~20ms, 서보 PWM 50Hz 기준) 실행" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fafafa;strokeColor=#999999;dashed=1;verticalAlign=top;align=left;fontSize=12;fontStyle=2;spacingLeft=10;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="50" y="340" width="860" height="280" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Group A: 입력검증 -> 매핑 -> 안전검사 ===== -->
+        <mxCell id="b1" value="&#9312; 입력 검증&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;motion_control_validate_target()&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="80" y="195" width="200" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b2" value="&#9313; 좌표 보정/매핑&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;motion_control_map_target()&lt;br&gt;motion_control_apply_limits()&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="330" y="195" width="230" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cfg" value="robot_calibration_config&lt;br&gt;(scale/offset/min·max/max_delta)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#f5f5f5;strokeColor=#666666;fontSize=9;align=center;" vertex="1" parent="1">
+          <mxGeometry x="360" y="300" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cfgb2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#666666;endArrow=none;" edge="1" parent="1" source="cfg" target="b2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b3" value="&#9314; 안전검사&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;robot_forward_kinematics_2d()&lt;br&gt;safety_check_apply()&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="620" y="195" width="230" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_b1b2" value="JointCommand" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="b1" target="b2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_b2b3" value="clamp된 JointCommand" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="b2" target="b3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Group B: 모션 플래닝 -> 궤적 생성 ===== -->
+        <mxCell id="b4" value="&#9315; 모션 플래닝 (동기화)&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;motion_limits_ticks_to_target()&lt;br&gt;&#8594; 관절 중 최댓값 = total_ticks&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="110" y="390" width="260" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b5" value="&#9316; 궤적 생성 (스무딩)&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;motion_smoothing_ease()&lt;br&gt;motion_limits_step_toward()&lt;br&gt;robot_calibration_step()&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="470" y="390" width="280" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="state" value="RobotMotionState&lt;br&gt;(current / start / target / ticks_elapsed)" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=9;align=center;size=12;" vertex="1" parent="1">
+          <mxGeometry x="520" y="520" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e_stateb5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#666666;startArrow=none;endArrow=none;" edge="1" parent="1" source="state" target="b5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_b4b5" value="total_ticks &#8594; stretched_ticks" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="b4" target="b5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== A -> B safe path ===== -->
+        <mxCell id="e_b3b4" value="안전(1): set_target() 호출" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;fontColor=#178a4c;strokeColor=#178a4c;" edge="1" parent="1" source="b3" target="b4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="735" y="330" />
+              <mxPoint x="240" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== A -> B feedback path (unsafe) ===== -->
+        <mxCell id="e_b3fail" value="위험(0): valid=0, 직전 명령 유지" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;dashed=1;fontColor=#b85450;strokeColor=#b85450;" edge="1" parent="1" source="b3" target="b5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="880" y="330" />
+              <mxPoint x="880" y="440" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== overall pipeline connections ===== -->
+        <mxCell id="e_n2cAgent2" value="HumanJointTarget" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;fontStyle=1;" edge="1" parent="1" source="n2" target="b1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_b5n4" value="JointCommand&lt;br&gt;(매 틱)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;fontStyle=1;" edge="1" parent="1" source="b5" target="n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

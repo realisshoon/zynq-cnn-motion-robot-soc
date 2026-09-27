@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1340" viewBox="0 0 1800 1340">
+<rect width="100%" height="100%" fill="#F8FAFC"/>
+<text x="62" y="74.20000000000002" text-anchor="start" font-family="Malgun Gothic, sans-serif" font-size="36" font-weight="700" fill="#172B4D">모듈별 기능 흐름</text>
+<text x="62" y="129.65" text-anchor="start" font-family="Malgun Gothic, sans-serif" font-size="22" font-weight="400" fill="#52637A">2D 인식 결과에서 로봇 관절 명령과 서보 하드웨어 전달까지</text>
+<rect x="40" y="180" width="1720" height="255" rx="12" fill="#EFF6FF" stroke="#2563EB" stroke-width="1.7"/>
+<rect x="40" y="530" width="1720" height="340" rx="12" fill="#EAF7F3" stroke="#087F6B" stroke-width="1.7"/>
+<rect x="40" y="960" width="1720" height="305" rx="12" fill="#FFF5EA" stroke="#C66A13" stroke-width="1.7"/>
+<text x="82" y="226.6" text-anchor="start" font-family="Malgun Gothic, sans-serif" font-size="28" font-weight="700" fill="#2563EB">human angle</text>
+<text x="82" y="576.6" text-anchor="start" font-family="Malgun Gothic, sans-serif" font-size="28" font-weight="700" fill="#087F6B">robot calibration</text>
+<text x="82" y="1006.6" text-anchor="start" font-family="Malgun Gothic, sans-serif" font-size="28" font-weight="700" fill="#C66A13">output control</text>
+<rect x="80" y="615" width="800" height="225" rx="12" fill="#F4FCF9" stroke="#087F6B" stroke-width="1.7"/>
+<rect x="920" y="615" width="800" height="225" rx="12" fill="#DDF3EB" stroke="#087F6B" stroke-width="1.7"/>
+<text x="112" y="655.8249999999999" text-anchor="start" font-family="Malgun Gothic, sans-serif" font-size="21" font-weight="700" fill="#087F6B">가변주기  ·  CNN 연산 결과 수신 시</text>
+<text x="952" y="655.8249999999999" text-anchor="start" font-family="Malgun Gothic, sans-serif" font-size="21" font-weight="700" fill="#087F6B">고정주기  ·  PWM 제어 주기 50Hz (20ms)</text>
+<rect x="100" y="275" width="340" height="120" rx="12" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.7"/>
+<text x="270.0" y="308.72499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="24" font-weight="700" fill="#2563EB">2D 인식 결과</text>
+<text x="270.0" y="325.675" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#2563EB"></text>
+<text x="270.0" y="349.47499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#2563EB">PoseNet / Color Detection</text>
+<text x="270.0" y="378.47499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#2563EB">2D 관절 좌표 입력</text>
+<rect x="520" y="275" width="340" height="120" rx="12" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.7"/>
+<text x="690.0" y="308.72499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="24" font-weight="700" fill="#2563EB">2D 관절 좌표 안정화</text>
+<text x="690.0" y="325.675" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#2563EB"></text>
+<text x="690.0" y="349.47499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#2563EB">시간 기반 EMA 필터</text>
+<text x="690.0" y="378.47499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#2563EB">인식 좌표의 흔들림 완화</text>
+<rect x="940" y="275" width="340" height="120" rx="12" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.7"/>
+<text x="1110.0" y="308.72499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="24" font-weight="700" fill="#2563EB">3D 좌표계 재구성</text>
+<text x="1110.0" y="325.675" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#2563EB"></text>
+<text x="1110.0" y="349.47499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#2563EB">2D 좌표와 링크 길이 제약으로</text>
+<text x="1110.0" y="378.47499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#2563EB">상대 3D 관절 위치 복원</text>
+<rect x="1360" y="275" width="340" height="120" rx="12" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.7"/>
+<text x="1530.0" y="308.72499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="24" font-weight="700" fill="#2563EB">관절 각도 계산 및 출력</text>
+<text x="1530.0" y="325.675" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#2563EB"></text>
+<text x="1530.0" y="349.47499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#2563EB">3D 위치 → 사람 관절각</text>
+<text x="1530.0" y="378.47499999999997" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#2563EB">HumanJointTarget 출력</text>
+<rect x="100" y="690" width="340" height="120" rx="12" fill="#FFFFFF" stroke="#087F6B" stroke-width="1.7"/>
+<text x="270.0" y="723.725" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="24" font-weight="700" fill="#087F6B">입력 검증</text>
+<text x="270.0" y="740.675" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#087F6B"></text>
+<text x="270.0" y="764.4749999999999" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#087F6B">관절 목표의 유효성 확인</text>
+<text x="270.0" y="793.4749999999999" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#087F6B">비정상 입력 제외</text>
+<rect x="520" y="690" width="340" height="120" rx="12" fill="#FFFFFF" stroke="#087F6B" stroke-width="1.7"/>
+<text x="690.0" y="723.725" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="24" font-weight="700" fill="#087F6B">좌표 보정 / 매핑</text>
+<text x="690.0" y="740.675" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#087F6B"></text>
+<text x="690.0" y="764.4749999999999" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#087F6B">사람 관절각 → 로봇 관절각</text>
+<text x="690.0" y="793.4749999999999" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#087F6B">배율 · 방향 · 영점 보정</text>
+<rect x="940" y="690" width="340" height="120" rx="12" fill="#FFFFFF" stroke="#087F6B" stroke-width="1.7"/>
+<text x="1110.0" y="738.225" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="24" font-weight="700" fill="#087F6B">최대 관절각 제한</text>
+<text x="1110.0" y="755.175" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#087F6B"></text>
+<text x="1110.0" y="778.9749999999999" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#087F6B">관절별 최대 허용 각도 적용</text>
+<rect x="1360" y="690" width="340" height="120" rx="12" fill="#CCEFE4" stroke="#087F6B" stroke-width="1.7"/>
+<text x="1530.0" y="723.725" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="24" font-weight="700" fill="#087F6B">속도 조절 및 각도 출력</text>
+<text x="1530.0" y="740.675" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#087F6B"></text>
+<text x="1530.0" y="764.4749999999999" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#087F6B">주기당 각도 변화량 제한</text>
+<text x="1530.0" y="793.4749999999999" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#087F6B">JointCommand 출력</text>
+<rect x="100" y="1100" width="340" height="120" rx="12" fill="#FFFFFF" stroke="#C66A13" stroke-width="1.7"/>
+<text x="270.0" y="1136.625" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="24" font-weight="700" fill="#C66A13">명령 수신 · 모드 선택</text>
+<text x="270.0" y="1153.5749999999998" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#C66A13"></text>
+<text x="270.0" y="1175.275" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="18" font-weight="400" fill="#C66A13">JointCommand 수신</text>
+<text x="270.0" y="1201.375" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="18" font-weight="400" fill="#C66A13">FOLLOW / RECORD / PLAYBACK</text>
+<rect x="520" y="1100" width="340" height="120" rx="12" fill="#FFFFFF" stroke="#C66A13" stroke-width="1.7"/>
+<text x="690.0" y="1148.2250000000001" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="24" font-weight="700" fill="#C66A13">명령 기록 버퍼</text>
+<text x="690.0" y="1165.175" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#C66A13"></text>
+<text x="690.0" y="1188.9750000000001" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#C66A13">관절 명령을 순서대로 저장</text>
+<rect x="940" y="1100" width="340" height="120" rx="12" fill="#FFFFFF" stroke="#C66A13" stroke-width="1.7"/>
+<text x="1110.0" y="1133.7250000000001" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="24" font-weight="700" fill="#C66A13">출력 명령 선택</text>
+<text x="1110.0" y="1150.675" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#C66A13"></text>
+<text x="1110.0" y="1174.4750000000001" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#C66A13">실시간 명령 또는</text>
+<text x="1110.0" y="1203.4750000000001" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="400" fill="#C66A13">버퍼의 저장된 명령 선택</text>
+<rect x="1360" y="1100" width="340" height="120" rx="12" fill="#FFE8CC" stroke="#C66A13" stroke-width="1.7"/>
+<text x="1530.0" y="1135.975" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="22" font-weight="700" fill="#C66A13">서보 변환 및 하드웨어 전달</text>
+<text x="1530.0" y="1152.125" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="7" font-weight="400" fill="#C66A13"></text>
+<text x="1530.0" y="1173.8250000000003" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="18" font-weight="400" fill="#C66A13">서보 보정 · 각도 → 펄스 폭 변환</text>
+<text x="1530.0" y="1199.9250000000002" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="18" font-weight="400" fill="#C66A13">ServoPwmCommand → AXI 전달</text>
+<polyline points="440,335 520,335" fill="none" stroke="#2563EB" stroke-width="2.5"/>
+<polygon points="520,335 508.0,330.0 508.0,340.0" fill="#2563EB"/>
+<polyline points="860,335 940,335" fill="none" stroke="#2563EB" stroke-width="2.5"/>
+<polygon points="940,335 928.0,330.0 928.0,340.0" fill="#2563EB"/>
+<polyline points="1280,335 1360,335" fill="none" stroke="#2563EB" stroke-width="2.5"/>
+<polygon points="1360,335 1348.0,330.0 1348.0,340.0" fill="#2563EB"/>
+<polyline points="440,750 520,750" fill="none" stroke="#087F6B" stroke-width="2.5"/>
+<polygon points="520,750 508.0,745.0 508.0,755.0" fill="#087F6B"/>
+<polyline points="860,750 940,750" fill="none" stroke="#087F6B" stroke-width="2.5"/>
+<polygon points="940,750 928.0,745.0 928.0,755.0" fill="#087F6B"/>
+<polyline points="1280,750 1360,750" fill="none" stroke="#087F6B" stroke-width="2.5"/>
+<polygon points="1360,750 1348.0,745.0 1348.0,755.0" fill="#087F6B"/>
+<polyline points="1700,335 1740,335 1740,485 60,485 60,750 100,750" fill="none" stroke="#087F6B" stroke-width="2.5"/>
+<polygon points="100,750 88.0,745.0 88.0,755.0" fill="#087F6B"/>
+<rect x="827.5078125" y="473" width="144.984375" height="26" rx="4" fill="#F8FAFC"/>
+<text x="900" y="491" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="16" fill="#087F6B">HumanJointTarget</text>
+<polyline points="1700,750 1740,750 1740,915 60,915 60,1160 100,1160" fill="none" stroke="#C66A13" stroke-width="2.5"/>
+<polygon points="100,1160 88.0,1155.0 88.0,1165.0" fill="#C66A13"/>
+<rect x="840.0" y="903" width="120.0" height="26" rx="4" fill="#F8FAFC"/>
+<text x="900" y="921" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="16" fill="#C66A13">JointCommand</text>
+<polyline points="440,1160 520,1160" fill="none" stroke="#C66A13" stroke-width="2.5"/>
+<polygon points="520,1160 508.0,1155.0 508.0,1165.0" fill="#C66A13"/>
+<rect x="459.0" y="1123" width="42.0" height="26" rx="4" fill="#F8FAFC"/>
+<text x="480" y="1141" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="16" fill="#C66A13">기록</text>
+<polyline points="860,1160 940,1160" fill="none" stroke="#C66A13" stroke-width="2.5"/>
+<polygon points="940,1160 928.0,1155.0 928.0,1165.0" fill="#C66A13"/>
+<rect x="879.0" y="1123" width="42.0" height="26" rx="4" fill="#F8FAFC"/>
+<text x="900" y="1141" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="16" fill="#C66A13">재생</text>
+<polyline points="1280,1160 1360,1160" fill="none" stroke="#C66A13" stroke-width="2.5"/>
+<polygon points="1360,1160 1348.0,1155.0 1348.0,1165.0" fill="#C66A13"/>
+<polyline points="270,1100 270,1060 1110,1060 1110,1100" fill="none" stroke="#C66A13" stroke-width="2.5"/>
+<polygon points="1110,1100 1115.0,1088.0 1105.0,1088.0" fill="#C66A13"/>
+<rect x="563.0" y="1048" width="254.0" height="26" rx="4" fill="#F8FAFC"/>
+<text x="690" y="1066" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="16" fill="#C66A13">FOLLOW / RECORD · 실시간 명령</text>
+<text x="62" y="1310.8500000000001" text-anchor="start" font-family="Malgun Gothic, sans-serif" font-size="18" font-weight="400" fill="#52637A">각 모듈은 왼쪽 → 오른쪽으로 진행하며, 모듈 사이 연결선은 출력 데이터의 전달을 나타냅니다.</text>
+</svg>

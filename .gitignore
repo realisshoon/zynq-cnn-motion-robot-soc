@@ -1,0 +1,9 @@
+# Repo-wide ignores only.
+# Toolchain-specific rules live in each subproject (e.g. robot_arm/.gitignore).
+
+# Editor (personal settings)
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
