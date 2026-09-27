@@ -16,6 +16,10 @@ package cnn_dma_stream_pkg;
 
     `include "cnn_dma_stream_env.sv"
     `include "cnn_dma_stream_base_seq.sv"
+    `include "cnn_dma_control_smoke_seq.sv"
+
     `include "cnn_dma_stream_base_test.sv"
+    `include "cnn_dma_responder_sanity_test.sv"
+    `include "cnn_dma_control_smoke_test.sv"
 
 endpackage
