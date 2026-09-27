@@ -1,7 +1,3 @@
-# ============================================================
-# Common UVM / VCS development artifacts
-# ============================================================
-
 # Python virtual environments
 .venv/
 **/.venv/
@@ -26,17 +22,6 @@ ucli.key
 
 # Simulation / waveform / tool logs
 *.log
-*.vpd
-*.vcd
-*.fsdb
 
-# Synopsys / Verdi / DVE artifacts
-DVEfiles/
-verdiLog/
-novas.conf
-novas.rc
-
-# Generic temporary files
-*.tmp
-*.swp
-*~
+# UVM per-role simulation outputs
+/CNN/uvm/*/output/

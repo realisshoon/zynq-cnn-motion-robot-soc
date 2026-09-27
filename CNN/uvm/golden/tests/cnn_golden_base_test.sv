@@ -12,7 +12,7 @@ class cnn_golden_base_test extends cnn_base_test;
 
     function void end_of_elaboration_phase(uvm_phase phase);
         super.end_of_elaboration_phase(phase);
-        uvm_top.print_topolgy();
+        uvm_top.print_topology();
     endfunction
 
 endclass  //cnn_golden_base_test extends cnn_base_test
