@@ -4,10 +4,10 @@
  * direction/zero_offset_deg 실측 현황(2026-09-23):
  *  - elbow_roll, elbow_pitch: 2026-09-24 사용자 실물 관찰에 따라 direction=-1.
  *    이전 raw+90 수식 대조는 물리 서보 방향의 검증이 아니므로 확정 주장을 폐기.
- *    중립 offset=90 유지. FK 물리 축 방향은 별도 실측 대상이다.
+ *    elbow_roll offset=90, elbow_pitch offset=120. FK 물리 축 방향은 별도 실측 대상이다.
  *  - wrist_pitch: idle.jpg/straight.jpg 두 사진 raw 비교로 방향만 확인(손이
  *    더 아래로 굽은 idle이 실제로 더 낮은 표값으로 나옴) → direction=1 확정.
- *    offset 정밀값은 아직 미실측이라 기존 90 유지.
+ *    offset 정밀값은 아직 미실측이며 현재 80을 사용한다.
  *  - wrist_roll: 서보에 30/90/160을 직접 보내 실물 팔의 물리각을 표 기준으로
  *    실측(결과 30/90/170) → 최소제곱으로 zero_offset_deg≈87.15 산출. direction=1로
  *    확정(사람 사진 기반 초기 추정치 -1은 손가락 랜드마크 노이즈로 인한 오판으로
@@ -22,9 +22,9 @@
  *    재검증 필요.
  *
  * 아직 미실측(자리표시자 유지):
- *  - min/max=[20,160]: 기존 MG996R 5축 안전 여유를 그대로 가져온 값이고, 이
- *    관절들의 실제 가동범위와 무관하다. 특히 elbow_roll/elbow_pitch는 기구
- *    형상이 달라 실제 최대각이 더 좁을 수 있다.
+ *  - min/max: elbow_roll=[20,160], elbow_pitch=[20,180],
+ *    wrist_pitch=[10,160], wrist_roll=[10,170]. 실물 가동범위는 아직 미확정.
+ *    elbow_pitch 상한 180은 Agent3의 PWM 변환 상한과 일치시킨 값이다.
  *  - max_delta_deg=0.6(20ms 틱당, 초당 30도): legacy의 낮은 명령 속도를
  *    재사용했다. 하중/토크/가속도 또는 실제 새 기구의 안전 보장은 아니다.
  *  - amax_deg_s2=120(초당 120도의 초당): D:\Working\robot-motion-harness에서
@@ -37,9 +37,10 @@ const ForearmCalibrationConfig forearm_calibration_config = {
     //중앙은 맞는데 기본적인 자세가 오른팔을 기준으로 안쪽으로 기울어져 있어서 왼쪽에 있는 경향성이 있음
     .elbow_roll  = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 90.0f,
                       .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
-    //마찬가지로 기본적인 자세가 로봇+방향(밑쪽)으로 기울어져 있어서 offset과 max를 높였음
+    // 중립 offset은 실물 보정값. Agent3가 180도에서 PWM을 클램프하므로
+    // 안전검사/FK가 실제 출력과 다른 180~200도 목표를 승인하지 않도록 한다.
     .elbow_pitch = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 120.0f,
-                      .min_deg = 20.0f, .max_deg = 200.0f, .max_delta_deg = 0.6f },
+                      .min_deg = 20.0f, .max_deg = 180.0f, .max_delta_deg = 0.6f },
     //초기값은 손목이 ㄱ자 방향으로 설정되어서 기준을 조금 낮췄음
     .wrist_pitch = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 80.0f,
                       .min_deg = 10.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },

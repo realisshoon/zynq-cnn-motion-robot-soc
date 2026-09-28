@@ -17,6 +17,8 @@
 
   사용 예 (기본 XSA는 CNN + camera/robot PWM 통합 하드웨어):
     powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws
+    # 서보 시험용으로만 로봇 PWM을 켤 때:
+    powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws_pwm_test -EnableRobotPwm
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Workspace,
@@ -24,7 +26,8 @@ param(
     [string]$RepoRoot,                   # 기본값: 이 스크립트의 상위 폴더(robot_arm)
     [string]$VitisBin = "C:\Xilinx\Vitis\2020.2\bin",
     [string]$PlatformName = "cnn_camera_gimbal",
-    [string]$AppName = "robot_testbench"
+    [string]$AppName = "robot_testbench",
+    [switch]$EnableRobotPwm
 )
 
 $ErrorActionPreference = "Stop"
@@ -97,6 +100,9 @@ puts "include-path: [app config -name $AppName include-path]"
 puts "symbols: [app config -name $AppName define-compiler-symbols]"
 puts "libraries: [app config -name $AppName libraries]"
 "@
+if ($EnableRobotPwm) {
+    $phase1 += "`napp config -name $AppName -add define-compiler-symbols ROBOT_ARM_PWM_ENABLE`n"
+}
 Run-Xsct $phase1 "phase1_platform_app"
 
 # ---- 2단계: 빌드에서 뺄 파일 등록 (xsct에 제외 명령이 없어 .cproject 를 직접 수정) ----
