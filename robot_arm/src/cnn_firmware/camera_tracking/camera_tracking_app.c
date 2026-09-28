@@ -156,12 +156,51 @@ int camera_tracking_app_init(camera_tracking_app_t *app)
         return XST_FAILURE;
     torso_tracker_default_config(&config);
     torso_tracker_init(&app->tracker, &app->gimbal, &config);
-    camera_gimbal_pwm_set_enable(&app->gimbal, 0);
     app->last_reported_frame = 0U;
     app->initialized = 1U;
-    xil_printf("camera torso tracking: OFF; camera PWM: OFF "
-               "(press 'u' to enable both)\r\n");
+    /* 부팅 기본값은 초기화된 중앙 펄스에서의 FIXED 모드다. */
+    camera_tracking_app_fix(app);
     return XST_SUCCESS;
+}
+
+void camera_tracking_app_fix(camera_tracking_app_t *app)
+{
+    if (app == 0 || !app->initialized)
+        return;
+    torso_tracker_set_enable(&app->tracker, 0);
+    camera_gimbal_pwm_set_target(&app->gimbal, CAMERA_GIMBAL_PAN,
+        app->gimbal.current_pulse_us[CAMERA_GIMBAL_PAN]);
+    camera_gimbal_pwm_set_target(&app->gimbal, CAMERA_GIMBAL_TILT,
+        app->gimbal.current_pulse_us[CAMERA_GIMBAL_TILT]);
+    /* enable은 보존된 current 펄스를 다시 commit한 뒤 출력을 켠다. */
+    camera_gimbal_pwm_set_enable(&app->gimbal, 1);
+    camera_tracking_app_print_mode(app);
+}
+
+const char *camera_tracking_app_mode_string(const camera_tracking_app_t *app)
+{
+    if (app == 0 || !app->initialized)
+        return "UNINITIALIZED";
+    if (app->tracker.enabled)
+        return app->gimbal.enabled ? "TRACKING" : "TRACKING(PWM OFF)";
+    return app->gimbal.enabled ? "FIXED" : "OFF";
+}
+
+void camera_tracking_app_print_mode(const camera_tracking_app_t *app)
+{
+    if (app == 0)
+        return;
+    xil_printf("camera mode: %s; tracking: %s; camera PWM: %s "
+               "pan/tilt=%u/%u us target=%u/%u us CONTROL=%08x\r\n",
+               camera_tracking_app_mode_string(app),
+               app->tracker.enabled ? "ON" : "OFF",
+               app->gimbal.enabled ? "ON" : "OFF",
+               app->gimbal.current_pulse_us[CAMERA_GIMBAL_PAN],
+               app->gimbal.current_pulse_us[CAMERA_GIMBAL_TILT],
+               app->gimbal.target_pulse_us[CAMERA_GIMBAL_PAN],
+               app->gimbal.target_pulse_us[CAMERA_GIMBAL_TILT],
+               (unsigned int)camera_gimbal_pwm_control_readback(
+                   &app->gimbal));
 }
 
 void camera_tracking_app_on_result(camera_tracking_app_t *app,
@@ -200,7 +239,9 @@ void camera_tracking_app_service(camera_tracking_app_t *app)
 
 void camera_tracking_app_print_help(void)
 {
-    xil_printf("  u : toggle camera tracking and camera PWM output\r\n");
+    xil_printf("  u : toggle camera tracking and camera PWM output "
+               "(FIXED -> tracking ON)\r\n");
+    xil_printf("  f : FIXED camera: tracking OFF, PWM ON at current pulse\r\n");
     xil_printf("  v : print camera tracker/PWM status\r\n");
     xil_printf("  j : edit deadband/filter/speed/servo settings\r\n");
     xil_printf("  i : toggle camera pan direction\r\n");
@@ -234,14 +275,13 @@ int camera_tracking_app_handle_key(camera_tracking_app_t *app, char key)
                 app->gimbal.current_pulse_us[CAMERA_GIMBAL_TILT]);
             camera_gimbal_pwm_set_enable(&app->gimbal, 0);
         }
-        xil_printf("camera torso tracking: %s; camera PWM: %s; "
-                   "CONTROL=%08x\r\n",
-                   app->tracker.enabled ? "ON" : "OFF",
-                   app->gimbal.enabled ? "ON" : "OFF",
-                   (unsigned int)camera_gimbal_pwm_control_readback(
-                       &app->gimbal));
+        camera_tracking_app_print_mode(app);
+        return 1;
+    case 'f':
+        camera_tracking_app_fix(app);
         return 1;
     case 'v':
+        camera_tracking_app_print_mode(app);
         camera_tracking_app_print_status(app);
         return 1;
     case 'j':
@@ -263,6 +303,7 @@ int camera_tracking_app_handle_key(camera_tracking_app_t *app, char key)
         camera_gimbal_pwm_center(&app->gimbal);
         app->tracker.filter_valid = 0U;
         xil_printf("camera gimbal centered immediately\r\n");
+        camera_tracking_app_print_mode(app);
         return 1;
     default:
         return 0;

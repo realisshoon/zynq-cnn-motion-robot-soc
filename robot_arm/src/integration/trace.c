@@ -27,6 +27,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "human_target_angle/agent1_forearm_stage.h"
 #include "robot_calibration/forearm_safety_check.h"
@@ -66,6 +67,8 @@ static uint32_t s_tail;          /* 다음에 보낼 위치(누적 바이트) */
 static uint32_t s_dropped;       /* 통째로 버린 줄 수 */
 static uint32_t s_hi;            /* 최근 SM 주기 동안 링버퍼 사용량의 최대(바이트) */
 static uint32_t s_poll_count;
+static int s_output_enabled;
+static int s_robot_output_enabled;
 
 static uint32_t s_us_last;       /* 마지막으로 읽은 마이크로초 */
 static uint32_t s_us_rem;        /* 밀리초로 못 채운 마이크로초 */
@@ -94,6 +97,7 @@ typedef struct {
     char buf[TRACE_LINE_MAX];
     uint32_t len;
     uint8_t over;                /* 줄이 너무 길어 잘렸으면 1. 그 줄은 버린다 */
+    uint8_t robot;               /* CNN/카메라 출력과 독립적으로 끌 수 있다 */
 } TraceLine;
 
 static void put_ch(TraceLine *l, char c)
@@ -207,10 +211,22 @@ static void f_str(TraceLine *l, const char *s)         { put_ch(l, ','); put_str
 static void f_fx(TraceLine *l, float v, unsigned dec)  { put_ch(l, ','); put_fx(l, v, dec); }
 static void f_empty(TraceLine *l, unsigned n)          { while (n-- != 0U) put_ch(l, ','); }
 
+static int tag_is(const char *name, const char *tag)
+{
+    size_t len = strlen(tag);
+    return strncmp(name, tag, len) == 0 &&
+           (name[len] == '\0' || name[len] == ',');
+}
+
 static void line_begin(TraceLine *l, const char *tag)
 {
+    const char *name = tag[0] == '#' ? tag + 1 : tag;
     l->len = 0U;
     l->over = 0U;
+    l->robot = (uint8_t)(tag_is(name, "IN") || tag_is(name, "A1") ||
+                         tag_is(name, "P3") || tag_is(name, "A2") ||
+                         tag_is(name, "TK") || tag_is(name, "SM") ||
+                         tag_is(name, "EV"));
     put_str(l, tag);
 }
 
@@ -236,6 +252,7 @@ static void ring_put(const char *data, uint32_t len)
 
 static void line_end(TraceLine *l)
 {
+    if (!s_output_enabled || (l->robot && !s_robot_output_enabled)) return;
     if (l->over != 0U) {
         s_dropped++;
         return;
@@ -703,6 +720,8 @@ void trace_init(void)
     s_dropped = 0U;
     s_hi = 0U;
     s_poll_count = 0U;
+    s_output_enabled = 1;
+    s_robot_output_enabled = 1;
     s_a1_state = TRACE_STATE_UNKNOWN;
     s_a2_state = TRACE_STATE_UNKNOWN;
     s_prev_servo_writes = 0U;
@@ -732,6 +751,44 @@ void trace_init(void)
     emit_ev(0U, "BOOT", ROBOT_TRACE_UART_BAUD);
 }
 
+void trace_set_output_enabled(int enabled)
+{
+    TracePlatformStats ps;
+    uint32_t t_ms;
+
+    if (!enabled) {
+        s_output_enabled = 0;
+        s_tail = s_head;
+        s_hi = 0U;
+        return;
+    }
+    if (s_output_enabled) return;
+    s_output_enabled = 1;
+    t_ms = ms_update(platform_trace_time_us());
+    platform_trace_stats(&ps);
+    s_prev_overruns = ps.tick_overruns;
+    s_prev_uart_errors = ps.uart_crc_errors + ps.uart_format_errors +
+                         ps.uart_range_errors;
+    s_prev_dropped = s_dropped;
+    s_next_sm_ms = t_ms + TRACE_SM_PERIOD_MS;
+    s_next_schema_ms = t_ms + TRACE_SCHEMA_PERIOD_MS;
+    emit_schema();
+    emit_ev(t_ms, "TRACE_ON", 0U);
+}
+
+void trace_set_robot_output_enabled(int enabled)
+{
+    int next = enabled ? 1 : 0;
+    if (next == s_robot_output_enabled) return;
+    s_robot_output_enabled = next;
+    if (next) emit_schema();
+}
+
+int trace_robot_output_enabled(void)
+{
+    return s_robot_output_enabled;
+}
+
 void trace_mark(void)
 {
     s_mark_us = platform_trace_time_us();
@@ -739,6 +796,7 @@ void trace_mark(void)
 
 void trace_poll(const AgentPipelineContext *ctx)
 {
+    if (!s_output_enabled) return;
     pump();
     if ((++s_poll_count & TRACE_POLL_CHECK_MASK) != 0U) return;
     if (ctx != NULL) periodic(ctx);

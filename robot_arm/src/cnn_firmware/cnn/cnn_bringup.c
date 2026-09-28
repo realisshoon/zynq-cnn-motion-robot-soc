@@ -111,26 +111,40 @@ static cnn_error_t cnn_interrupt_wait(cnn_bringup_t *ctx,
 }
 
 /*
- * Publish one coherent CNN result to the overlay shadow bank.  The overlay
+ * Publish one coherent CNN result to the overlay shadow bank. The overlay
  * consumes the bank on a video SOF, so coordinates and valid bits never tear
  * across displayed frames.  Recheck the display bounds here even though the
  * CNN result contract already produces 1280x720 coordinates: if a corrupted
  * result ever escapes, its valid bit is suppressed instead of exposing a
  * stale joint left in the overlay register bank.
  */
+static int s_overlay_robot_only = 1;
+
+void cnn_bringup_set_overlay_robot_only(int enabled)
+{
+    s_overlay_robot_only = enabled ? 1 : 0;
+}
+
+int cnn_bringup_overlay_robot_only(void)
+{
+    return s_overlay_robot_only;
+}
+
 static void cnn_overlay_publish(const cnn_result_t *result, int verbose)
 {
     u32 visible_flags = 0U;
+    u32 display_mask;
     unsigned int i;
 
     if (result == 0)
         return;
 
+    display_mask = s_overlay_robot_only ? CNN_ROBOT_INPUT_OVERLAY_MASK :
+                                          CNN_ROBOT_SKELETON_MASK;
     kpo_set_enable(1);
-    /* Robot-control view: grouped upper-body skeleton points plus independent
-     * red/blue color detections.  Lower-body knee/ankle and face joints stay
-     * available in the CNN result but are intentionally hidden here.
-     */
+    /* Robot view shows the four CNN joints consumed by the arm plus two
+     * finger markers. The upper-body view restores the earlier display.
+     * Neither mode filters CNN results used by camera tracking or Agent1. */
     kpo_set_body_arm_colors(KPO_COLOR_YELLOW, KPO_COLOR_CYAN);
     kpo_set_radius(5U);
     kpo_set_source_frame_id(result->frame_id);
@@ -138,7 +152,7 @@ static void cnn_overlay_publish(const cnn_result_t *result, int verbose)
     for (i = 0U; i < CNN_JOINT_COUNT; ++i) {
         const cnn_joint_t *joint = &result->joint[i];
 
-        if ((CNN_ROBOT_SKELETON_MASK & (1U << i)) && joint->valid &&
+        if ((display_mask & (1U << i)) && joint->valid &&
             joint->x < CNN_DISPLAY_WIDTH &&
             joint->y < CNN_DISPLAY_HEIGHT) {
             kpo_set_joint((int)i, joint->x, joint->y, (u8)joint->score);
@@ -149,14 +163,16 @@ static void cnn_overlay_publish(const cnn_result_t *result, int verbose)
         }
     }
 
+    /* Show the green detection result in either joint-display mode. */
     kpo_set_color_results(result->red_marker, result->blue_marker,
                           result->green_marker);
     kpo_set_valid_flags(visible_flags);
     kpo_commit();
 
     if (verbose) {
-        xil_printf("CNN overlay: frame=%lu skeleton=0x%05x red=%08x blue=%08x green=%08x commit=%s\r\n",
+        xil_printf("CNN overlay: frame=%lu view=%s joints=0x%05x red=%08x blue=%08x green=%08x commit=%s\r\n",
                    (unsigned long)result->frame_id,
+                   s_overlay_robot_only ? "robot" : "upper-body",
                    (unsigned int)visible_flags,
                    (unsigned int)result->red_marker,
                    (unsigned int)result->blue_marker,
@@ -191,6 +207,8 @@ cnn_error_t cnn_bringup_load_weights(cnn_bringup_t *ctx)
 {
     cnn_error_t e;
     if(ctx==0 || !ctx->initialized) return CNN_ERR_NOT_INITIALIZED;
+    /* The running CNN may still be reading the DDR weight region. */
+    if(ctx->running || (cnn_hw_status()&CNN_STATUS_BUSY)) return CNN_ERR_BUSY;
     xil_printf("CNN: loading %s to 0x%08x\r\n",CNN_WEIGHT_PATH,CNN_WEIGHT_ADDRESS);
     e=cnn_weights_load_from_sd();
     xil_printf("CNN: weight load %s\r\n",cnn_error_string(e));
@@ -204,6 +222,8 @@ static cnn_error_t cnn_bringup_prepare_frame_internal(cnn_bringup_t *ctx,
     unsigned int retry;
     cnn_error_t e;
     if(ctx==0 || !ctx->initialized || ctx->vdma==0) return CNN_ERR_NOT_INITIALIZED;
+    /* Check before cnn_sg_build writes descriptors consumed by the CNN. */
+    if(ctx->running || (cnn_hw_status()&CNN_STATUS_BUSY)) return CNN_ERR_BUSY;
     e=CNN_ERR_BUSY;
     current=0U; selected=0U;
     for(retry=0;retry<3U;++retry) {

@@ -26,7 +26,16 @@ typedef enum {
     CNN_JOINT_RIGHT_ANKLE = 16
 } cnn_joint_index_t;
 
-/* Upper-body points selected for the robot-control display. */
+/* CNN joints consumed by input_pose_cnn for the right-arm robot path.
+ * Finger1/2 are the independent red/blue color markers. This display mask
+ * does not remove hip joints from CNN results used by camera tracking. */
+#define CNN_ROBOT_INPUT_OVERLAY_MASK \
+    ((1U << CNN_JOINT_LEFT_SHOULDER)  | \
+     (1U << CNN_JOINT_RIGHT_SHOULDER) | \
+     (1U << CNN_JOINT_RIGHT_ELBOW)    | \
+     (1U << CNN_JOINT_RIGHT_WRIST))
+
+/* Previous HDMI view, available through the UART display toggle. */
 #define CNN_ROBOT_SKELETON_MASK \
     ((1U << CNN_JOINT_LEFT_SHOULDER)  | \
      (1U << CNN_JOINT_RIGHT_SHOULDER) | \

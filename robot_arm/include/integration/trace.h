@@ -76,6 +76,11 @@ void trace_camera(uint32_t frame_id, uint32_t state,
                   uint32_t pan_us, uint32_t tilt_us,
                   uint32_t pan_target_us, uint32_t tilt_target_us);
 void trace_input(const HumanPose2D *pose);
+/* Discard pending TRACE lines while muted; resume with a fresh schema. */
+void trace_set_output_enabled(int enabled);
+/* Suppress only robot-pipeline records; CNN/camera records remain visible. */
+void trace_set_robot_output_enabled(int enabled);
+int trace_robot_output_enabled(void);
 
 #define TRACE_INIT()   trace_init()
 #define TRACE_MARK()   trace_mark()
@@ -89,6 +94,9 @@ void trace_input(const HumanPose2D *pose);
 #define TRACE_CAM(fid, state, pan, tilt, pan_target, tilt_target) \
     trace_camera((fid), (state), (pan), (tilt), (pan_target), (tilt_target))
 #define TRACE_IN(p) trace_input(p)
+#define TRACE_SET_OUTPUT_ENABLED(on) trace_set_output_enabled(on)
+#define TRACE_SET_ROBOT_OUTPUT_ENABLED(on) trace_set_robot_output_enabled(on)
+#define TRACE_ROBOT_OUTPUT_ENABLED() trace_robot_output_enabled()
 
 #else /* !ROBOT_TRACE */
 
@@ -102,6 +110,9 @@ void trace_input(const HumanPose2D *pose);
 #define TRACE_CNN_ERROR(fid, error, irq) ((void)0)
 #define TRACE_CAM(fid, state, pan, tilt, pan_target, tilt_target) ((void)0)
 #define TRACE_IN(p) ((void)0)
+#define TRACE_SET_OUTPUT_ENABLED(on) ((void)0)
+#define TRACE_SET_ROBOT_OUTPUT_ENABLED(on) ((void)0)
+#define TRACE_ROBOT_OUTPUT_ENABLED() 0
 
 #endif /* ROBOT_TRACE */
 

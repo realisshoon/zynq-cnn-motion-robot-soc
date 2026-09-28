@@ -62,6 +62,44 @@ int main(void)
     now_us = 1000000U;
     for (i = 0U; i < 257U; ++i) trace_poll(&pipeline);
     assert(strstr(output, "CS,1000,4,1,1,1,4200,4200,0\r\n") != NULL);
+    {
+        unsigned before_robot_mute = output_len;
+        trace_set_robot_output_enabled(0);
+        assert(!trace_robot_output_enabled());
+        now_us = 1050000U;
+        trace_input(&pose);
+        trace_tick(&pipeline);
+        trace_cnn_frame(20U, 21U, 7U, 4500U, 0x560U, 0U);
+        trace_camera(20U, 2U, 1500U, 1510U, 1520U, 1530U);
+        trace_poll(&pipeline);
+        assert(strstr(output + before_robot_mute, "IN,7,") == NULL);
+        assert(strstr(output + before_robot_mute, "TK,") == NULL);
+        assert(strstr(output + before_robot_mute, "CN,20,1050,") != NULL);
+        assert(strstr(output + before_robot_mute, "CAM,20,1050,") != NULL);
+
+        trace_set_robot_output_enabled(1);
+        assert(trace_robot_output_enabled());
+        trace_input(&pose);
+        trace_tick(&pipeline);
+        trace_poll(&pipeline);
+        assert(strstr(output + before_robot_mute, "#TK,tick,") != NULL);
+        assert(strstr(output + before_robot_mute, "IN,7,1050,") != NULL);
+        assert(strstr(output + before_robot_mute, "TK,0,1050,") != NULL);
+    }
+    {
+        unsigned before_mute = output_len;
+        trace_set_output_enabled(0);
+        now_us = 1100000U;
+        trace_cnn_frame(9U, 11U, 5U, 4300U, 0x560U, 0U);
+        for (i = 0U; i < 257U; ++i) trace_poll(&pipeline);
+        assert(output_len == before_mute);
+        trace_set_output_enabled(1);
+        trace_cnn_frame(10U, 12U, 6U, 4400U, 0x560U, 0U);
+        trace_poll(&pipeline);
+        assert(strstr(output, "CN,9,") == NULL);
+        assert(strstr(output, "EV,1100,TRACE_ON,0\r\n") != NULL);
+        assert(strstr(output, "CN,10,1100,12,6,4400,0x560,0\r\n") != NULL);
+    }
     puts("test_cnn_trace: PASS");
     return 0;
 }

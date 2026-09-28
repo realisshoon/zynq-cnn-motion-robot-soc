@@ -64,6 +64,7 @@ static uint8_t s_uart_tx_ring[PLATFORM_TX_RING_SIZE];
 static uint32_t s_uart_tx_head;
 static uint32_t s_uart_tx_tail;
 static int s_uart_ready;
+static int s_uart_output_enabled = 1;
 
 /*
  * 틱 상태. s_tick_count는 ISR만 올리고 나머지는 main만 갱신한다.
@@ -133,6 +134,7 @@ int platform_init(void)
     s_uart_tx_head = 0U;
     s_uart_tx_tail = 0U;
     s_uart_ready = 1;
+    s_uart_output_enabled = 1;
     if (tick_timer_start() != 0) {
         xil_printf("[platform] tick timer init failed\r\n");
         return -1;
@@ -156,7 +158,7 @@ XScuGic *platform_vitis_gic(void)
 void platform_uart_service(void)
 {
     UINTPTR base;
-    if (!s_uart_ready) return;
+    if (!s_uart_ready || !s_uart_output_enabled) return;
     base = s_uart.Config.BaseAddress;
     while (s_uart_tx_head != s_uart_tx_tail && !XUartPs_IsTransmitFull(base)) {
         XUartPs_WriteReg(base, XUARTPS_FIFO_OFFSET,
@@ -165,9 +167,25 @@ void platform_uart_service(void)
     }
 }
 
+void platform_uart_set_output_enabled(int enabled)
+{
+    s_uart_output_enabled = enabled ? 1 : 0;
+    if (!s_uart_output_enabled) {
+        /* Drop queued text and TRACE bytes; hardware FIFO may finish sending
+         * a few bytes already accepted before the mute command. */
+        s_uart_tx_tail = s_uart_tx_head;
+    }
+}
+
+int platform_uart_output_enabled(void)
+{
+    return s_uart_output_enabled;
+}
+
 /* Xilinx xil_printf calls outbyte. Keep its output and ROBOT_TRACE ordered. */
 void outbyte(char c)
 {
+    if (!s_uart_output_enabled) return;
     if (!s_uart_ready) {
         XUartPs_SendByte(STDOUT_BASEADDRESS, (u8)c);
         return;
@@ -225,7 +243,9 @@ void platform_trace_stats(TracePlatformStats *out)
 uint32_t platform_trace_tx(const uint8_t *data, uint32_t len)
 {
     uint32_t i;
-    if (data == NULL || len > PLATFORM_TX_RING_SIZE -
+    if (data == NULL) return 0U;
+    if (!s_uart_output_enabled) return len;
+    if (len > PLATFORM_TX_RING_SIZE -
                                (s_uart_tx_head - s_uart_tx_tail)) return 0U;
     for (i = 0U; i < len; ++i)
         s_uart_tx_ring[(s_uart_tx_head + i) & (PLATFORM_TX_RING_SIZE - 1U)] = data[i];
