@@ -55,26 +55,97 @@ static void update_roll_zero_calibration(
 int pm_update_gripper_from_2d(PoseMappingContext *ctx,
                               float shoulder_span_px, float *gripper_norm)
 {
-    float finger_span_px;
-    float gripper_ratio;
+    float d_finger, d_hand, ratio, used;
+    Point2D w, f1, f2;
 
-    if (ctx == NULL || gripper_norm == NULL ||
-        !isfinite(shoulder_span_px) || shoulder_span_px <= PM_EPS) return -1;
+    if (ctx == NULL || gripper_norm == NULL) return -1;
+    *gripper_norm = ctx->gripper_initialized ? ctx->gripper_norm_value : 1.0f;
+    /* Forearm mapping can request the 2D gripper before calculating hand
+     * angles; the hand function calls here again. Count that observation once. */
+    if (ctx->last_frame_id_valid && ctx->gripper_last_update_frame_valid &&
+        ctx->gripper_last_update_frame_id == ctx->last_frame_id)
+        return 0;
+    ctx->gripper_last_hold = 1U;
+    ctx->gripper_hold_reason = PM_GRIPPER_HOLD_MISSING;
+    w = ctx->wrist.value;
+    f1 = ctx->finger1.value;
+    f2 = ctx->finger2.value;
+    if (!w.valid || !f1.valid || !f2.valid) return -1;
+    if (!isfinite(w.x) || !isfinite(w.y) ||
+        !isfinite(f1.x) || !isfinite(f1.y) ||
+        !isfinite(f2.x) || !isfinite(f2.y)) {
+        ctx->gripper_hold_reason = PM_GRIPPER_HOLD_NONFINITE;
+        return -1;
+    }
+    if (!isfinite(shoulder_span_px) || shoulder_span_px <= PM_EPS) {
+        ctx->gripper_hold_reason = PM_GRIPPER_HOLD_SHOULDER_SPAN;
+        return -1;
+    }
 
-    finger_span_px = pm_distance_2d(ctx->finger1.value, ctx->finger2.value);
-    if (!isfinite(finger_span_px)) return -1;
-    gripper_ratio = finger_span_px / shoulder_span_px;
+    d_finger = pm_distance_2d(f1, f2);
+    d_hand = 0.5f * (pm_distance_2d(w, f1) + pm_distance_2d(w, f2));
+    if (!isfinite(d_finger) || !isfinite(d_hand)) {
+        ctx->gripper_hold_reason = PM_GRIPPER_HOLD_NONFINITE;
+        return -1;
+    }
+    if (d_hand <= PM_EPS ||
+        d_hand < PM_GRIPPER_MIN_HAND_SPAN_RATIO * shoulder_span_px) {
+        ctx->gripper_hold_reason = PM_GRIPPER_HOLD_HAND_SCALE;
+        return -1;
+    }
+
+    ratio = d_finger / d_hand;
+    if (!isfinite(ratio)) {
+        ctx->gripper_hold_reason = PM_GRIPPER_HOLD_NONFINITE;
+        return -1;
+    }
+
+    /* Median of three valid ratios suppresses a single-frame spike without
+     * rejecting all following movement. Two startup samples use their mean. */
+    used = ratio;
+    if (ctx->gripper_ratio_count == 1U) {
+        used = 0.5f * (ctx->gripper_ratio_history[1] + ratio);
+    } else if (ctx->gripper_ratio_count >= 2U) {
+        float a = ctx->gripper_ratio_history[0];
+        float b = ctx->gripper_ratio_history[1];
+        used = a + b + ratio - fminf(a, fminf(b, ratio))
+              - fmaxf(a, fmaxf(b, ratio));
+    }
+    ctx->gripper_ratio_history[0] = ctx->gripper_ratio_history[1];
+    ctx->gripper_ratio_history[1] = ratio;
+    if (ctx->gripper_ratio_count < 2U) ctx->gripper_ratio_count++;
+
+    /* The input landmarks already have an EMA; this shorter second stage
+     * damps small ratio jitter left after the median without a long window. */
+    if (ctx->gripper_initialized)
+        used = ctx->gripper_ratio_used + PM_GRIPPER_RATIO_FILTER_ALPHA *
+            (used - ctx->gripper_ratio_used);
+
+    ctx->gripper_finger_span_px = d_finger;
+    ctx->gripper_hand_span_px = d_hand;
+    ctx->gripper_open_ratio = ratio;
+    ctx->gripper_ratio_used = used;
+    ctx->gripper_norm_value = pm_clampf(
+        (used - PM_GRIPPER_CLOSE_THRESHOLD) /
+        (PM_GRIPPER_OPEN_THRESHOLD - PM_GRIPPER_CLOSE_THRESHOLD),
+        0.0f, 1.0f);
 
     if (!ctx->gripper_initialized) {
-        ctx->gripper_state = (gripper_ratio >= PM_GRIPPER_OPEN_RATIO) ? 1U : 0U;
+        ctx->gripper_state = (used >= PM_GRIPPER_OPEN_HYST_THRESHOLD) ? 1U : 0U;
         ctx->gripper_initialized = 1U;
     } else if (ctx->gripper_state) {
-        if (gripper_ratio <= PM_GRIPPER_CLOSE_RATIO) ctx->gripper_state = 0U;
-    } else if (gripper_ratio >= PM_GRIPPER_OPEN_RATIO) {
+        if (used < PM_GRIPPER_CLOSE_HYST_THRESHOLD) ctx->gripper_state = 0U;
+    } else if (used > PM_GRIPPER_OPEN_HYST_THRESHOLD) {
         ctx->gripper_state = 1U;
     }
 
-    *gripper_norm = (float)ctx->gripper_state;
+    ctx->gripper_last_hold = 0U;
+    ctx->gripper_hold_reason = PM_GRIPPER_HOLD_NONE;
+    if (ctx->last_frame_id_valid) {
+        ctx->gripper_last_update_frame_id = ctx->last_frame_id;
+        ctx->gripper_last_update_frame_valid = 1U;
+    }
+    *gripper_norm = ctx->gripper_norm_value;
     return 0;
 }
 
@@ -87,11 +158,20 @@ int pm_calculate_hand_angles_and_gripper(
 }
 
 int pm_calculate_hand_with_reference(
+    PoseMappingContext *ctx, float shoulder_span_px, float dt_age_sec,
+    float dt_filter_sec, const Vec3 *reference, HumanJointTarget *out)
+{
+    return pm_calculate_hand_with_reference_ex(ctx, shoulder_span_px, dt_age_sec,
+                                               dt_filter_sec, reference, 1U, out);
+}
+
+int pm_calculate_hand_with_reference_ex(
     PoseMappingContext *ctx,
     float shoulder_span_px,
     float dt_age_sec,
     float dt_filter_sec,
     const Vec3 *reference,
+    uint8_t update_gripper,
     HumanJointTarget *out
 )
 {
@@ -130,6 +210,8 @@ int pm_calculate_hand_with_reference(
     hand_forward_n = hand_forward;
     if (pm_vnormalize(&hand_forward_n) != 0) return -1;
 
+    /* Keep finger1=thumb and finger2=index; use their thumb-to-index
+     * direction for the signed wrist pitch and roll calculation. */
     finger_span = pm_vsub(ctx->finger2_3d, ctx->finger1_3d);
     finger_span_n = finger_span;
     if (pm_vnormalize(&finger_span_n) != 0) return -1;
@@ -312,11 +394,15 @@ int pm_calculate_hand_with_reference(
     /* ------------------------------------------------------------
      * Gripper OPEN/CLOSE 의도
      * ------------------------------------------------------------
-     * 0=CLOSE, 1=OPEN만 Agent2/3로 전달한다.
+     * 0=CLOSE에서 1=OPEN까지 연속값을 전달한다.
      * 실제 물체 접촉 압력은 Agent3의 압력센서 feedback이 담당한다.
      */
-    if (pm_update_gripper_from_2d(ctx, shoulder_span_px,
-                                  &out->gripper_norm) != 0) return -1;
+    if (update_gripper) {
+        if (pm_update_gripper_from_2d(ctx, shoulder_span_px,
+                                      &out->gripper_norm) != 0) return -1;
+    } else {
+        out->gripper_norm = ctx->gripper_initialized ? ctx->gripper_norm_value : 1.0f;
+    }
 
     out->wrist_pitch_deg = pm_wrap180(ctx->prev_wrist_pitch_deg);
     out->wrist_roll_deg = pm_wrap180(ctx->prev_wrist_roll_deg);

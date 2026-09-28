@@ -173,10 +173,14 @@ static HumanForearmTarget hand(ForearmMappingContext *c, float yaw, float elevat
     s=pm_vcross(n,f);
     h=pm_vadd(pm_vscale(f,cosf(p)),pm_vscale(n,sinf(p)));
     center=pm_vadd(c->pose.wrist_3d,h);
-    c->pose.finger1_3d=pm_vsub(center,pm_vscale(s,0.1f));
-    c->pose.finger2_3d=pm_vadd(center,pm_vscale(s,0.1f));
-    c->pose.finger1.value.x=0; c->pose.finger1.value.y=0;
-    c->pose.finger2.value.x=finger_pixels; c->pose.finger2.value.y=0;
+    c->pose.finger1_3d=pm_vadd(center,pm_vscale(s,0.1f));
+    c->pose.finger2_3d=pm_vsub(center,pm_vscale(s,0.1f));
+    c->pose.finger1.value.x=finger_pixels; c->pose.finger1.value.y=0;
+    c->pose.finger2.value.x=0; c->pose.finger2.value.y=0;
+    c->pose.wrist.value.x=0; c->pose.wrist.value.y=12;
+    c->pose.wrist.value.valid=1;
+    c->pose.finger1.value.valid=1;
+    c->pose.finger2.value.valid=1;
     assert(fm_calculate_hand(c,100,0.05f,0.05f,&t)==0);
     return t;
 }
@@ -188,25 +192,35 @@ static void test_wrist(void)
     init(&c);
     c.pose.wrist_3d=pm_vec3(0,0,5);
     c.pose.finger_parent_wrist=c.pose.wrist_3d;
-    c.pose.finger1_3d=pm_vec3(0.3f,0.15f,5.1f);
-    c.pose.finger2_3d=pm_vec3(0.3f,-0.15f,5.1f);
+    /* Offset direction (0.3,0.15,0.1) is arbitrary; magnitude must match
+     * each finger's configured wrist-relative length so the ray-sphere
+     * solve actually admits these points. */
+    float dir_len = sqrtf(0.3f*0.3f + 0.15f*0.15f + 0.1f*0.1f);
+    float finger1_len = PM_SHOULDER_WIDTH_UNIT * PM_WRIST_TO_FINGER1_RATIO;
+    float finger2_len = PM_SHOULDER_WIDTH_UNIT * PM_WRIST_TO_FINGER2_RATIO;
+    float s1 = finger1_len / dir_len, s2 = finger2_len / dir_len;
+    c.pose.finger1_3d=pm_vec3(0.3f*s1,0.15f*s1,5.0f+0.1f*s1);
+    c.pose.finger2_3d=pm_vec3(0.3f*s2,-0.15f*s2,5.0f+0.1f*s2);
     c.pose.finger_pose3d_valid=1;
     c.pose.wrist_3d.z=6;
-    c.pose.finger1.value.x=PM_CAMERA_CX+PM_CAMERA_FX*0.3f/6.1f;
-    c.pose.finger1.value.y=PM_CAMERA_CY-PM_CAMERA_FY*0.15f/6.1f;
-    c.pose.finger2.value.x=c.pose.finger1.value.x;
-    c.pose.finger2.value.y=PM_CAMERA_CY+PM_CAMERA_FY*0.15f/6.1f;
+    {
+        float f1z=6.0f+0.1f*s1, f2z=6.0f+0.1f*s2;
+        c.pose.finger1.value.x=PM_CAMERA_CX+PM_CAMERA_FX*0.3f*s1/f1z;
+        c.pose.finger1.value.y=PM_CAMERA_CY-PM_CAMERA_FY*0.15f*s1/f1z;
+        c.pose.finger2.value.x=PM_CAMERA_CX+PM_CAMERA_FX*0.3f*s2/f2z;
+        c.pose.finger2.value.y=PM_CAMERA_CY+PM_CAMERA_FY*0.15f*s2/f2z;
+    }
     assert(pm_reconstruct_finger_pose3d(&c.pose,0.05f)==0);
-    near(c.pose.finger1_3d.z-c.pose.wrist_3d.z,0.1f,0.001f);
-    near(c.pose.finger2_3d.z-c.pose.wrist_3d.z,0.1f,0.001f);
+    near(c.pose.finger1_3d.z-c.pose.wrist_3d.z,0.1f*s1,0.001f);
+    near(c.pose.finger2_3d.z-c.pose.wrist_3d.z,0.1f*s2,0.001f);
     /* Roll must remain defined through 90-degree flexion, and must not
      * acquire a 180-degree offset when the palm normal changes hemisphere. */
     const float cases[][2]={{0,0},{30,0},{-30,0},{0,45},{0,-45},{25,40},{0,179},{0,-179},
                             {89,40},{90,40},{91,40},{120,40},{-90,-45}};
     for(unsigned i=0;i<sizeof(cases)/sizeof(cases[0]);i++) {
         init(&c); t=hand(&c,25,35,cases[i][0],cases[i][1],12);
-        near(t.wrist_pitch_deg,-cases[i][0],0.003f); /* legacy HUMAN sign */
-        near(t.wrist_roll_deg,cases[i][1],0.003f);
+        near(t.wrist_pitch_deg,cases[i][0],0.003f);
+        near(fm_wrap180(t.wrist_roll_deg-cases[i][1]-180.0f),0,0.003f);
         assert(t.gripper_norm==1 && t.hand_fresh);
     }
     init(&c);
@@ -224,25 +238,23 @@ static void test_wrist(void)
         float old=t.wrist_roll_deg;
         t=hand(&c,0,0,0,-179,9);
         assert(fabsf(fm_wrap180(t.wrist_roll_deg-old))<3);
-        assert(t.gripper_norm==1); /* hysteresis gap */
+        assert(t.gripper_norm>=0.0f && t.gripper_norm<=1.0f);
     }
-    near(fm_wrap180(t.wrist_roll_deg+179),0,PM_ROLL_DEADBAND_DEG+0.01f);
-    t=hand(&c,0,0,0,-179,7); assert(t.gripper_norm==0);
-    t=hand(&c,0,0,0,-179,9); assert(t.gripper_norm==0);
-    t=hand(&c,0,0,0,-179,12); assert(t.gripper_norm==1);
+    near(fm_wrap180(t.wrist_roll_deg-1),0,PM_ROLL_DEADBAND_DEG+0.01f);
     /* First pole has no roll reference measurement; no hand target yet. */
     init(&c); t=direction(&c,pm_vec3(0,1,0));
     assert(fm_calculate_hand(&c,100,0.05f,0.05f,&t)==-1);
     /* A pole with heading history has a well-defined retained reference. */
     hand(&c,0,0,0,0,12); t=hand(&c,0,90,0,0,12);
-    near(t.wrist_roll_deg,0,0.003f); assert(!t.elbow_roll_observable);
+    near(fm_wrap180(t.wrist_roll_deg+180),0,0.003f);
+    assert(!t.elbow_roll_observable);
     /* Nearly vertical directions retain a continuous Body/forearm reference. */
     init(&c); hand(&c,0,85,0,0,12);
     Vec3 prev=c.wrist_reference;
     for(int i=0;i<30;i++) {
         t=hand(&c,0,89.9f,0,0,12);
         assert(pm_vdot(prev,c.wrist_reference)>0.99f);
-        assert(fabsf(t.wrist_roll_deg)<1);
+        assert(fabsf(fm_wrap180(t.wrist_roll_deg+180))<1);
         prev=c.wrist_reference;
     }
     /* Degenerate plane must fail, leaving caller to hold hand fields. */
@@ -271,6 +283,7 @@ static void test_wrist_body_reference(void)
     b.pose.wrist_3d=rotate(a.pose.wrist_3d,axis,71);
     b.pose.finger1_3d=rotate(a.pose.finger1_3d,axis,71);
     b.pose.finger2_3d=rotate(a.pose.finger2_3d,axis,71);
+    b.pose.wrist.value=a.pose.wrist.value;
     b.pose.finger1.value=a.pose.finger1.value;
     b.pose.finger2.value=a.pose.finger2.value;
     assert(fm_calculate_angles(&b,0.05f,&tb)==0);
@@ -278,8 +291,8 @@ static void test_wrist_body_reference(void)
     near(tb.wrist_pitch_deg,ta.wrist_pitch_deg,0.003f);
     near(tb.wrist_roll_deg,ta.wrist_roll_deg,0.003f);
 
-    /* Away from the vertical reference singularity, retain the original
-     * Body-Y wrist zero and the original Finger1->Finger2 flexion sign. */
+    /* Away from the vertical reference singularity, legacy and forearm
+     * calculations use the same Body-Y reference and thumb-to-index axis. */
     legacy_ctx=a.pose;
     legacy_ctx.hand_angle_valid=0;
     legacy_ctx.prev_hand_normal_valid=0;
@@ -324,6 +337,129 @@ static void test_gripper_without_wrist_geometry(void)
     near(t.gripper_norm, 0.0f, 0.0f);
     assert(c.pose.gripper_initialized && c.pose.gripper_state == 0U);
 }
+static void set_gripper_ratio(PoseMappingContext *p, float ratio,
+                              float hand_length, float origin_x)
+{
+    float spread = 4.0f * hand_length * ratio / (4.0f - ratio * ratio);
+    p->wrist.value = (Point2D){origin_x, 200.0f, 1U};
+    p->finger1.value = (Point2D){origin_x, 200.0f + hand_length, 1U};
+    p->finger2.value = (Point2D){origin_x + spread,
+                                 200.0f + hand_length, 1U};
+}
+static void test_gripper_normalized(void)
+{
+    PoseMappingContext p, scaled;
+    float value, held;
+
+    assert(pose_mapping_init(&p) == 0);
+    set_gripper_ratio(&p, 0.0f, 40.0f, 300.0f);
+    assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == 0);
+    near(value, 0.0f, 1e-5f);
+    assert(p.gripper_state == 0U && !p.gripper_last_hold);
+
+    set_gripper_ratio(&p, 0.30f, 40.0f, 300.0f);
+    for (int i = 0; i < 15; ++i)
+        assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == 0);
+    near(value, 0.4f, 0.002f);
+    assert(p.gripper_state == 0U); /* mid-band retains CLOSE */
+    near(p.gripper_open_ratio, 0.30f, 1e-4f);
+    for (int i = 0; i < 8; ++i) {
+        set_gripper_ratio(&p, i & 1 ? 0.29f : 0.31f, 40.0f, 300.0f);
+        assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == 0);
+        assert(p.gripper_state == 0U);
+        assert(value > 0.0f && value < 1.0f);
+    }
+    set_gripper_ratio(&p, 0.30f, 40.0f, 300.0f);
+    for (int i = 0; i < 10; ++i)
+        assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == 0);
+    near(value, 0.4f, 0.005f);
+
+    assert(pose_mapping_init(&scaled) == 0);
+    set_gripper_ratio(&scaled, 0.30f, 80.0f, 600.0f);
+    assert(pm_update_gripper_from_2d(&scaled, 200.0f, &held) == 0);
+    near(held, value, 0.005f); /* translating/scaling the hand changes no ratio */
+
+    set_gripper_ratio(&p, 1.0f, 40.0f, 300.0f);
+    assert(pm_update_gripper_from_2d(&p, 100.0f, &held) == 0);
+    near(held, value, 0.005f); /* one-frame spike removed by median */
+    set_gripper_ratio(&p, 0.30f, 40.0f, 300.0f);
+    assert(pm_update_gripper_from_2d(&p, 100.0f, &held) == 0);
+    near(held, value, 0.005f);
+    assert(p.gripper_state == 0U);
+
+    set_gripper_ratio(&p, 0.41f, 40.0f, 300.0f);
+    for (int i = 0; i < 8; ++i)
+        assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == 0);
+    assert(p.gripper_state == 1U);
+    set_gripper_ratio(&p, 0.30f, 40.0f, 300.0f);
+    for (int i = 0; i < 8; ++i)
+        assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == 0);
+    assert(p.gripper_state == 1U); /* mid-band retains OPEN */
+    set_gripper_ratio(&p, 0.19f, 40.0f, 300.0f);
+    for (int i = 0; i < 8; ++i)
+        assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == 0);
+    assert(p.gripper_state == 0U);
+
+    assert(pose_mapping_init(&scaled) == 0);
+    set_gripper_ratio(&scaled, 0.70f, 40.0f, 300.0f);
+    assert(pm_update_gripper_from_2d(&scaled, 100.0f, &held) == 0);
+    near(held, 1.0f, 1e-5f);
+    assert(scaled.gripper_state == 1U);
+
+    held = value;
+    p.finger1.value = p.wrist.value;
+    p.finger2.value = p.wrist.value;
+    assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == -1);
+    near(value, held, 0.0f);
+    assert(p.gripper_last_hold &&
+           p.gripper_hold_reason == PM_GRIPPER_HOLD_HAND_SCALE);
+    p.finger1.value.valid = 0U;
+    assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == -1);
+    near(value, held, 0.0f);
+    assert(p.gripper_hold_reason == PM_GRIPPER_HOLD_MISSING);
+    p.finger1.value.valid = 1U;
+    p.finger2.value.valid = 0U;
+    assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == -1);
+    near(value, held, 0.0f);
+    p.finger2.value.valid = 1U;
+    p.wrist.value.valid = 0U;
+    assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == -1);
+    near(value, held, 0.0f);
+    p.wrist.value.valid = 1U;
+    p.finger1.value.x = NAN;
+    assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == -1);
+    near(value, held, 0.0f);
+    assert(p.gripper_hold_reason == PM_GRIPPER_HOLD_NONFINITE);
+    p.finger1.value.x = INFINITY;
+    assert(pm_update_gripper_from_2d(&p, 100.0f, &value) == -1);
+    near(value, held, 0.0f);
+
+    /* Sustained real motion reaches the opposite endpoint in three fresh
+     * observations; the first one alone cannot trigger a full command. */
+    assert(pose_mapping_init(&scaled) == 0);
+    set_gripper_ratio(&scaled, 0.0f, 40.0f, 300.0f);
+    for (int i = 0; i < 2; ++i)
+        assert(pm_update_gripper_from_2d(&scaled, 100.0f, &value) == 0);
+    set_gripper_ratio(&scaled, 0.70f, 40.0f, 300.0f);
+    assert(pm_update_gripper_from_2d(&scaled, 100.0f, &value) == 0);
+    near(value, 0.0f, 1e-5f);
+    assert(pm_update_gripper_from_2d(&scaled, 100.0f, &value) == 0);
+    assert(value > 0.0f && value < 1.0f);
+    assert(pm_update_gripper_from_2d(&scaled, 100.0f, &value) == 0);
+    near(value, 1.0f, 1e-5f);
+    assert(scaled.gripper_state == 1U);
+
+    /* Forearm's early 2D update and later hand calculation may request the
+     * same frame; the ratio history must advance only once. */
+    scaled.last_frame_id_valid = 1U;
+    scaled.last_frame_id = 100U;
+    set_gripper_ratio(&scaled, 0.30f, 40.0f, 300.0f);
+    assert(pm_update_gripper_from_2d(&scaled, 100.0f, &value) == 0);
+    held = value;
+    set_gripper_ratio(&scaled, 0.70f, 40.0f, 300.0f);
+    assert(pm_update_gripper_from_2d(&scaled, 100.0f, &value) == 0);
+    near(value, held, 0.0f);
+}
 static void test_finger_branch_window(void)
 {
     PoseMappingContext p;
@@ -338,9 +474,11 @@ static void test_finger_branch_window(void)
     p.finger2.value.y = PM_CAMERA_CY;
 
     for (unsigned i = 1U; i < POSE_FINGER_BRANCH_WINDOW; ++i) {
+        p.finger_branch_elapsed_frames = (uint8_t)i;
         assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == -1);
-        assert(!p.finger_pose3d_valid);
+        assert(!p.finger_pose3d_valid && !p.finger_branch_selected_valid);
     }
+    p.finger_branch_elapsed_frames = POSE_FINGER_BRANCH_WINDOW;
     assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
     assert(p.finger_branch_selected == 0U); /* nearer, forearm-aligned pair */
     assert(p.finger1_3d.z < p.wrist_3d.z);
@@ -348,22 +486,40 @@ static void test_finger_branch_window(void)
 
     pm_reset_finger_branch_tracker(&p);
     assert(!p.finger_pose3d_valid && !p.finger_branch_selected_valid);
-    /* When both 3D bends fit the same 2D track equally well, the window
-     * still forces a pick once full: holding forever on a coin-flip is
-     * worse than committing to whichever candidate the tie-break settles
-     * on, and the pick is deterministic and stable frame to frame. */
+    /* ever_selected survives the reset: this is not a first-ever pick
+     * anymore, so re-acquisition only needs the short tracking window
+     * (6 frames), not the full 60-frame window again. Requiring 60 fresh
+     * frames after every reset made even a brief dropout or a single missed
+     * detection freeze the reported position for seconds. */
+    assert(p.finger_branch_ever_selected);
     p.elbow_3d = pm_vec3(-0.65f, 0.0f, 5.0f);
     p.finger1.value.x = PM_CAMERA_CX;
     p.finger1.value.y = PM_CAMERA_CY - PM_CAMERA_FY * 0.07f / depth;
     p.finger2.value.x = PM_CAMERA_CX;
     p.finger2.value.y = PM_CAMERA_CY + PM_CAMERA_FY * 0.07f / depth;
-    for (unsigned i = 1U; i < POSE_FINGER_BRANCH_WINDOW; ++i)
+    for (unsigned i = 1U; i < 6U; ++i)
         assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == -1);
     assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
     assert(p.finger_pose3d_valid);
     /* The tie-break is stable: re-running does not flip the pick. */
     assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
     assert(p.finger_branch_selected == 0U);
+
+    /* The 60-frame clock survives missing fingers and a reset. After it
+     * expires, the first usable observation can bootstrap the branch. */
+    assert(pose_mapping_init(&p) == 0);
+    p.wrist_3d = pm_vec3(0.0f, 0.0f, 5.0f);
+    p.elbow_3d = pm_vec3(0.0f, 0.0f, 5.65f);
+    p.finger1.value.x = PM_CAMERA_CX - PM_CAMERA_FX * 0.07f / depth;
+    p.finger1.value.y = PM_CAMERA_CY;
+    p.finger2.value.x = PM_CAMERA_CX + PM_CAMERA_FX * 0.07f / depth;
+    p.finger2.value.y = PM_CAMERA_CY;
+    p.finger_branch_elapsed_frames = POSE_FINGER_BRANCH_WINDOW;
+    pm_reset_finger_branch_tracker(&p);
+    assert(p.finger_branch_elapsed_frames == POSE_FINGER_BRANCH_WINDOW);
+    assert(!p.finger_branch_ever_selected);
+    assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
+    assert(p.finger_branch_selected_valid && p.finger_branch_ever_selected);
 }
 static void test_pipeline(void)
 {
@@ -390,6 +546,9 @@ static void test_pipeline(void)
     assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==1);
     assert(!t.hand_fresh && t.valid && t.frame_id==124);
     near(t.wrist_roll_deg,prev.wrist_roll_deg,0);
+    near(t.gripper_norm,prev.gripper_norm,0);
+    assert(c.pose.gripper_last_hold &&
+           c.pose.gripper_hold_reason == PM_GRIPPER_HOLD_MISSING);
     for(int i=0;i<12;i++) {
         p.frame_id++;
         assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==1);
@@ -419,6 +578,48 @@ static void test_pipeline(void)
     p=sample(); p.frame_id=400;
     assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==-1);
 }
+
+static void test_initial_branch_scores(void)
+{
+    PoseMappingContext p;
+    assert(pose_mapping_init(&p) == 0);
+    p.wrist_3d = pm_vec3(0.0f, 0.0f, 5.0f);
+    p.finger_branch_elapsed_frames = POSE_FINGER_BRANCH_WINDOW;
+    assert(pm_select_initial_finger_branch(&p) == -1);
+    p.finger_branch_initial_count[0] = 2U;
+    p.finger_branch_initial_score_sum[0] = 0.4f;
+    p.finger_branch_initial_count[1] = 1U;
+    p.finger_branch_initial_score_sum[1] = 0.1f;
+    p.finger_branch_initial_finger1_relative[1] = pm_vec3(0.1f, 0.0f, 0.3f);
+    p.finger_branch_initial_finger2_relative[1] = pm_vec3(-0.1f, 0.0f, 0.3f);
+    pm_reset_finger_branch_tracker(&p);
+    assert(pm_select_initial_finger_branch(&p) == 0);
+    assert(p.finger_branch_selected == 1U && p.finger_branch_ever_selected);
+    near(p.finger1_3d.z, 5.3f, 1e-6f);
+}
+
+static void test_major_only_after_initial_window(void)
+{
+    ForearmMappingContext c;
+    HumanPose2D p = sample();
+    HumanForearmTarget t;
+    assert(forearm_mapping_init(&c) == 0);
+    p.finger1.valid = 0U;
+    p.finger2.valid = 0U;
+    for (unsigned i = 1U; i < POSE_FINGER_BRANCH_WINDOW; ++i) {
+        p.frame_id = i;
+        assert(forearm_mapping_update(&c, &p, POSE_ARM_RIGHT, 0.05f, &t) == -1);
+        assert(!t.valid);
+    }
+    p.frame_id = POSE_FINGER_BRANCH_WINDOW;
+    assert(forearm_mapping_update(&c, &p, POSE_ARM_RIGHT, 0.05f, &t) == 1);
+    assert(t.valid && !t.wrist_valid && !t.hand_fresh);
+    assert(isfinite(t.elbow_roll_deg) && isfinite(t.elbow_pitch_deg));
+    p.frame_id++;
+    p.wrist.x += 10.0f;
+    assert(forearm_mapping_update(&c, &p, POSE_ARM_RIGHT, 0.05f, &t) == 1);
+    assert(t.valid && !t.wrist_valid && !t.hand_fresh);
+}
 static void test_uart(const char *path)
 {
     FILE *f=fopen(path,"rb");
@@ -446,12 +647,46 @@ static void test_uart(const char *path)
     fclose(f); assert(count==522 && accepted>0);
     printf("UART forearm replay: %d frames, %d valid PASS\n",count,accepted);
 }
+static void test_finger_relative_2d_filter(void)
+{
+    ForearmMappingContext c;
+    HumanPose2D p = sample();
+    float initial_offset, initial_ray, previous_ray, previous_landmark;
+
+    init(&c);
+    pm_update_all_landmarks(&c.pose, &p, 0.05f);
+    initial_offset = c.pose.finger1_relative_2d.ray_input.x -
+                     c.pose.wrist.value.x;
+    initial_ray = c.pose.finger1_relative_2d.ray_input.x;
+
+    /* A common hand translation must preserve the finger's wrist-relative
+     * position, while a finger-only jump should be more damped than the
+     * ordinary landmark used by the gripper. */
+    p.wrist.x += 20.0f;
+    p.finger1.x += 20.0f;
+    p.finger2.x += 20.0f;
+    pm_update_all_landmarks(&c.pose, &p, 0.05f);
+    near(c.pose.finger1_relative_2d.ray_input.x - c.pose.wrist.value.x,
+         initial_offset, 0.001f);
+    assert(c.pose.finger1_relative_2d.ray_input.x > initial_ray);
+
+    previous_ray = c.pose.finger1_relative_2d.ray_input.x;
+    previous_landmark = c.pose.finger1.value.x;
+    p.finger1.x += 12.0f;
+    pm_update_all_landmarks(&c.pose, &p, 0.05f);
+    assert(c.pose.finger1_relative_2d.ray_input.x > previous_ray);
+    assert(c.pose.finger1_relative_2d.ray_input.x - previous_ray <
+           c.pose.finger1.value.x - previous_landmark);
+}
+
 int main(int argc,char **argv)
 {
     test_geometry(); test_temporal_geometry(); test_body_rotation(); test_wrist();
     test_wrist_body_reference(); test_gripper_without_wrist_geometry();
-    test_finger_branch_window();
-    test_pipeline();
+    test_gripper_normalized();
+    test_finger_branch_window(); test_finger_relative_2d_filter();
+    test_pipeline(); test_initial_branch_scores();
+    test_major_only_after_initial_window();
     if(argc>1) test_uart(argv[1]);
     puts("Forearm geometry / wrist / temporal / pipeline: PASS");
     return 0;

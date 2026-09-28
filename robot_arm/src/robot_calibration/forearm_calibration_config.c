@@ -34,14 +34,17 @@
  * 내보내지 말 것(문서/README에서 확인 절차를 안내한다).
  */
 const ForearmCalibrationConfig forearm_calibration_config = {
+    //중앙은 맞는데 기본적인 자세가 오른팔을 기준으로 안쪽으로 기울어져 있어서 왼쪽에 있는 경향성이 있음
     .elbow_roll  = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 90.0f,
                       .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
-    .elbow_pitch = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 90.0f,
-                      .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
-    .wrist_pitch = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 90.0f,
-                      .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
+    //마찬가지로 기본적인 자세가 로봇+방향(밑쪽)으로 기울어져 있어서 offset과 max를 높였음
+    .elbow_pitch = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 120.0f,
+                      .min_deg = 20.0f, .max_deg = 200.0f, .max_delta_deg = 0.6f },
+    //초기값은 손목이 ㄱ자 방향으로 설정되어서 기준을 조금 낮췄음
+    .wrist_pitch = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 80.0f,
+                      .min_deg = 10.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
     .wrist_roll  = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 87.0f,
-                      .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
+                      .min_deg = 10.0f, .max_deg = 170.0f, .max_delta_deg = 0.6f },
     /* 순서: elbow_roll, elbow_pitch, wrist_pitch, wrist_roll. */
     .amax_deg_s2 = { 120.0f, 120.0f, 120.0f, 120.0f },
 };

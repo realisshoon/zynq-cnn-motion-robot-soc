@@ -48,6 +48,10 @@ ARM이 관리하지 않는다 — HLS `m_axi` 직접 접근 구조도 아니고,
 | `0x080` | `CYCLE_COUNT` | START부터 publish까지 걸린 cycle (100MHz 기준) |
 | `0x084` | `RESULT_FRAME_ID` | 결과가 어느 입력 프레임인지 |
 
+Agent1의 `HumanPose2D`로 옮길 때 `THUMB_XY → finger1`, `INDEX_XY → finger2`로
+매핑한다. 2D CSV와 UART에서도 같은 의미를 사용한다. 과거 MediaPipe CSV 중
+`thumb_first`가 없는 파일은 이 매핑 이전에 생성된 이력 데이터일 수 있다.
+
 레이어별 완료 인터럽트는 없다. `top_level_fsm`이 내부적으로 레이어 진행을
 관리하고, ARM에는 `STATUS.DONE`/`STATUS.ERROR`/`STATUS.IMAGE_READ_DONE` 세
 가지만 노출된다. 완료 통지는 GIC 레벨 인터럽트(권장) 또는 `STATUS` 폴링 둘 다
