@@ -49,7 +49,7 @@ int main(void)
 {
     AgentPipelineContext ctx;
     HumanForearmTarget target = {
-        .elbow_roll_deg = 30.0f, .elbow_pitch_deg = -60.0f,
+        .elbow_roll_deg = 30.0f, .elbow_pitch_deg = 0.0f,
         .wrist_pitch_deg = 150.0f, .wrist_roll_deg = -150.0f,
         .gripper_norm = 1.0f, .valid = 1U
     };
@@ -80,7 +80,7 @@ int main(void)
     /* The first reconstructed hand target may now move the wrists. */
     target.wrist_valid = 1U;
     target.hand_fresh = 0U; /* a 60-frame estimate need not be fresh today */
-    target.wrist_pitch_deg = 20.0f;
+    target.wrist_pitch_deg = 30.0f;
     target.wrist_roll_deg = -30.0f;
     ctx.target = target;
     ctx.target_ready = 1U;
