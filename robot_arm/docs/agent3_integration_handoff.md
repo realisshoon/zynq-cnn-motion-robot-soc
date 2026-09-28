@@ -1,4 +1,4 @@
-> 이 문서는 과거 인계 기록이다. 현행 5축 전용 수정 정책은 [../AGENTS.md](../AGENTS.md)를 따른다. 6축 보존 지침은 폐기되었다.
+> 이 문서는 과거 인계 기록이다. 현행 5축 전용 수정 정책은 [../AGENTS.md](../AGENTS.md)를 따른다. 6축 보존 지침은 폐기되었다. 2026-09-28에 Agent3에게 새 동작 저장·재생 작업이 별도로 전달되었으며, 아래의 과거 "Record/Playback 폐기"는 그 신규 작업에 적용되지 않는다. 현재 통합 경계는 [integration_work_plan.md](integration_work_plan.md)를 보라.
 
 # Agent3 Integration Handoff
 

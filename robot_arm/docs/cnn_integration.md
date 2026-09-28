@@ -1,5 +1,10 @@
 # CNN–로봇 통합 (dev/integration)
 
+> 다음 통합 작업의 현행 결정과 에이전트별 수정 범위는
+> [integration_work_plan.md](integration_work_plan.md)를 따른다. 이 문서는
+> 현재 구현과 2026-09-27 Agent4 리뷰의 검증 기록이며, 계획된 CSV 비활성화·
+> 카메라 고정 모드는 아직 반영되지 않았다.
+
 현재 실행 진입점은 `src/integration/main_integration.c` 하나다. `src/cnn_firmware/`는 CNN 팀 Vitis 앱의 드라이버와 기능 모듈을 옮긴 것이며, 원본 `main.c`는 빌드하지 않고 `vitis/reference/cnn_original_main.c.txt`에 비교용으로 보존했다. FPGA 하드웨어는 `vitis/xsa/cnn_camera_gimbal.xsa`를 쓴다 (SHA-256 `CF19EB89BEBDF960EEF33622464BF3C40AEA2CEC6133EAFCC099ED97BFA5D5AF`). 기존 `etc/`와 UART 자료는 삭제하지 않았다.
 
 ## 실행 경로
