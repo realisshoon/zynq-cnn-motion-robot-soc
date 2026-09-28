@@ -141,17 +141,26 @@ static void test_unwrap(void)
 
     t = target(-179, 0, 0, 0, 0.5f);
     forearm_motion_control_unwrap_target(&state, &t);
-    near(t.elbow_roll_deg, 181); /* 최단 회전으로 풀면 -179가 아니라 181 */
+    near(t.elbow_roll_deg, -179); /* 위치 서보는 누적 턴을 사용하지 않는다. */
+    near(state.yaw_deg, -179);
 
-    /* 직전까지 state.wrist_pitch_deg/wrist_roll_deg는 0(두 호출 모두 입력 0).
-     * -1250 -> wrap_to_180 -> -170 (기준 0에서 최단회전). 602.5 -> 242.5 ->
-     * wrap_to_180 -> -117.5. */
+    /* 각 축은 누적 턴 없이 대표각만 유지한다. */
     t.elbow_roll_deg += 720;
     t.wrist_pitch_deg = -1250;
     t.wrist_roll_deg = 602.5f;
     forearm_motion_control_unwrap_target(&state, &t);
+    near(t.elbow_roll_deg, -179);
     near(t.wrist_pitch_deg, -170.0f);
     near(t.wrist_roll_deg, -117.5f);
+    assert(forearm_motion_control_elbow_roll_reachable(-46.0f));
+    assert(forearm_motion_control_elbow_roll_reachable(314.0f));
+    assert(!forearm_motion_control_elbow_roll_reachable(-132.0f));
+    assert(!forearm_motion_control_elbow_roll_reachable(179.0f));
+    assert(!forearm_motion_control_elbow_roll_reachable(-179.0f));
+    assert(forearm_motion_control_wrist_pitch_reachable(30.0f));
+    assert(!forearm_motion_control_wrist_pitch_reachable(-170.0f));
+    assert(forearm_motion_control_wrist_roll_reachable(-30.0f));
+    assert(!forearm_motion_control_wrist_roll_reachable(179.0f));
 
     forearm_motion_control_unwrap_state_init(NULL);
     forearm_motion_control_unwrap_target(NULL, &t);

@@ -10,7 +10,7 @@
  *
  *   A1  agent1_run 직후(프레임마다)  fid,t_ms,dur_us,dt_ms,pv,vm,rc,ov,er,ep,wp,wr,grip
  *   P3  A1 바로 뒤(Agent1 내부)      fid,pm,fl,age_ms, 6점 x,y,z (sl, sr, e, w, f1, f2)
- *   A2  agent2_run 직후              fid,t_ms,dur_us,st,fg, 타겟(unwrap 후) 4개, 매핑된 명령 5개
+ *   A2  agent2_run 직후              fid,t_ms,dur_us,st,fg, 타겟(대표각 정규화 후) 4개, 매핑된 명령 5개
  *   TK  제어 틱마다                  tick,t_ms,dur_us, 출력 5개, PWM 5개, rem,w,er
  *   SM  1초마다                      t_ms,fr,tv,acc,rej,rt,tk,sw,se,ovr,crc,fmt,rng,ow,drop,hi
  *   EV  상태가 바뀔 때만             t_ms,code,arg
@@ -439,7 +439,7 @@ static void emit_a2_line(const AgentPipelineContext *ctx, uint32_t t_ms, uint32_
     f_str(&l, st);
     f_hex(&l, flags);
     if (has_cmd != 0U) {
-        /* unwrap이 제자리에서 고친 뒤의 타겟 */
+        /* A2가 대표각으로 정규화한 뒤의 타겟. u* 열 이름은 로그 호환을 위해 유지한다. */
         f_fx(&l, ctx->target.elbow_roll_deg, 1U);
         f_fx(&l, ctx->target.elbow_pitch_deg, 1U);
         f_fx(&l, ctx->target.wrist_pitch_deg, 1U);

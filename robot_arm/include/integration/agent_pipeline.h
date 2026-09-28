@@ -44,7 +44,7 @@ typedef struct {
     /* 프레임 경로 */
     HumanPose2D pose;
     float dt_sec;
-    HumanForearmTarget target;   /* Agent1 출력의 복사본. unwrap이 in-place로 고치므로 원본은 건드리지 않는다. */
+    HumanForearmTarget target;   /* Agent1 출력의 복사본. A2가 대표각으로 정규화하므로 원본은 건드리지 않는다. */
     uint8_t target_ready;      /* 이번 프레임에 Agent1이 valid 타겟을 냈는지 */
     ForearmJointCommand command;      /* Agent2가 마지막으로 승인해서 set_target한 명령 */
     uint8_t command_valid;
@@ -82,7 +82,7 @@ int agent_pipeline_init_mode(AgentPipelineContext *ctx, int enable_robot_pwm);
 /* HumanPose2D -> HumanForearmTarget. Agent1이 valid 타겟을 냈으면 1. */
 int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec);
 
-/* validate -> unwrap -> apply -> set_target. 새 목표를 승인했으면 1. */
+/* validate -> 대표각 정규화 -> 범위 밖 축 HOLD -> 안전검사 -> set_target. 승인했으면 1. */
 int agent2_run(AgentPipelineContext *ctx);
 
 /* 제어 틱 1회: 램프를 한 틱 진행. 출력이 유효하면 1. */

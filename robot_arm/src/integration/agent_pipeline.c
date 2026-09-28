@@ -140,6 +140,7 @@ int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec)
 int agent2_run(AgentPipelineContext *ctx)
 {
     ForearmJointCommand command;
+    int elbow_roll_reachable;
 
     if (ctx != NULL) {
         TRACE_SET_A2_RESULT(ctx, A2_RESULT_NONE); /* [TRACE] 이번 프레임의 결과를 먼저 "없음"으로 둔다. */
@@ -153,20 +154,38 @@ int agent2_run(AgentPipelineContext *ctx)
         return 0;
     }
     forearm_motion_control_unwrap_target(&ctx->unwrap, &ctx->target);
+    elbow_roll_reachable = forearm_motion_control_elbow_roll_reachable(ctx->target.elbow_roll_deg);
 
-    /* With no reconstructed wrist angle yet, keep the robot's current wrist
-     * position and gripper while allowing measured elbow angles to move.
-     * Check the resulting mixed pose, rather than an arbitrary wrist zero. */
+    forearm_motion_control_map_target(&ctx->target, &command);
+    forearm_motion_control_apply_limits(&command);
+
+    /* A wrapped direction outside the finite elbow-roll travel is not an
+     * endpoint target. Keep the last approved target (or boot position),
+     * while allowing the other joints to follow if the mixed pose is safe. */
+    if (!elbow_roll_reachable) {
+        command.elbow_roll_deg = ctx->command_valid ? ctx->command.elbow_roll_deg
+                                                    : ctx->output.elbow_roll_deg;
+    }
+
+    if (ctx->target.wrist_valid) {
+        if (!forearm_motion_control_wrist_pitch_reachable(ctx->target.wrist_pitch_deg)) {
+            command.wrist_pitch_deg = ctx->command_valid ? ctx->command.wrist_pitch_deg
+                                                        : ctx->output.wrist_pitch_deg;
+        }
+        if (!forearm_motion_control_wrist_roll_reachable(ctx->target.wrist_roll_deg)) {
+            command.wrist_roll_deg = ctx->command_valid ? ctx->command.wrist_roll_deg
+                                                       : ctx->output.wrist_roll_deg;
+        }
+    }
+
+    /* Without a reconstructed wrist angle, hold the current wrist and grip.
+     * Safety is checked on the final mixed command in either case. */
     if (!ctx->target.wrist_valid) {
-        forearm_motion_control_map_target(&ctx->target, &command);
-        forearm_motion_control_apply_limits(&command);
         command.wrist_pitch_deg = ctx->output.wrist_pitch_deg;
         command.wrist_roll_deg = ctx->output.wrist_roll_deg;
         command.gripper_norm = ctx->output.gripper_norm;
-        command.valid = forearm_safety_check_apply(&command, NULL) ? 1U : 0U;
-    } else {
-        command.valid = forearm_calibration_apply(&ctx->target, &command) ? 1U : 0U;
     }
+    command.valid = forearm_safety_check_apply(&command, NULL) ? 1U : 0U;
     /* 무효/위험이면 폐기하고 마지막으로 승인한 목표를 계속 유지한다. */
     if (!command.valid) {
         ctx->commands_rejected++;

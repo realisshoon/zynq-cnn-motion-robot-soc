@@ -45,6 +45,88 @@ static void test_no_fingers_through_pipeline(void)
            ctx.command.elbow_pitch_deg != ctx.output.elbow_pitch_deg);
 }
 
+static void test_elbow_roll_wrap_and_travel(void)
+{
+    AgentPipelineContext ctx;
+    HumanForearmTarget target = {
+        .elbow_roll_deg = -46.0f, .elbow_pitch_deg = 50.0f,
+        .wrist_pitch_deg = 0.0f, .wrist_roll_deg = 0.0f,
+        .gripper_norm = 0.05f, .valid = 1U, .wrist_valid = 0U
+    };
+    float previous;
+
+    servo_pwm_driver_mock_reset();
+    servo_hal_init();
+    assert(agent_pipeline_init(&ctx) == 0);
+    ctx.target = target;
+    ctx.target_ready = 1U;
+    assert(agent2_run(&ctx) == 1);
+    assert(ctx.target.elbow_roll_deg == -46.0f);
+    assert(ctx.command.elbow_roll_deg == 136.0f);
+
+    /* An equivalent angle with an extra turn must produce the same target. */
+    target.elbow_roll_deg = 314.0f;
+    ctx.target = target;
+    assert(agent2_run(&ctx) == 1);
+    assert(ctx.target.elbow_roll_deg == -46.0f);
+    assert(ctx.command.elbow_roll_deg == 136.0f);
+
+    /* Both sides of the +/-180 seam lie outside this servo's travel. Neither
+     * side may drive it to a limit or reverse it to the opposite endpoint. */
+    target.elbow_roll_deg = 179.0f;
+    ctx.target = target;
+    assert(agent2_run(&ctx) == 1);
+    assert(ctx.command.elbow_roll_deg == 136.0f);
+    target.elbow_roll_deg = -179.0f;
+    ctx.target = target;
+    assert(agent2_run(&ctx) == 1);
+    assert(ctx.command.elbow_roll_deg == 136.0f);
+
+    /* An unreachable heading only holds roll; a valid pitch may still move. */
+    target.elbow_roll_deg = -132.0f;
+    target.elbow_pitch_deg = 49.0f;
+    ctx.target = target;
+    assert(agent2_run(&ctx) == 1);
+    assert(ctx.command.elbow_roll_deg == 136.0f);
+    assert(ctx.command.elbow_pitch_deg == 71.0f);
+
+    target.elbow_roll_deg = -48.0f;
+    ctx.target = target;
+    assert(agent2_run(&ctx) == 1);
+    assert(ctx.command.elbow_roll_deg == 138.0f);
+    previous = ctx.output.elbow_roll_deg;
+    for (unsigned i = 0U; i < 100U; ++i) {
+        assert(agent2_tick(&ctx) == 1);
+        assert(fabsf(ctx.output.elbow_roll_deg - previous) <= 0.601f);
+        previous = ctx.output.elbow_roll_deg;
+    }
+
+    /* Wrist angles are bounded as well: an out-of-range bend or seam must
+     * retain each axis's last approved target, not clamp to opposite limits. */
+    target.wrist_valid = 1U;
+    target.wrist_pitch_deg = -170.0f;
+    target.wrist_roll_deg = 179.0f;
+    ctx.target = target;
+    assert(agent2_run(&ctx) == 1);
+    assert(ctx.command.wrist_pitch_deg == 100.0f);
+    assert(ctx.command.wrist_roll_deg == 90.0f);
+    target.wrist_pitch_deg = 190.0f;
+    target.wrist_roll_deg = -181.0f;
+    ctx.target = target;
+    assert(agent2_run(&ctx) == 1);
+    assert(ctx.target.wrist_pitch_deg == -170.0f);
+    assert(ctx.target.wrist_roll_deg == 179.0f);
+    assert(ctx.command.wrist_pitch_deg == 100.0f);
+    assert(ctx.command.wrist_roll_deg == 90.0f);
+
+    target.wrist_pitch_deg = 350.0f; /* -10 deg after normalization */
+    target.wrist_roll_deg = 330.0f;  /* -30 deg after normalization */
+    ctx.target = target;
+    assert(agent2_run(&ctx) == 1);
+    assert(ctx.command.wrist_pitch_deg == 70.0f);
+    assert(ctx.command.wrist_roll_deg == 57.0f);
+}
+
 int main(void)
 {
     AgentPipelineContext ctx;
@@ -90,6 +172,7 @@ int main(void)
     assert(ctx.command.wrist_roll_deg != home_roll);
     assert(isfinite(ctx.command.elbow_roll_deg));
     test_no_fingers_through_pipeline();
+    test_elbow_roll_wrap_and_travel();
     puts("Major-only elbow with held wrist/gripper: PASS");
     return 0;
 }
