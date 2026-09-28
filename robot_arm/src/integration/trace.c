@@ -522,11 +522,13 @@ static float ramp_remaining(const ForearmMotionState *m)
 
 void trace_tick(const AgentPipelineContext *ctx)
 {
+    const ForearmJointCommand *command;
     TraceLine l;
     uint32_t us_now;
     uint32_t t_ms;
 
     if (ctx == NULL) return;
+    command = agent3_command_is_current_tick(ctx) ? &ctx->agent3_command : NULL;
     us_now = platform_trace_time_us();
     t_ms = ms_update(us_now);
 
@@ -534,12 +536,12 @@ void trace_tick(const AgentPipelineContext *ctx)
     f_u32(&l, ctx->ticks);
     f_u32(&l, t_ms);
     f_u32(&l, us_now - s_mark_us);
-    if (ctx->output.valid != 0U) {
-        f_fx(&l, ctx->output.elbow_roll_deg, 1U);
-        f_fx(&l, ctx->output.elbow_pitch_deg, 1U);
-        f_fx(&l, ctx->output.wrist_pitch_deg, 1U);
-        f_fx(&l, ctx->output.wrist_roll_deg, 1U);
-        f_fx(&l, ctx->output.gripper_norm, 2U);
+    if (command != NULL && command->valid != 0U) {
+        f_fx(&l, command->elbow_roll_deg, 1U);
+        f_fx(&l, command->elbow_pitch_deg, 1U);
+        f_fx(&l, command->wrist_pitch_deg, 1U);
+        f_fx(&l, command->wrist_roll_deg, 1U);
+        f_fx(&l, command->gripper_norm, 2U);
     } else {
         f_empty(&l, 5U);
     }

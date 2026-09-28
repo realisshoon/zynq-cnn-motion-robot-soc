@@ -363,6 +363,11 @@ int platform_tick_due(void)
     return 0;
 }
 
+uint32_t platform_tick_overrun_count(void)
+{
+    return 0U;
+}
+
 static void start_pipeline(AgentPipelineContext *ctx, PwmTrace *trace)
 {
     assert(platform_init() == 0);

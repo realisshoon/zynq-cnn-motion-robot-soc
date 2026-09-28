@@ -34,7 +34,9 @@ def main():
         "forearm_safety_check", "motion")]
     pipeline = (a1 + ["src/human_target_angle/agent1_forearm_stage.c",
                        "src/human_target_angle/forearm_mapping.c"] +
-                forearm_a2 + a3 + ["src/integration/agent_pipeline.c"])
+                forearm_a2 + a3 + ["src/integration/agent_pipeline.c",
+                                    "src/integration/cnn_app_event.c",
+                                    "src/record_replay/motion_record_replay.c"])
     cases = []
     for name in ("test_pose_mapping", "test_body_frame"):
         cases.append((name, a1 + [f"tests/human_target_angle/{name}.c"], [], []))
@@ -42,6 +44,8 @@ def main():
         ("test_input_pose_cnn", ["src/integration/input_pose_cnn.c",
          "tests/integration/test_input_pose_cnn.c"],
          ["-Itests/integration/stubs"], []),
+        ("test_cnn_app_event", ["src/integration/cnn_app_event.c",
+         "tests/integration/test_cnn_app_event.c"], [], []),
         ("test_cnn_trace", ["src/integration/trace.c",
          "tests/integration/test_cnn_trace.c"],
          ["-DROBOT_TRACE", "-ffunction-sections", "-fdata-sections", "-Wl,--gc-sections"], []),
@@ -56,6 +60,8 @@ def main():
         ("test_integration_smoke", pipeline + uart + ["tests/integration/test_integration_smoke.c"], [], []),
         ("test_major_only", pipeline + ["tests/integration/test_major_only.c"], [], []),
         ("test_trace", pipeline + ["tests/integration/test_trace.c"], ["-DROBOT_TRACE"], []),
+        ("test_motion_record_replay", pipeline +
+         ["tests/record_replay/test_motion_record_replay.c"], [], []),
         ("test_axis_replay", pipeline + uart + ["tests/robot_calibration/test_axis_replay.c"], [],
          ["etc/uart_pose_stream.bin", str(output / "axis_replay.csv")]),
         ("test_forearm_calibration", forearm_a2 + ["tests/robot_calibration/test_forearm_calibration.c"], [], []),
