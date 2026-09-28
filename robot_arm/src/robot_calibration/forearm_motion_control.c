@@ -29,19 +29,6 @@ static float wrap_to_180(float deg)
     return deg;
 }
 
-static float unwrap_angle(float raw_deg, float last_unwrapped_deg, int has_reference)
-{
-    float last_raw_deg;
-    float diff;
-
-    if (!has_reference) return raw_deg;
-
-    last_raw_deg = wrap_to_180(last_unwrapped_deg);
-    diff = wrap_to_180(raw_deg - last_raw_deg);
-
-    return last_unwrapped_deg + diff;
-}
-
 static float clamp_joint_angle(float angle_deg, const JointCalibration *config)
 {
     return clamp_value(angle_deg, config->min_deg, config->max_deg);
@@ -94,12 +81,12 @@ void forearm_motion_control_unwrap_target(ForearmAngleUnwrapState *state, HumanF
 {
     if (state == NULL || target == NULL) return;
 
-    target->elbow_roll_deg = unwrap_angle(target->elbow_roll_deg, state->yaw_deg, state->has_reference);
+    /* These are bounded position servos, not continuous rotation motors.
+     * Accumulated turns can turn -46 into +314 and pin a servo at its limit. */
+    target->elbow_roll_deg = wrap_to_180(target->elbow_roll_deg);
     if (target->wrist_valid) {
-        target->wrist_pitch_deg = unwrap_angle(target->wrist_pitch_deg, state->wrist_pitch_deg,
-                                               state->wrist_has_reference);
-        target->wrist_roll_deg = unwrap_angle(target->wrist_roll_deg, state->wrist_roll_deg,
-                                              state->wrist_has_reference);
+        target->wrist_pitch_deg = wrap_to_180(target->wrist_pitch_deg);
+        target->wrist_roll_deg = wrap_to_180(target->wrist_roll_deg);
         state->wrist_pitch_deg = target->wrist_pitch_deg;
         state->wrist_roll_deg = target->wrist_roll_deg;
         state->wrist_has_reference = 1;
@@ -107,4 +94,28 @@ void forearm_motion_control_unwrap_target(ForearmAngleUnwrapState *state, HumanF
 
     state->yaw_deg = target->elbow_roll_deg;
     state->has_reference = 1;
+}
+
+static int joint_reachable(float human_deg, const JointCalibration *config)
+{
+    float servo_deg;
+
+    if (!isfinite(human_deg)) return 0;
+    servo_deg = map_joint_angle(wrap_to_180(human_deg), config);
+    return servo_deg >= config->min_deg && servo_deg <= config->max_deg;
+}
+
+int forearm_motion_control_elbow_roll_reachable(float human_deg)
+{
+    return joint_reachable(human_deg, &forearm_calibration_config.elbow_roll);
+}
+
+int forearm_motion_control_wrist_pitch_reachable(float human_deg)
+{
+    return joint_reachable(human_deg, &forearm_calibration_config.wrist_pitch);
+}
+
+int forearm_motion_control_wrist_roll_reachable(float human_deg)
+{
+    return joint_reachable(human_deg, &forearm_calibration_config.wrist_roll);
 }

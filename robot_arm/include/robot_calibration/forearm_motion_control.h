@@ -34,13 +34,12 @@ void forearm_motion_control_apply_limits(ForearmJointCommand *command);
  * 것). elbow_pitch_deg([-90,90])는 wrap 대상이 아니다(docs/agent1_forearm.md,
  * "forearm_pitch에 circular unwrap을 적용하지 마라").
  *
- * forearm_motion_control_unwrap_target()은 이전 프레임 기준 최단 회전 방향으로
- * 위 세 각도를 풀어서 target을 in-place로 고쳐 쓴다. 호출자는
+ * forearm_motion_control_unwrap_target()은 과거 API 이름을 유지하지만,
+ * 유한 가동범위의 위치 서보에 맞게 세 각도 모두 [-180,180]의 대표각으로
+ * 정규화한다. 프레임 간 누적 unwrap은 하지 않는다. 호출자는
  * forearm_motion_control_validate_target()으로 이미 유효성을 확인한 target만
  * 넘겨야 한다. forearm_calibration_apply()보다 먼저, 매 HumanForearmTarget
- * 수신 시 1회 호출한다. legacy motion_control.c의 HumanAngleUnwrapState와
- * 같은 목적이며 구현도 같은 패턴이다(파일을 공유하지 않는 이유는
- * docs/agent2_design_log.md 참고 — legacy 경로를 건드리지 않기 위해서다).
+ * 수신 시 1회 호출한다. state에는 마지막 대표각을 진단용으로 보관한다.
  */
 typedef struct {
     float yaw_deg;
@@ -52,5 +51,11 @@ typedef struct {
 
 void forearm_motion_control_unwrap_state_init(ForearmAngleUnwrapState *state);
 void forearm_motion_control_unwrap_target(ForearmAngleUnwrapState *state, HumanForearmTarget *target);
+
+/* 각 축의 대표각을 현재 보정식으로 매핑했을 때 서보 가동범위 안인지 확인한다.
+ * 범위 밖이면 clamp로 양 끝까지 보내는 대신 통합 경로에서 직전 목표를 유지한다. */
+int forearm_motion_control_elbow_roll_reachable(float human_deg);
+int forearm_motion_control_wrist_pitch_reachable(float human_deg);
+int forearm_motion_control_wrist_roll_reachable(float human_deg);
 
 #endif /* ROBOT_CALIBRATION_FOREARM_MOTION_CONTROL_H */
