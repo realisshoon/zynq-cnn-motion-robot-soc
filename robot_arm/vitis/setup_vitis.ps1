@@ -108,8 +108,12 @@ $txt = $txt.Replace('excluding="_ide"', 'excluding="_ide|src/main.c|src/app/main
 [IO.File]::WriteAllText($cp, $txt, (New-Object Text.UTF8Encoding($false)))
 Write-Host "  [OK] .cproject 제외 항목 추가"
 
-# CNN 프레임 버퍼는 0x0A000000, 가중치/작업 버퍼는 0x10000000 이상에 고정된다.
-# 앱 이미지/스택/힙이 그 영역으로 자라면 링크 단계에서 실패하게 한다.
+# PS DDR base가 0x00100000이므로 CNN 프레임 버퍼(DDR_BASE + 0x0A000000)의 실제 절대
+# 주소는 0x0A100000이고, 가중치/작업 버퍼는 0x10000000 이상에 고정된다(Agent4 리뷰
+# 2026-09-27에서 이 주석의 이전 값 "0x0A000000"이 틀렸다고 지적함 -- 아래 링커 영역
+# 0x100000+0x9F00000은 0x0A000000에서 끝나므로 frame buffer(0x0A100000)까지 0x100000
+# bytes(1 MiB) 여유가 있어 실제로는 안 겹친다). 앱 이미지/스택/힙이 그 영역으로 자라면 링크
+# 단계에서 실패하게 한다.
 $ld = Join-Path (Join-Path (Join-Path $Workspace $AppName) "src") "lscript.ld"
 $ldText = [IO.File]::ReadAllText($ld)
 $oldRegion = 'ps7_ddr_0 : ORIGIN = 0x100000, LENGTH = 0x3FF00000'
@@ -117,7 +121,7 @@ $newRegion = 'ps7_ddr_0 : ORIGIN = 0x100000, LENGTH = 0x09F00000'
 if (-not $ldText.Contains($oldRegion)) { throw "lscript.ld DDR 영역이 예상과 다릅니다: $ld" }
 $ldText = $ldText.Replace($oldRegion, $newRegion)
 [IO.File]::WriteAllText($ld, $ldText, (New-Object Text.UTF8Encoding($false)))
-Write-Host "  [OK] 앱 DDR 상한 0x0A000000 설정 (CNN 버퍼와 분리)"
+Write-Host "  [OK] 앱 DDR 상한 0x0A000000 설정 (frame buffer 0x0A100000과 1 MiB 여유)"
 
 # ---- 3단계: 앱 빌드 ----
 Write-Host "3/3 앱 빌드"
