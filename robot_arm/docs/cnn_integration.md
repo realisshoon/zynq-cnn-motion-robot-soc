@@ -19,7 +19,7 @@ Vitis 2020.2에서 저장소 루트 기준:
 powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws_cnn_robot
 ```
 
-스크립트는 새 XSA로 standalone 플랫폼을 만들고 `xilffs`를 BSP에 넣으며, `SERVO_PWM_DRIVER_USE_XILINX`와 `ROBOT_TRACE`를 정의한다. `src`는 Vitis에 소프트 링크된다. 독립된 `main` 세 개는 제외한다. 앱 링커의 DDR 영역은 `0x00100000..0x09FFFFFF`로 제한하여 `0x0A000000` 영상 버퍼 및 `0x10000000` 이상 CNN 작업 영역과 겹치면 링크 오류가 나도록 한다. Debug ELF 경로는 `<Workspace>\robot_testbench\Debug\robot_testbench.elf`다. 이 ELF가 **빌드 성공**했다는 것은 보드에서 카메라/CNN/PWM이 정상 작동한다는 뜻은 아니다.
+스크립트는 새 XSA로 standalone 플랫폼을 만들고 `xilffs`를 BSP에 넣으며, `SERVO_PWM_DRIVER_USE_XILINX`와 `ROBOT_TRACE`를 정의한다. `src`는 Vitis에 소프트 링크된다. 독립된 `main` 세 개는 제외한다. 앱 링커의 DDR 영역은 `0x00100000..0x09FFFFFF`로 제한하여 `0x0A100000`에서 시작하는 영상 버퍼 및 `0x10000000` 이상 CNN 작업 영역과 겹치면 링크 오류가 나도록 한다. Debug ELF 경로는 `<Workspace>\robot_testbench\Debug\robot_testbench.elf`다. 이 ELF가 **빌드 성공**했다는 것은 보드에서 카메라/CNN/PWM이 정상 작동한다는 뜻은 아니다.
 
 UART TRACE 빌드는 921600 8N1이다. 기존 `A1/P3/A2/TK/SM/EV`에 `CN`(프레임·IRQ·시간), `CAM`(카메라 추적 PWM), `IN`(Agent1에 넘긴 2D 좌표), `CS`(CNN 누적 통계), `CE`(CNN 오류)가 추가됐다. `SM`의 서보 쓰기 수는 기본 빌드에서 0인 게 정상이다. 카메라 PWM은 별도 IP이므로 카메라 추적을 켜면 움직일 수 있다. `ROBOT_ARM_PWM_ENABLE`은 실제 로봇 서보 시험을 별도로 승인받은 빌드에서만 정의한다.
 
@@ -181,7 +181,7 @@ frame은 `0x002A3000` bytes이며 3개 buffer의 끝은 `0x0A8E9000` exclusive�
 SG는 `0x11200000`에서 시작한다.
 
 링커 영역 `0x00100000` + `0x09F00000`은 `0x0A000000` exclusive에서 끝나므로 첫
-frame buffer 전까지 `0x10000` bytes의 간격이 있고 주소상 겹치지 않는다. 다만
+frame buffer 전까지 `0x100000` bytes(1 MiB)의 간격이 있고 주소상 겹치지 않는다. 다만
 `setup_vitis.ps1` 111행의 "frame buffer는 0x0A000000" 주석은 실제 주소
 `0x0A100000`과 다르므로 공유 경계 담당자가 수정해야 한다. 이 리뷰에서는 Vitis link를
 재실행하지 않았으며, 기존 문서에 기록된 링크 성공 결과만 확인했다.
