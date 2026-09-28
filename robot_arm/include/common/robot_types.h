@@ -20,8 +20,8 @@ typedef struct {
 
 /* Pose detector output consumed by the human target angle module. */
 typedef struct {
-    Point2D finger1;
-    Point2D finger2;
+    Point2D finger1; /* thumb tip */
+    Point2D finger2; /* index fingertip */
     Point2D elbow;
     Point2D wrist;
     Point2D shoulder_l;
@@ -50,19 +50,20 @@ typedef struct {
  * elbow_roll: Body +Y azimuth, zero +Z, positive toward +X, [-180,180).
  * elbow_pitch: elevation above Body XZ, +Body Y positive, [-90,90].
  * Neither field is the legacy anatomical elbow inner angle.
- * wrist_pitch: positive about projected Finger1->Finger2 axis, [-180,180).
+ * wrist_pitch: positive about projected thumb-to-index (Finger1->Finger2) axis, [-180,180).
  * wrist_roll: RH about Elbow->Wrist relative to Body/forearm reference,
  * [-180,180). See docs/agent1_forearm.md for zero and singularities.
- * gripper: 0=CLOSE, 1=OPEN.
+ * gripper: continuous 0=CLOSE through 1=OPEN.
  * frame_id retains the last fresh major measurement's ID during HOLD.
- * valid covers major geometry only; elbow_roll_observable and hand_fresh
- * distinguish fresh elbow heading/wrist angles from retained/default values.
+ * valid covers major geometry only. wrist_valid records whether a wrist angle
+ * has ever been reconstructed for this target; hand_fresh marks a current
+ * frame observation. A valid major target may have wrist_valid=0.
  * A fresh 2D gripper observation may update while wrist angles are held. */
 typedef struct {
     float elbow_roll_deg, elbow_pitch_deg;
     float wrist_pitch_deg, wrist_roll_deg, gripper_norm;
     uint32_t frame_id;
-    uint8_t valid, elbow_roll_observable, hand_fresh;
+    uint8_t valid, elbow_roll_observable, hand_fresh, wrist_valid;
 } HumanForearmTarget;
 
 /* Active five-axis calibrated robot command: Agent2 -> Agent3.

@@ -89,16 +89,15 @@ Z를 camera +Z 쪽으로 강제하지 않는다. X의 해부학적 방향, Y의 
 | `elbow_deg` | 팔꿈치→어깨와 팔꿈치→손목의 내각. 완전히 편 팔=180°, 완전히 접힌 이상적 자세=0°. [0,180]. A2 편의를 위한 +90 또는 보각 변환을 A1에서 하지 않는다. |
 | `wrist_pitch_deg` | 아래의 F,H,A 정의로 `atan2(dot(A,F×H),dot(F,H))`. F와 H가 일치하면 0°, A축 오른손 방향이 양수. [-180,+180]. 단순 영상 위/아래 부호가 아니다. |
 | `wrist_roll_deg` | 아래의 R,N 정의로 `atan2(dot(F,R×N),dot(R,N))`. R=N이면 raw 0°, F축 오른손 방향이 양수. zero calibration 적용 시 offset을 뺀 뒤 필터링. [-180,+180]. |
-| `gripper_norm` | 0=CLOSE, 1=OPEN. 현재 Agent1은 hysteresis를 적용한 이진 의도를 출력한다. 물리 접촉 압력이나 관절각이 아니다. |
+| `gripper_norm` | 0=CLOSE, 1=OPEN, 사이는 손목-손가락 길이로 정규화한 2D 벌어짐의 연속값이다. 최근 3개 유효 비율의 중앙값과 약한 EMA로 좌표 흔들림을 줄이고, 별도 OPEN/CLOSE 상태에 hysteresis를 적용한다. 물리 접촉 압력이나 관절각이 아니다. |
 | `valid` | 사용 가능한 major target이라는 뜻. 손 좌표가 없으면 wrist/gripper는 이전값 또는 초기값일 수 있다. 모든 관절의 최신 관측을 보장하지 않는다. |
 
 손목의 정확한 정의:
 
 - F = normalize(wrist − elbow), H = normalize((finger1+finger2)/2 − wrist).
-- S = normalize(finger2 − finger1). Finger 라벨 순서가 부호에 영향을 준다.
-- Pitch axis A = normalize(S를 F에 수직 투영). 실패 시 normalize(Body Z × F).
-- Hand normal N = normalize(H × S)를 F에 수직 투영·정규화한 값.
-  이후 이전 normal과 반대면 부호를 맞추고 EMA를 적용한다.
+- S = normalize(finger2 − finger1) (엄지→검지). finger1=엄지 끝, finger2=검지 끝이며 라벨 순서가 부호에 영향을 준다.
+- Pitch axis A = normalize(S를 F에 수직 투영). 투영이 퇴화하면 hand HOLD.
+- Hand normal N = normalize(F × A). 이전 normal과 반대면 부호를 맞추고 EMA를 적용한다.
 - Roll reference R = Body Y를 F에 수직 투영·정규화.
   투영 품질이 부족하면 Body X, 그다음 Body Z를 같은 방식으로 시도한다.
 - Normal의 부호 이력, reference fallback, spike 제한, unwrap, EMA 때문에

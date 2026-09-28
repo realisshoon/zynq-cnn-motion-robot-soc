@@ -95,11 +95,16 @@ void forearm_motion_control_unwrap_target(ForearmAngleUnwrapState *state, HumanF
     if (state == NULL || target == NULL) return;
 
     target->elbow_roll_deg = unwrap_angle(target->elbow_roll_deg, state->yaw_deg, state->has_reference);
-    target->wrist_pitch_deg = unwrap_angle(target->wrist_pitch_deg, state->wrist_pitch_deg, state->has_reference);
-    target->wrist_roll_deg = unwrap_angle(target->wrist_roll_deg, state->wrist_roll_deg, state->has_reference);
+    if (target->wrist_valid) {
+        target->wrist_pitch_deg = unwrap_angle(target->wrist_pitch_deg, state->wrist_pitch_deg,
+                                               state->wrist_has_reference);
+        target->wrist_roll_deg = unwrap_angle(target->wrist_roll_deg, state->wrist_roll_deg,
+                                              state->wrist_has_reference);
+        state->wrist_pitch_deg = target->wrist_pitch_deg;
+        state->wrist_roll_deg = target->wrist_roll_deg;
+        state->wrist_has_reference = 1;
+    }
 
     state->yaw_deg = target->elbow_roll_deg;
-    state->wrist_pitch_deg = target->wrist_pitch_deg;
-    state->wrist_roll_deg = target->wrist_roll_deg;
     state->has_reference = 1;
 }

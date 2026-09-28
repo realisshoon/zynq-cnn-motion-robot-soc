@@ -22,6 +22,7 @@ static HumanForearmTarget target(float yaw, float pitch, float wp, float wr, flo
     t.valid = 1;
     t.elbow_roll_observable = 1;
     t.hand_fresh = 1;
+    t.wrist_valid = 1;
     return t;
 }
 

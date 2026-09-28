@@ -47,6 +47,33 @@ static void update_landmark(
     state->fresh = 1U;
 }
 
+static void update_finger_relative_2d(
+    PoseFingerRelative2DState *state,
+    Point2D finger_raw,
+    Point2D wrist_raw,
+    Point2D wrist_filtered,
+    float dt_filter_sec
+)
+{
+    float dx = finger_raw.x - wrist_raw.x;
+    float dy = finger_raw.y - wrist_raw.y;
+
+    if (!state->initialized) {
+        state->offset.x = dx;
+        state->offset.y = dy;
+        state->initialized = 1U;
+    } else {
+        float alpha = pm_alpha_from_tau(
+            dt_filter_sec, PM_FINGER_RELATIVE_2D_TAU_SEC);
+        state->offset.x += alpha * (dx - state->offset.x);
+        state->offset.y += alpha * (dy - state->offset.y);
+    }
+
+    state->ray_input.x = wrist_filtered.x + state->offset.x;
+    state->ray_input.y = wrist_filtered.y + state->offset.y;
+    state->ray_input.valid = 1U;
+}
+
 void pm_update_all_landmarks(
     PoseMappingContext *ctx,
     const HumanPose2D *pose,
@@ -77,6 +104,19 @@ void pm_update_all_landmarks(
     update_landmark(&ctx->finger2, pose->finger2,
                     (uint8_t)(frame_valid && pose->finger2.valid),
                     dt_filter_sec);
+
+    /* Preserve the ordinary landmark EMA for the gripper and legacy path.
+     * For tracked 3D fingers, smooth their displacement from the wrist so
+     * whole-hand translation follows the wrist without the longer finger
+     * offset time constant adding lag to that translation. */
+    if (ctx->wrist.fresh && ctx->finger1.fresh)
+        update_finger_relative_2d(&ctx->finger1_relative_2d,
+                                  pose->finger1, pose->wrist,
+                                  ctx->wrist.value, dt_filter_sec);
+    if (ctx->wrist.fresh && ctx->finger2.fresh)
+        update_finger_relative_2d(&ctx->finger2_relative_2d,
+                                  pose->finger2, pose->wrist,
+                                  ctx->wrist.value, dt_filter_sec);
 }
 
 uint8_t pm_major_all_fresh(const PoseMappingContext *ctx)

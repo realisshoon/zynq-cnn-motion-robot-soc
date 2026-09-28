@@ -28,6 +28,13 @@ typedef struct {
     uint8_t fresh;
 } PoseLandmarkState;
 
+/* Separate wrist-relative 2D input for finger 3D reconstruction. */
+typedef struct {
+    Point2D offset;
+    Point2D ray_input;
+    uint8_t initialized;
+} PoseFingerRelative2DState;
+
 /* Forearm wrist depth selection: fixed, trailing 60-frame window (~3s at 20Hz). */
 #define POSE_FINGER_BRANCH_WINDOW 60U
 
@@ -39,6 +46,14 @@ typedef struct {
     uint8_t prev_valid;
 } PoseFingerBranchState;
 
+typedef enum {
+    PM_GRIPPER_HOLD_NONE = 0,
+    PM_GRIPPER_HOLD_MISSING = 1,
+    PM_GRIPPER_HOLD_NONFINITE = 2,
+    PM_GRIPPER_HOLD_HAND_SCALE = 3,
+    PM_GRIPPER_HOLD_SHOULDER_SPAN = 4
+} PoseGripperHoldReason;
+
 typedef struct {
     PoseLandmarkState shoulder_l;
     PoseLandmarkState shoulder_r;
@@ -46,6 +61,8 @@ typedef struct {
     PoseLandmarkState wrist;
     PoseLandmarkState finger1;
     PoseLandmarkState finger2;
+    PoseFingerRelative2DState finger1_relative_2d;
+    PoseFingerRelative2DState finger2_relative_2d;
 
     uint32_t last_frame_id;
     uint8_t last_frame_id_valid;
@@ -67,11 +84,31 @@ typedef struct {
     Point3D finger_parent_wrist;
 
     /* Four near/far thumb/index combinations are tracked independently.
-     * No branch is committed before a full evidence window is available. */
+     * The first pick waits for 60 input frames, then uses available evidence. */
     PoseFingerBranchState finger_branch[4];
     uint8_t finger_branch_ring;
     uint8_t finger_branch_selected;
     uint8_t finger_branch_selected_valid;
+    /* Frames since this arm's tracker started, capped at the initial wait.
+     * This clock continues through missed finger detections and branch resets. */
+    uint8_t finger_branch_elapsed_frames;
+    /* First 60 input frames: retain each branch's score and latest wrist-
+     * relative geometry even when its consecutive tracker is reset. */
+    float finger_branch_initial_score_sum[4];
+    uint8_t finger_branch_initial_count[4];
+    Point3D finger_branch_initial_finger1_relative[4];
+    Point3D finger_branch_initial_finger2_relative[4];
+    /* Sticky across pm_reset_finger_branch_tracker(): once any branch has
+     * ever been picked, later re-acquisition (after a brief dropout, a
+     * plane-quality drop, etc.) only needs the short tracking window, not
+     * the full first-pick window again. Only pose_mapping_init/_reset
+     * (whole-context memset) clears this. */
+    uint8_t finger_branch_ever_selected;
+    /* Consecutive frames where finger1/finger2 were not both fresh. Used to
+     * tell a brief CNN dropout (evidence just paused, do not discard it)
+     * from a genuinely sustained loss (discard, the hand may now be posed
+     * differently). See PM_FINGER_DROPOUT_TOLERANCE_FRAMES. */
+    uint16_t finger_gap_frames;
 
     /*
      * 안정화된 Human Body Coordinate.
@@ -119,7 +156,19 @@ typedef struct {
     uint8_t major_angle_valid;
     uint8_t hand_angle_valid;
 
-    /* 0=CLOSE, 1=OPEN 의도 */
+    /* Continuous gripper command and independent hysteretic OPEN/CLOSE state.
+     * Recent valid ratios reject an isolated one-frame finger spike. */
+    float gripper_finger_span_px;
+    float gripper_hand_span_px;
+    float gripper_open_ratio;
+    float gripper_ratio_used;
+    float gripper_norm_value;
+    float gripper_ratio_history[2];
+    uint8_t gripper_ratio_count;
+    uint8_t gripper_last_hold;
+    uint8_t gripper_hold_reason;
+    uint32_t gripper_last_update_frame_id;
+    uint8_t gripper_last_update_frame_valid;
     uint8_t gripper_state;
     uint8_t gripper_initialized;
 
