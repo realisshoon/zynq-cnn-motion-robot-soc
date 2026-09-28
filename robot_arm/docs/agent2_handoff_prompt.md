@@ -70,7 +70,7 @@ X/Z fallback, normal history, zero calibration 때문에 프레임마다 영향�
 | base_deg | `atan2(upper·X,upper·Z)`. +Z=0, +X=+90, -X=-90. [-180,+180]. 수직 상완에서 방위각 불확정. |
 | shoulder_deg | Body XZ plane=0, +Y쪽 양수/-Y쪽 음수. [-90,+90]. |
 | elbow_deg | human 내각: straight=180, folded=0. [0,180]. A1 의미 변경 금지. |
-| wrist_pitch_deg | F=전완 단위방향, H=손목→finger center 단위방향, S=finger1→finger2 단위방향. A=normalize(S의 F 수직 투영), 실패 시 normalize(Z×F). `atan2(A·(F×H),F·H)`; F=H이면 0, A축 오른손 방향 양수. [-180,+180]. |
+| wrist_pitch_deg | F=전완 단위방향, H=손목→finger center 단위방향, S=finger1→finger2(엄지→검지) 단위방향. A=normalize(S의 F 수직 투영), 퇴화 시 hand HOLD. `atan2(A·(F×H),F·H)`; F=H이면 0, A축 오른손 방향 양수. [-180,+180]. |
 | wrist_roll_deg | R=Y의 F 수직 투영 후 정규화, 품질 부족 시 X→Z fallback. N=손 평면 normal을 F에 투영한 후 부호 이력/EMA 적용. `atan2(F·(R×N),R·N)`. raw zero=R=N, F축 오른손 방향 양수. calibration offset 차감/필터 후 [-180,+180]. |
 | gripper_norm | 0=CLOSE, 1=OPEN; 현재 이진 의도. 그대로 전달. |
 | valid | 사용 가능한 major target. 손목/그리퍼의 최신 관측 여부와 동일하지 않음. |

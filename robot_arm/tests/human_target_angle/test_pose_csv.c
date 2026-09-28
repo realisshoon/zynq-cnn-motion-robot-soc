@@ -79,7 +79,9 @@ int main(int argc, char **argv)
         "finger2_x3d,finger2_y3d,finger2_z,"
         "elbow_roll_deg,elbow_pitch_deg,wrist_pitch_deg,wrist_roll_deg,gripper_norm,"
         "target_frame_id,elbow_roll_observable,hand_fresh,body_frame_valid,raw_elbow_roll_deg,raw_elbow_pitch_deg,"
-        "body_x_x,body_x_y,body_x_z,body_y_x,body_y_y,body_y_z,body_z_x,body_z_y,body_z_z,active_arm\n"
+        "body_x_x,body_x_y,body_x_z,body_y_x,body_y_y,body_y_z,body_z_x,body_z_y,body_z_z,active_arm,"
+        "gripper_d_finger_px,gripper_d_hand_px,gripper_open_ratio,gripper_ratio_used,gripper_state,gripper_hold,gripper_hold_reason,"
+        "finger_branch_max_streak,finger_branch_selected_valid,finger_branch_ever_selected\n"
     );
 
     /* header skip */
@@ -88,6 +90,7 @@ int main(int argc, char **argv)
     }
 
     while (fgets(line, sizeof(line), in)) {
+        unsigned finger_branch_max_streak = 0U;
         int n = sscanf(
             line,
             "%u,%f,%d,"
@@ -129,6 +132,9 @@ int main(int argc, char **argv)
             &mapping, &pose, side, dt, &target
         );
         ctx = mapping.pose;
+        for (unsigned i = 0U; i < 4U; ++i)
+            if (ctx.finger_branch[i].consecutive_frames > finger_branch_max_streak)
+                finger_branch_max_streak = ctx.finger_branch[i].consecutive_frames;
         rows++;
 
         fprintf(out,
@@ -139,9 +145,10 @@ int main(int argc, char **argv)
             "%.6f,%.6f,%.6f,"
             "%.6f,%.6f,%.6f,"
             "%.6f,%.6f,%.6f,"
-            "%.6f,%.6f,%.6f,%.6f,%.1f,"
+            "%.6f,%.6f,%.6f,%.6f,%.6f,"
             "%u,%u,%u,%u,%.6f,%.6f,"
-            "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u\n",
+            "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u,"
+            "%.6f,%.6f,%.6f,%.6f,%u,%u,%u,%u,%u,%u\n",
             frame_id,time_sec,update_ret,(unsigned)target.valid,
             (unsigned)(ctx.shoulder_l.fresh && ctx.shoulder_r.fresh &&
                        ctx.elbow.fresh && ctx.wrist.fresh),
@@ -158,7 +165,14 @@ int main(int argc, char **argv)
             mapping.raw_elbow_roll_deg,mapping.raw_elbow_pitch_deg,
             ctx.body_x_axis.x,ctx.body_x_axis.y,ctx.body_x_axis.z,
             ctx.body_y_axis.x,ctx.body_y_axis.y,ctx.body_y_axis.z,
-            ctx.body_z_axis.x,ctx.body_z_axis.y,ctx.body_z_axis.z,(unsigned)side
+            ctx.body_z_axis.x,ctx.body_z_axis.y,ctx.body_z_axis.z,(unsigned)side,
+            ctx.gripper_finger_span_px,ctx.gripper_hand_span_px,
+            ctx.gripper_open_ratio,ctx.gripper_ratio_used,
+            (unsigned)ctx.gripper_state,(unsigned)ctx.gripper_last_hold,
+            (unsigned)ctx.gripper_hold_reason,
+            finger_branch_max_streak,
+            (unsigned)ctx.finger_branch_selected_valid,
+            (unsigned)ctx.finger_branch_ever_selected
         );
     }
 

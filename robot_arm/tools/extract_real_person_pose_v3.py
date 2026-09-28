@@ -2,6 +2,10 @@
 """
 실제 사람 영상 -> CNN 대체 2D landmark 추출 + overlay + CSV 저장 (v3)
 
+손가락 필드: finger1=엄지 끝, finger2=검지 끝.
+기본적으로 원본 영상의 손목 주변 crop에 Hand 모델을 적용해 실제 fingertip을
+찾는다. 손을 찾지 못하면 손가락을 invalid로 남겨 Agent1이 이전 값을 HOLD한다.
+
 중요 변경:
 - 입력 영상을 Agent1 카메라 좌표계와 맞추기 위해 기본 640x480으로 resize한 뒤
   MediaPipe를 수행한다.
@@ -12,6 +16,7 @@
 
 import argparse
 import csv
+import math
 import cv2
 
 try:
@@ -24,6 +29,7 @@ except ImportError:
     )
 
 mp_pose = mp.solutions.pose
+mp_hands = mp.solutions.hands
 
 
 def valid_lm(lm, min_visibility):
@@ -32,6 +38,66 @@ def valid_lm(lm, min_visibility):
 
 def px(lm, w, h):
     return float(lm.x * w), float(lm.y * h)
+
+
+def detect_hand_tips(source_frame, pose_lms, wrist_id, elbow_id,
+                     shoulder_id, opposite_shoulder_id, hands,
+                     min_visibility):
+    """Find thumb/index tips near the active Pose wrist, in source pixels."""
+    h, w = source_frame.shape[:2]
+    wrist = pose_lms[wrist_id]
+    if not valid_lm(wrist, min_visibility):
+        return None
+    wx, wy = px(wrist, w, h)
+    elbow = pose_lms[elbow_id]
+    ex, ey = px(elbow, w, h) if valid_lm(elbow, min_visibility) else (wx, wy)
+    arm_len = math.hypot(wx - ex, wy - ey)
+    left_shoulder = pose_lms[shoulder_id]
+    right_shoulder = pose_lms[opposite_shoulder_id]
+    shoulder_len = 0.0
+    if valid_lm(left_shoulder, min_visibility) and valid_lm(right_shoulder, min_visibility):
+        sx, sy = px(left_shoulder, w, h)
+        ox, oy = px(right_shoulder, w, h)
+        shoulder_len = math.hypot(sx - ox, sy - oy)
+
+    # A square around the wrist enlarges a small hand for the hand model.
+    # Offset slightly past the wrist, while leaving room for a folded hand.
+    side = max(1.8 * arm_len, 0.7 * shoulder_len, 0.08 * min(w, h))
+    cx, cy = wx + 0.2 * (wx - ex), wy + 0.2 * (wy - ey)
+    x0, y0 = max(0, int(cx - side / 2)), max(0, int(cy - side / 2))
+    x1, y1 = min(w, int(cx + side / 2)), min(h, int(cy + side / 2))
+    if x1 - x0 < 20 or y1 - y0 < 20:
+        return None
+    crop = source_frame[y0:y1, x0:x1]
+    result = hands.process(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+    if not result.multi_hand_landmarks:
+        return None
+
+    # Hands handedness assumes a mirrored selfie image. Instead, associate
+    # detections with the requested arm by proximity to its Pose wrist.
+    candidates = []
+    for hand in result.multi_hand_landmarks:
+        lms = hand.landmark
+        hand_wrist = lms[mp_hands.HandLandmark.WRIST.value]
+        hx = x0 + hand_wrist.x * (x1 - x0)
+        hy = y0 + hand_wrist.y * (y1 - y0)
+        distance = math.hypot(hx - wx, hy - wy)
+        candidates.append((distance, lms))
+    distance, hand_lms = min(candidates, key=lambda item: item[0])
+    wrist_limit = min(0.35 * side,
+                      max(0.5 * arm_len, 0.15 * shoulder_len, 0.025 * min(w, h)))
+    if distance > wrist_limit:
+        return None
+
+    tips = []
+    for landmark in (mp_hands.HandLandmark.THUMB_TIP,
+                     mp_hands.HandLandmark.INDEX_FINGER_TIP):
+        tip = hand_lms[landmark.value]
+        if not (math.isfinite(tip.x) and math.isfinite(tip.y) and
+                0.0 <= tip.x <= 1.0 and 0.0 <= tip.y <= 1.0):
+            return None
+        tips.append((x0 + tip.x * (x1 - x0), y0 + tip.y * (y1 - y0)))
+    return tips
 
 
 def draw_point(frame, name, xy, valid, color):
@@ -68,6 +134,10 @@ def main():
     ap.add_argument("--input", required=True)
     ap.add_argument("--side", choices=["left", "right"], default="right")
     ap.add_argument("--target-fps", type=float, default=15.0)
+    ap.add_argument("--model-complexity", type=int, choices=(0, 1, 2), default=1,
+                    help="MediaPipe Pose model complexity (default: 1)")
+    ap.add_argument("--infer-at-source-size", action="store_true",
+                    help="Run Pose on the original video frame, but keep output coordinates at --width/--height")
     ap.add_argument("--visibility", type=float, default=0.25)
     ap.add_argument("--width", type=int, default=640)
     ap.add_argument("--height", type=int, default=480)
@@ -127,7 +197,7 @@ def main():
 
     pose_model = mp_pose.Pose(
         static_image_mode=False,
-        model_complexity=1,
+        model_complexity=args.model_complexity,
         smooth_landmarks=True,
         enable_segmentation=False,
         min_detection_confidence=0.5,
@@ -151,10 +221,13 @@ def main():
         next_sample_time += sample_period
         out_frame_id += 1
 
-        # 핵심: Agent1의 기본 카메라 좌표계와 동일한 640x480 기준으로 맞춘다.
+        # Pose coordinates are normalized, so inference may use the source
+        # frame while the CSV/overlay remain in the Agent1 output coordinate system.
+        source_frame = frame
         frame = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_LINEAR)
+        inference_frame = source_frame if args.infer_at_source_size else frame
 
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb = cv2.cvtColor(inference_frame, cv2.COLOR_BGR2RGB)
         result = pose_model.process(rgb)
 
         data = {
@@ -180,8 +253,8 @@ def main():
                 "shoulder_r": lms[sr_id],
                 "elbow": lms[elbow_id],
                 "wrist": lms[wrist_id],
-                "finger1": lms[index_id],
-                "finger2": lms[thumb_id],
+                "finger1": lms[thumb_id],
+                "finger2": lms[index_id],
             }
 
             pts = {}

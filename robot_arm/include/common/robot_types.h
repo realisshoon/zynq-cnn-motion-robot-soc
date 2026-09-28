@@ -20,8 +20,8 @@ typedef struct {
 
 /* Pose detector output consumed by the human target angle module. */
 typedef struct {
-    Point2D finger1;
-    Point2D finger2;
+    Point2D finger1; /* thumb tip */
+    Point2D finger2; /* index fingertip */
     Point2D elbow;
     Point2D wrist;
     Point2D shoulder_l;
@@ -50,10 +50,10 @@ typedef struct {
  * elbow_roll: Body +Y azimuth, zero +Z, positive toward +X, [-180,180).
  * elbow_pitch: elevation above Body XZ, +Body Y positive, [-90,90].
  * Neither field is the legacy anatomical elbow inner angle.
- * wrist_pitch: positive about projected Finger1->Finger2 axis, [-180,180).
+ * wrist_pitch: positive about projected thumb-to-index (Finger1->Finger2) axis, [-180,180).
  * wrist_roll: RH about Elbow->Wrist relative to Body/forearm reference,
  * [-180,180). See docs/agent1_forearm.md for zero and singularities.
- * gripper: 0=CLOSE, 1=OPEN.
+ * gripper: continuous 0=CLOSE through 1=OPEN.
  * frame_id retains the last fresh major measurement's ID during HOLD.
  * valid covers major geometry only; elbow_roll_observable and hand_fresh
  * distinguish fresh elbow heading/wrist angles from retained/default values.

@@ -229,15 +229,15 @@ int main(void)
     assert(ret == 1);
     assert(target.valid == 1U);
     assert(finite_target(&target));
-    assert(target.gripper_norm == 0.0f || target.gripper_norm == 1.0f);
+    assert(target.gripper_norm >= 0.0f && target.gripper_norm <= 1.0f);
 
-    printf("frame1 base=%7.3f shoulder=%7.3f elbow=%7.3f pitch=%7.3f roll=%7.3f grip=%u\n",
+    printf("frame1 base=%7.3f shoulder=%7.3f elbow=%7.3f pitch=%7.3f roll=%7.3f grip=%.3f\n",
            target.base_deg,
            target.shoulder_deg,
            target.elbow_deg,
            target.wrist_pitch_deg,
            target.wrist_roll_deg,
-           (unsigned)target.gripper_norm);
+           target.gripper_norm);
 
     previous = target;
 

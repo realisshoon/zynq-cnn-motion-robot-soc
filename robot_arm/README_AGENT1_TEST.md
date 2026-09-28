@@ -19,9 +19,9 @@ HumanPose2D와 기존 36-byte UART packet, 추출기, 로그 저장 기능을 �
 |---|---|
 | elbow_roll_deg | Body +Y 주위 방위각; +Z=0°, +X 쪽 양수, [-180,180), wrap |
 | elbow_pitch_deg | Body XZ 평면 기준 고도각; +Y 위쪽 양수, [-90,90], no wrap |
-| wrist_pitch_deg | 손·전완 일직선=0°, 전완에 수직 투영한 Finger1→Finger2 축 주위 양수, [-180,180) |
+| wrist_pitch_deg | 손·전완 일직선=0°, 전완에 수직 투영한 Finger1→Finger2 (엄지→검지) 축 주위 양수, [-180,180) |
 | wrist_roll_deg | 전완 축 주위 오른손 회전; Body/전완 기준 normal과 손 normal 일치=0°, [-180,180) |
-| gripper_norm | 0=CLOSE, 1=OPEN |
+| gripper_norm | 0=CLOSE, 1=OPEN, 사이는 정규화된 손가락 벌어짐의 연속값 |
 
 elbow_roll은 전완 자체의 비틀림이 아닌 방위각이다.
 elbow_pitch는 기존 팔꿈치 내각(펴진 팔≈180°)과 다르다.

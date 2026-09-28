@@ -24,7 +24,8 @@ extern "C" {
  * [8]      pose_valid
  * [9]      point valid mask
  * [10..33] six (x,y) uint16 little-endian pairs
- *           finger1, finger2, elbow, wrist, shoulder_l, shoulder_r
+ *           finger1 (thumb), finger2 (index), elbow, wrist,
+ *           shoulder_l, shoulder_r
  * [34..35] CRC16-CCITT, little-endian
  *
  * CRC coverage: packet[2] ~ packet[33]

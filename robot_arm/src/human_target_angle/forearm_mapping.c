@@ -78,8 +78,8 @@ int fm_calculate_hand(ForearmMappingContext *ctx, float span, float age_dt,
     memset(&hand, 0, sizeof(hand));
     if (pm_calculate_hand_with_reference(&ctx->pose, span, age_dt, filter_dt,
                                          &ctx->wrist_reference, &hand) != 0) return -1;
-    /* Preserve the original HUMAN wrist flexion sign: positive about the
-     * projected Finger1->Finger2 axis. No physical servo sign is applied. */
+    /* HUMAN wrist flexion is positive about the projected thumb-to-index
+     * (Finger1->Finger2) axis. */
     out->wrist_pitch_deg = fm_wrap180(hand.wrist_pitch_deg);
     out->wrist_roll_deg = fm_wrap180(hand.wrist_roll_deg);
     out->gripper_norm = hand.gripper_norm;
@@ -127,6 +127,8 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
         return hold_or_invalid(ctx, out); /* no re-filtering or time aging */
     p->last_frame_id = pose->frame_id;
     p->last_frame_id_valid = 1U;
+    p->gripper_last_hold = 1U;
+    p->gripper_hold_reason = PM_GRIPPER_HOLD_MISSING;
     if (!isfinite(dt) || dt <= 0.0f) dt = 1.0f / PM_DEFAULT_FPS;
     filter_dt = pm_sanitize_filter_dt(dt);
     if (ctx->last_target_valid) p->target_age_sec += dt;
@@ -150,7 +152,17 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
     if (pm_fingers_both_fresh(p) &&
         pm_update_gripper_from_2d(p, span, &fresh.gripper_norm) == 0)
         gripper_fresh = 1U;
-    if (!pm_fingers_both_fresh(p)) pm_reset_finger_branch_tracker(p);
+    if (pm_fingers_both_fresh(p)) {
+        p->finger_gap_frames = 0U;
+    } else {
+        if (p->finger_gap_frames < 0xFFFFU) p->finger_gap_frames++;
+        /* A brief CNN dropout should not throw away branch evidence that
+         * was still accumulating (or already selected) toward this same
+         * hand pose. Only a sustained loss is treated as the hand possibly
+         * having moved to a different, unrelated configuration. */
+        if (p->finger_gap_frames > PM_FINGER_DROPOUT_TOLERANCE_FRAMES)
+            pm_reset_finger_branch_tracker(p);
+    }
     if (!pm_fingers_both_fresh(p) ||
         pm_reconstruct_finger_pose3d_tracked(p, filter_dt) != 0 ||
         fm_calculate_hand(ctx, span, dt, filter_dt, &fresh) != 0) {
