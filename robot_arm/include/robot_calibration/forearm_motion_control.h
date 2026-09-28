@@ -13,8 +13,9 @@
  * [-90,90]을 벗어나지 않아야 하므로(wrap 없음) 범위도 확인한다(약간의
  * 여유를 둔다). elbow_roll/wrist_pitch/wrist_roll은 주기적(wrap)이라
  * 범위를 제한하지 않는다.
- * elbow_roll_observable/hand_fresh는 유효성 판정에 넣지 않는다 — 이들은
- * "관측됐는가"를 뜻하지 "이번 target을 써도 되는가"를 뜻하지 않는다
+ * elbow_roll_observable/hand_fresh/wrist_valid는 유효성 판정에 넣지 않는다 — 이들은
+ * 관측 상태를 뜻한다. wrist_valid=0이면 통합 경로에서 로봇 손목과
+ * 그리퍼를 현재 위치에 유지하고 팔꿈치만 적용한다
  * (docs/agent1_forearm.md 참고). 2026-09-22: Agent1이 TableFrame(외부
  * up/forward 보정) 요구를 없애고 기존 6축과 같은 BodyFrame(어깨 기반)으로
  * 바꿔서, calibrated 필드 자체가 더 이상 없다.
@@ -46,6 +47,7 @@ typedef struct {
     float wrist_pitch_deg;
     float wrist_roll_deg;
     int has_reference;
+    int wrist_has_reference;
 } ForearmAngleUnwrapState;
 
 void forearm_motion_control_unwrap_state_init(ForearmAngleUnwrapState *state);

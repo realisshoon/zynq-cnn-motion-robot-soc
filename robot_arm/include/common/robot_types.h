@@ -55,14 +55,15 @@ typedef struct {
  * [-180,180). See docs/agent1_forearm.md for zero and singularities.
  * gripper: continuous 0=CLOSE through 1=OPEN.
  * frame_id retains the last fresh major measurement's ID during HOLD.
- * valid covers major geometry only; elbow_roll_observable and hand_fresh
- * distinguish fresh elbow heading/wrist angles from retained/default values.
+ * valid covers major geometry only. wrist_valid records whether a wrist angle
+ * has ever been reconstructed for this target; hand_fresh marks a current
+ * frame observation. A valid major target may have wrist_valid=0.
  * A fresh 2D gripper observation may update while wrist angles are held. */
 typedef struct {
     float elbow_roll_deg, elbow_pitch_deg;
     float wrist_pitch_deg, wrist_roll_deg, gripper_norm;
     uint32_t frame_id;
-    uint8_t valid, elbow_roll_observable, hand_fresh;
+    uint8_t valid, elbow_roll_observable, hand_fresh, wrist_valid;
 } HumanForearmTarget;
 
 /* Active five-axis calibrated robot command: Agent2 -> Agent3.

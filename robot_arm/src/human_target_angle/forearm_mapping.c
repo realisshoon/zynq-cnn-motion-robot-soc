@@ -68,23 +68,32 @@ int fm_calculate_angles(ForearmMappingContext *ctx, float dt,
     return 0;
 }
 
-int fm_calculate_hand(ForearmMappingContext *ctx, float span, float age_dt,
-                     float filter_dt, HumanForearmTarget *out)
+static int fm_calculate_hand_impl(ForearmMappingContext *ctx, float span,
+                                  float age_dt, float filter_dt,
+                                  uint8_t hand_fresh, HumanForearmTarget *out)
 {
     HumanJointTarget hand;
     /* No observed heading yet: the pole's arbitrary initial yaw cannot
      * define a measured roll zero. Caller holds/defaults hand fields. */
     if (!ctx || !out || !ctx->elbow_roll_initialized) return -1;
     memset(&hand, 0, sizeof(hand));
-    if (pm_calculate_hand_with_reference(&ctx->pose, span, age_dt, filter_dt,
-                                         &ctx->wrist_reference, &hand) != 0) return -1;
+    if (pm_calculate_hand_with_reference_ex(&ctx->pose, span, age_dt, filter_dt,
+                                            &ctx->wrist_reference,
+                                            hand_fresh, &hand) != 0) return -1;
     /* HUMAN wrist flexion is positive about the projected thumb-to-index
      * (Finger1->Finger2) axis. */
     out->wrist_pitch_deg = fm_wrap180(hand.wrist_pitch_deg);
     out->wrist_roll_deg = fm_wrap180(hand.wrist_roll_deg);
     out->gripper_norm = hand.gripper_norm;
-    out->hand_fresh = 1U;
+    out->hand_fresh = hand_fresh;
+    out->wrist_valid = 1U;
     return 0;
+}
+
+int fm_calculate_hand(ForearmMappingContext *ctx, float span, float age_dt,
+                     float filter_dt, HumanForearmTarget *out)
+{
+    return fm_calculate_hand_impl(ctx, span, age_dt, filter_dt, 1U, out);
 }
 
 static int hold_or_invalid(ForearmMappingContext *ctx, HumanForearmTarget *out)
@@ -112,7 +121,9 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
     HumanForearmTarget fresh;
     HumanPose2D finite_pose;
     float filter_dt, span = 0.0f;
-    uint8_t gripper_fresh = 0U;
+    int finger_status = -1;
+    uint8_t gripper_fresh = 0U, hand_updated = 0U;
+    uint8_t selected_before, hand_observed;
     if (!out) return -1;
     memset(out, 0, sizeof(*out));
     if (!ctx || !pose || !ctx->pose.initialized ||
@@ -127,6 +138,8 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
         return hold_or_invalid(ctx, out); /* no re-filtering or time aging */
     p->last_frame_id = pose->frame_id;
     p->last_frame_id_valid = 1U;
+    if (p->finger_branch_elapsed_frames < POSE_FINGER_BRANCH_WINDOW)
+        p->finger_branch_elapsed_frames++;
     p->gripper_last_hold = 1U;
     p->gripper_hold_reason = PM_GRIPPER_HOLD_MISSING;
     if (!isfinite(dt) || dt <= 0.0f) dt = 1.0f / PM_DEFAULT_FPS;
@@ -163,22 +176,35 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
         if (p->finger_gap_frames > PM_FINGER_DROPOUT_TOLERANCE_FRAMES)
             pm_reset_finger_branch_tracker(p);
     }
-    if (!pm_fingers_both_fresh(p) ||
-        pm_reconstruct_finger_pose3d_tracked(p, filter_dt) != 0 ||
-        fm_calculate_hand(ctx, span, dt, filter_dt, &fresh) != 0) {
+    selected_before = p->finger_branch_selected_valid;
+    hand_observed = pm_fingers_both_fresh(p);
+    if (hand_observed)
+        finger_status = pm_reconstruct_finger_pose3d_tracked(p, filter_dt);
+    if (finger_status != 0 && !p->finger_branch_selected_valid &&
+        p->finger_branch_elapsed_frames >= POSE_FINGER_BRANCH_WINDOW)
+        finger_status = pm_select_initial_finger_branch(p);
+    /* The initial estimate is based on the full 60-frame score history,
+     * possibly with no finger detection in the current frame. */
+    if (!selected_before && p->finger_branch_selected_valid)
+        hand_observed = 0U;
+    if (finger_status == 0 &&
+        fm_calculate_hand_impl(ctx, span, dt, filter_dt,
+                               hand_observed, &fresh) == 0)
+        hand_updated = 1U;
+    if (!hand_updated) {
         if (ctx->last_target_valid) {
             fresh.wrist_pitch_deg = ctx->last_target.wrist_pitch_deg;
             fresh.wrist_roll_deg = ctx->last_target.wrist_roll_deg;
+            fresh.wrist_valid = ctx->last_target.wrist_valid;
         }
         if (!gripper_fresh) fresh.gripper_norm = ctx->last_target_valid
             ? ctx->last_target.gripper_norm : 1.0f;
     }
     fresh.frame_id = pose->frame_id;
-    /* Agent2 currently does not gate wrist fields on hand_fresh. Until the
-     * first reliable wrist pose exists, a valid target would send arbitrary
-     * zero angles rather than retain the boot home. Keep the whole target
-     * invalid during this startup-only ambiguity. */
-    if (!ctx->last_target_valid && !fresh.hand_fresh) {
+    /* At 60 frames, major angles may start even without a hand solution.
+     * Agent2 holds wrist/gripper at the current robot command until then. */
+    if (!ctx->last_target_valid && !hand_updated &&
+        p->finger_branch_elapsed_frames < POSE_FINGER_BRANCH_WINDOW) {
         *out = fresh;
         return -1;
     }

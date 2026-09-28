@@ -158,11 +158,20 @@ int pm_calculate_hand_angles_and_gripper(
 }
 
 int pm_calculate_hand_with_reference(
+    PoseMappingContext *ctx, float shoulder_span_px, float dt_age_sec,
+    float dt_filter_sec, const Vec3 *reference, HumanJointTarget *out)
+{
+    return pm_calculate_hand_with_reference_ex(ctx, shoulder_span_px, dt_age_sec,
+                                               dt_filter_sec, reference, 1U, out);
+}
+
+int pm_calculate_hand_with_reference_ex(
     PoseMappingContext *ctx,
     float shoulder_span_px,
     float dt_age_sec,
     float dt_filter_sec,
     const Vec3 *reference,
+    uint8_t update_gripper,
     HumanJointTarget *out
 )
 {
@@ -388,8 +397,12 @@ int pm_calculate_hand_with_reference(
      * 0=CLOSE에서 1=OPEN까지 연속값을 전달한다.
      * 실제 물체 접촉 압력은 Agent3의 압력센서 feedback이 담당한다.
      */
-    if (pm_update_gripper_from_2d(ctx, shoulder_span_px,
-                                  &out->gripper_norm) != 0) return -1;
+    if (update_gripper) {
+        if (pm_update_gripper_from_2d(ctx, shoulder_span_px,
+                                      &out->gripper_norm) != 0) return -1;
+    } else {
+        out->gripper_norm = ctx->gripper_initialized ? ctx->gripper_norm_value : 1.0f;
+    }
 
     out->wrist_pitch_deg = pm_wrap180(ctx->prev_wrist_pitch_deg);
     out->wrist_roll_deg = pm_wrap180(ctx->prev_wrist_roll_deg);

@@ -40,6 +40,7 @@ def main():
         cases.append((name, a1 + [f"tests/human_target_angle/{name}.c"], [], []))
     cases += [
         ("test_integration_smoke", pipeline + uart + ["tests/integration/test_integration_smoke.c"], [], []),
+        ("test_major_only", pipeline + ["tests/integration/test_major_only.c"], [], []),
         ("test_trace", pipeline + ["tests/integration/test_trace.c"], ["-DROBOT_TRACE"], []),
         ("test_axis_replay", pipeline + uart + ["tests/robot_calibration/test_axis_replay.c"], [],
          ["etc/uart_pose_stream.bin", str(output / "axis_replay.csv")]),

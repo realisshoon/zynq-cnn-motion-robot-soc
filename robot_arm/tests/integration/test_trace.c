@@ -232,7 +232,7 @@ static HumanForearmTarget safe_target(void)
         .elbow_roll_deg = 10.0f, .elbow_pitch_deg = -20.0f,
         .wrist_pitch_deg = 30.0f, .wrist_roll_deg = -40.0f,
         .gripper_norm = 0.5f, .valid = 1U,
-        .elbow_roll_observable = 1U, .hand_fresh = 1U
+        .elbow_roll_observable = 1U, .hand_fresh = 1U, .wrist_valid = 1U
     };
     return target;
 }
