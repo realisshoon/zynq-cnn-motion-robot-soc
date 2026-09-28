@@ -66,9 +66,9 @@ F=normalize(Wrist−Elbow), fx=F·X, fy=F·Y, fz=F·Z.
 |---|---|---|---|
 | elbow_roll_deg | BodyFrame / +Body Y | +Body Z=0, +Body X 쪽 양수 | [-180,180), wrap |
 | elbow_pitch_deg | Body XZ 평면 / 현재 방위각의 elevation | 평면=0, +Body Y 쪽 양수 | [-90,90], no wrap |
-| wrist_pitch_deg | 전완과 손 / 전완에 수직 투영한 Finger1→Finger2 | 손 방향=F가 0, 해당 축 오른손 회전 양수 | [-180,180), wrap |
+| wrist_pitch_deg | 전완과 손 / 전완에 수직 투영한 Finger1→Finger2 (엄지→검지) | 손 방향=F가 0, 해당 축 오른손 회전 양수 | [-180,180), wrap |
 | wrist_roll_deg | Body/전완 reference / F | reference normal=hand normal이 0, F 오른손 회전 양수 | [-180,180), wrap |
-| gripper_norm | finger pixel 간격÷어깨 간격 / 회전축 없음 | CLOSE=0, OPEN=1 | 이산값, wrap 없음 |
+| gripper_norm | finger pixel 간격÷평균 wrist-finger pixel 길이 / 회전축 없음 | CLOSE=0, OPEN=1 | 중간값 연속 출력, wrap 없음 |
 
 elbow_roll=atan2(fx,fz), elbow_pitch=atan2(fy,hypot(fx,fz)).
 roll 이름이지만 첫 값은 전완 자체의 비틀림이 아니라 몸 위쪽 축 주위 방위각이다.
@@ -87,21 +87,22 @@ hand를 갱신하지 않는다. pole 이탈에는 큰 변화가 남을 수 있�
 major dropout/재구성 실패/BodyFrame 실패: 실제 dt 누적 0.35초까지 마지막 target HOLD,
 그 이후 invalid. 중복 frame은 재필터링·시간 누적 없음. 새 프레임이 오지 않는 시간의
 실제 timeout은 상위 통합 계층에서 관리해야 한다.
-손만 missing/geometry 실패이면 major는 fresh, wrist/gripper만 유지한다.
+손 각도용 3D geometry 실패이면 major는 fresh, wrist는 유지한다. 2D wrist/손가락
+측정이 유효하면 gripper는 별도로 갱신하고, 그 측정이 무효이면 이전값을 유지한다.
 손 초기값은 0/0/OPEN이며 hand_fresh=0이다.
 활성 팔 전환은 같은 frame_id여도 history와 roll zero 초기화.
 비유한 좌표는 새 경로에서 missing 취급해 EMA state 오염을 방지한다.
 
 ### 손목 재사용과 Body/Forearm reference
 
-H=normalize(Finger midpoint−Wrist), S=normalize(Finger2−Finger1),
+H=normalize(Finger midpoint−Wrist), S=normalize(Finger2−Finger1) (엄지→검지),
 A=normalize(project_perpendicular(S,F)).
-기존 wrist pitch = atan2(A·(F×H),F·H).
+wrist pitch = atan2(A·(F×H),F·H).
 항상 '위로 굽힘=양수'라고 해석하지 않는다. 중립 F=Body Z, S=Body X에서는
-Body +Y 쪽 굽힘이 음수다. 기존 사람 각도 부호를 보존했고 실제 서보 방향은 A2에서 정한다.
-A가 퇴화하면 reference×F fallback을 시도한다. 손 평면 품질까지 실패하면 hand HOLD.
+Body +Y 쪽 굽힘이 음수다. 실제 서보 방향은 A2에서 정한다.
+A가 퇴화하면 각도를 생성하지 않고 hand HOLD한다.
 
-hand normal N은 H×S를 전완에 수직 투영, 이전 normal과 부호 정렬, 기존 EMA 적용.
+hand normal N은 F×A를 정규화한 후 이전 normal과 부호 정렬하고 EMA를 적용한다.
 손목 roll의 reference R은:
 h=sin(raw_elbow_roll)BodyX+cos(raw_elbow_roll)BodyZ,
 R=normalize(project_perpendicular(cos(raw_elbow_pitch)BodyY−sin(raw_elbow_pitch)h,F)).
@@ -113,8 +114,9 @@ raw roll=atan2(F·(R×N),R·N), 기존 unwrap/35° raw spike 완화,
 
 N의 180° 부호 모호성, 손가락 라벨 교환, 급격한 큰 회전은 완전히 관측할 수 없다.
 손 방향/span 평행이나 전완 수직 투영 normal이 너무 작은 자세는 hand HOLD.
-roll zero만의 관측 불확실성 때문에 현재는 손 전체(그리퍼 포함)를 HOLD할 수 있다.
-기존 gripper 계산의 결합 구조를 바꾸지 않았으므로 A2가 hand_fresh를 확인해야 한다.
+roll zero만의 관측 불확실성 때문에 손목 각도는 HOLD될 수 있다. gripper는
+손목 각도와 독립적인 2D 측정이 유효하면 갱신되므로, hand_fresh는 손목 각도
+신선도 표시이며 gripper 측정 유효성 표시로 사용하면 안 된다.
 
 ## 7. Interface Before / After
 

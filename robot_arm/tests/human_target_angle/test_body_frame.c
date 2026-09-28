@@ -86,10 +86,13 @@ static void set_pose(PoseMappingContext *ctx, float yaw, float base, float eleva
     ctx->elbow_3d = pm_vadd(ctx->shoulder_r_3d, upper);
     ctx->wrist_3d = pm_vadd(ctx->elbow_3d, z);
     center = pm_vadd(ctx->wrist_3d, forward);
-    ctx->finger1_3d = pm_vsub(center, pm_vscale(span, 0.2f));
-    ctx->finger2_3d = pm_vadd(center, pm_vscale(span, 0.2f));
-    ctx->finger1.value.x = 0.0f;
-    ctx->finger2.value.x = 20.0f;
+    ctx->finger1_3d = pm_vadd(center, pm_vscale(span, 0.2f));
+    ctx->finger2_3d = pm_vsub(center, pm_vscale(span, 0.2f));
+    ctx->finger1.value.x = 20.0f;
+    ctx->finger2.value.x = 0.0f;
+    ctx->wrist.value.valid = 1U;
+    ctx->finger1.value.valid = 1U;
+    ctx->finger2.value.valid = 1U;
 }
 
 static void simple_angles_and_views(void)
@@ -117,7 +120,7 @@ static void simple_angles_and_views(void)
         near(x.x, i == 0 ? -1.0f : (i == 1 ? 0.0f : 1.0f), 0.0001f);
         near(z.z, i == 0 ? -1.0f : (i == 1 ? 0.0f : 1.0f), 0.0001f);
         assert(pm_calculate_hand_angles_and_gripper(&ctx, 100.0f, 0.05f, 0.05f, &out) == 0);
-        near(out.wrist_roll_deg, rolls[i], 0.001f);
+        near(pm_wrap180(out.wrist_roll_deg - rolls[i] - 180.0f), 0.0f, 0.001f);
         near(out.wrist_pitch_deg, 0.0f, 0.001f);
     }
     for (i = 0; i < 3; ++i) {
@@ -125,7 +128,7 @@ static void simple_angles_and_views(void)
         set_pose(&ctx, 0.0f, 0.0f, 0.0f, 0.0f, rolls[i]);
         assert(pm_calculate_major_angles(&ctx, POSE_ARM_RIGHT, 0.05f, &out) == 0);
         assert(pm_calculate_hand_angles_and_gripper(&ctx, 100.0f, 0.05f, 0.05f, &out) == 0);
-        near(out.wrist_pitch_deg, rolls[i], 0.001f);
+        near(out.wrist_pitch_deg, -rolls[i], 0.001f);
     }
     /* Tilted shoulders: Y is projected up, not necessarily camera (0,1,0). */
     assert(pm_build_body_frame(pm_vec3(0,0,0), pm_vec3(-1,0.5f,0.3f), &x,&y,&z) == 0);
@@ -180,7 +183,8 @@ static void continuity(void)
             prev = out;
         }
         assert(direction * out.base_deg < -140.0f);
-        assert(direction * out.wrist_roll_deg < -140.0f);
+        assert(direction * out.wrist_roll_deg > 20.0f);
+        assert(direction * out.wrist_roll_deg < 40.0f);
     }
 }
 

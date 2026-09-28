@@ -72,11 +72,11 @@ elbow_pitch=atan2(fy,hypot(fx,fz)):
 A1은 이 라디안 계산을 도 단위로 변환하고 기존 EMA를 적용한다.
 
 [손목]
-H=normalize(finger midpoint-Wrist), S=normalize(Finger2-Finger1).
+H=normalize(finger midpoint-Wrist), S=normalize(Finger2-Finger1) (thumb-to-index).
 A=normalize(S를 F에 수직 투영).
 wrist_pitch=atan2(A·(F×H),F·H), [-180,180), wrap.
 전완과 손이 같은 방향이면0, A축 오른손 회전이 양수다.
-기존6축 HUMAN wrist 부호를 보존했다. 항상 위쪽 굽힘이 양수라고 가정하지 마라.
+손가락 축의 방향에 따라 손목 굽힘 부호가 달라진다. 항상 위쪽 굽힘이 양수라고 가정하지 마라.
 
 wrist_roll은 F주위 오른손 회전, [-180,180), wrap.
 N은 H×S를 F에 수직 투영한 normal에 부호 연속화/기존 EMA를 적용한 것이다.

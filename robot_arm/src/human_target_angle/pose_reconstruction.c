@@ -81,10 +81,12 @@
 
 /* The first-ever pick needs the full POSE_FINGER_BRANCH_WINDOW (60 frames)
  * of evidence, since there is no prior branch to fall back on. Once a
- * branch has been selected at least once, re-evaluating (to hold, switch,
- * or recover from a brief dropout) only needs a much shorter trailing
- * window — requiring 60 fresh frames after every reset made even a short
- * plane-quality dropout freeze the reported position for seconds. */
+ * branch has been selected at least once (ctx->finger_branch_ever_selected,
+ * which survives pm_reset_finger_branch_tracker()), re-evaluating (to hold,
+ * switch, or recover from a brief dropout) only needs a much shorter
+ * trailing window — requiring 60 fresh frames after every reset made even a
+ * short plane-quality dropout or a single missed detection freeze the
+ * reported position for seconds. */
 #define PM_FINGER_BRANCH_TRACKING_WINDOW    6U
 
 typedef struct {
@@ -792,10 +794,14 @@ int pm_reconstruct_finger_pose3d_tracked(
     }
 
     finger1_count = ray_sphere_candidates(
-        pixel_unit_ray(ctx->finger1.value), ctx->wrist_3d,
+        pixel_unit_ray(ctx->finger1_relative_2d.initialized
+            ? ctx->finger1_relative_2d.ray_input : ctx->finger1.value),
+        ctx->wrist_3d,
         finger1_length, finger1_candidate);
     finger2_count = ray_sphere_candidates(
-        pixel_unit_ray(ctx->finger2.value), ctx->wrist_3d,
+        pixel_unit_ray(ctx->finger2_relative_2d.initialized
+            ? ctx->finger2_relative_2d.ray_input : ctx->finger2.value),
+        ctx->wrist_3d,
         finger2_length, finger2_candidate);
     if (finger1_count <= 0 || finger2_count <= 0) {
         pm_reset_finger_branch_tracker(ctx);
@@ -835,7 +841,7 @@ int pm_reconstruct_finger_pose3d_tracked(
             track->consecutive_frames++;
 
         {
-            unsigned required = ctx->finger_branch_selected_valid
+            unsigned required = ctx->finger_branch_ever_selected
                 ? PM_FINGER_BRANCH_TRACKING_WINDOW
                 : POSE_FINGER_BRANCH_WINDOW;
 
@@ -861,33 +867,61 @@ int pm_reconstruct_finger_pose3d_tracked(
     ctx->finger_branch_ring = (uint8_t)(
         (ctx->finger_branch_ring + 1U) % POSE_FINGER_BRANCH_WINDOW);
 
-    /* No candidate has filled the window yet: retain the caller's previous
-     * pitch/roll (gripper stays independently observable from the 2D
-     * fingertip separation). Once a candidate has filled the window, report
-     * it outright, unless it would mean abandoning an already selected
-     * branch without a clear lead. */
-    if (best < 0 || (ctx->finger_branch_selected_valid &&
-                      (unsigned)best != ctx->finger_branch_selected &&
-                      second_cost - best_cost < PM_FINGER_BRANCH_SWITCH_LEAD))
-        return -1;
+    /* Switching identity (which near/far combination we report) is decided
+     * separately from refreshing the position of whichever branch stays
+     * selected. Abandoning an already selected branch still requires a
+     * clear lead, to avoid flip-flopping on frame-to-frame score noise.
+     * But that guard must not also freeze the position of a branch that is
+     * still being observed normally just because a competitor scored
+     * marginally better this round. */
+    {
+        unsigned selected;
+        uint8_t just_switched = 0U;
 
-    if (ctx->finger_pose3d_valid && ctx->finger_branch_selected_valid &&
-        (unsigned)best == ctx->finger_branch_selected) {
-        Point3D predicted_finger1 = pm_vadd(ctx->wrist_3d,
-            pm_vsub(ctx->finger1_3d, ctx->finger_parent_wrist));
-        Point3D predicted_finger2 = pm_vadd(ctx->wrist_3d,
-            pm_vsub(ctx->finger2_3d, ctx->finger_parent_wrist));
-        ctx->finger1_3d = ema_point3d(predicted_finger1,
-                                       current_finger1[best], dt_filter_sec);
-        ctx->finger2_3d = ema_point3d(predicted_finger2,
-                                       current_finger2[best], dt_filter_sec);
-    } else {
-        ctx->finger1_3d = current_finger1[best];
-        ctx->finger2_3d = current_finger2[best];
+        if (ctx->finger_branch_selected_valid) {
+            selected = ctx->finger_branch_selected;
+            if (best >= 0 && (unsigned)best != selected &&
+                second_cost - best_cost >= PM_FINGER_BRANCH_SWITCH_LEAD) {
+                selected = (unsigned)best;
+                just_switched = 1U;
+            }
+        } else {
+            /* No candidate has filled the first-ever-pick window yet:
+             * retain the caller's previous pitch/roll (gripper stays
+             * independently observable from the 2D fingertip separation). */
+            if (best < 0) return -1;
+            selected = (unsigned)best;
+            just_switched = 1U;
+        }
+
+        /* The selected branch (held or just switched) must itself have a
+         * usable candidate this exact frame. A competitor scoring
+         * marginally better is not evidence that the held branch's own
+         * geometry failed. */
+        if (!ctx->finger_branch[selected].prev_valid)
+            return -1;
+
+        if (ctx->finger_pose3d_valid && !just_switched) {
+            Point3D predicted_finger1 = pm_vadd(ctx->wrist_3d,
+                pm_vsub(ctx->finger1_3d, ctx->finger_parent_wrist));
+            Point3D predicted_finger2 = pm_vadd(ctx->wrist_3d,
+                pm_vsub(ctx->finger2_3d, ctx->finger_parent_wrist));
+            ctx->finger1_3d = ema_point3d(predicted_finger1,
+                                           current_finger1[selected], dt_filter_sec);
+            ctx->finger2_3d = ema_point3d(predicted_finger2,
+                                           current_finger2[selected], dt_filter_sec);
+        } else {
+            /* First-ever pick, or a just-confirmed switch to a different
+             * near/far interpretation: do not blend with the old branch's
+             * position, snap to the new branch's raw candidate instead. */
+            ctx->finger1_3d = current_finger1[selected];
+            ctx->finger2_3d = current_finger2[selected];
+        }
+        ctx->finger_parent_wrist = ctx->wrist_3d;
+        ctx->finger_pose3d_valid = 1U;
+        ctx->finger_branch_selected = (uint8_t)selected;
+        ctx->finger_branch_selected_valid = 1U;
+        ctx->finger_branch_ever_selected = 1U;
     }
-    ctx->finger_parent_wrist = ctx->wrist_3d;
-    ctx->finger_pose3d_valid = 1U;
-    ctx->finger_branch_selected = (uint8_t)best;
-    ctx->finger_branch_selected_valid = 1U;
     return 0;
 }

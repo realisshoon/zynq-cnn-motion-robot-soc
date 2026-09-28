@@ -235,7 +235,8 @@ int pose_mapping_update(
         } else if (ctx->hand_angle_valid) {
             fresh.wrist_pitch_deg = pm_wrap180(ctx->prev_wrist_pitch_deg);
             fresh.wrist_roll_deg  = pm_wrap180(ctx->prev_wrist_roll_deg);
-            fresh.gripper_norm         = (float)ctx->gripper_state;
+            fresh.gripper_norm         = ctx->gripper_initialized
+                ? ctx->gripper_norm_value : 1.0f;
         } else {
             /*
              * 시작 직후 Finger가 아직 한 번도 잡히지 않은 경우에도

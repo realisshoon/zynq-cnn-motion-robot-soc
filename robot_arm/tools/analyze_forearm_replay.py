@@ -97,7 +97,7 @@ def analyze(path, expected=None):
         for field in ("elbow_roll_deg", "wrist_pitch_deg", "wrist_roll_deg"):
             if not -180 <= float(r[field]) < 180:
                 raise ValueError(f"Out of range {field}: {r[field]}")
-        if not -90 <= float(r["elbow_pitch_deg"]) <= 90 or float(r["gripper_norm"]) not in (0,1):
+        if not -90 <= float(r["elbow_pitch_deg"]) <= 90 or not 0 <= float(r["gripper_norm"]) <= 1:
             raise ValueError("Pitch/gripper contract violation")
         if r["target_frame_id"] != r["frame_id"]:
             raise ValueError("Fresh target frame_id mismatch")
@@ -110,7 +110,7 @@ def analyze(path, expected=None):
                 singular_frames=[int(r["frame_id"]) for r in fresh if not int(r["elbow_roll_observable"])],
                 hand_held=sum(not int(r["hand_fresh"]) for r in fresh),
                 angles=stats, before_angle_ema=raw,
-                gripper_transitions=sum(a["gripper_norm"]!=b["gripper_norm"] for a,b in zip(valid,valid[1:])),
+                gripper_transitions=sum((float(a["gripper_norm"])>=0.5)!=(float(b["gripper_norm"])>=0.5) for a,b in zip(valid,valid[1:])),
                 depth_sensitivity=depth_sensitivity(fresh),
                 largest_elbow_roll_steps=transition_diagnostics(fresh,"elbow_roll_deg"),
                 largest_wrist_roll_steps=transition_diagnostics(fresh,"wrist_roll_deg",1))

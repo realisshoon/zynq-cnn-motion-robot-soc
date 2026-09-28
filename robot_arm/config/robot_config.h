@@ -32,14 +32,34 @@
 #define PM_SHOULDER_WIDTH_UNIT                  1.0f
 #define PM_UPPER_ARM_RATIO                      0.75f
 #define PM_FOREARM_RATIO                        0.65f
+/* finger1=엄지 끝, finger2=검지 끝 (thumb_first 규약).
+ * 둘 다 어깨 폭의 0.35를 손목 기준 길이로 가정한다. */
 #define PM_WRIST_TO_FINGER1_RATIO               0.35f
 #define PM_WRIST_TO_FINGER2_RATIO               0.35f
+
+/*
+ * CNN이 finger1/finger2 중 하나라도 한 frame 놓치면 그 즉시 finger branch
+ * 추적 전체를 리셋하던 이전 동작은, 이미 pose_tracking.c에서 2D landmark
+ * 레벨은 "한 번 reject가 영구 lock-out으로 이어질 수 있다"는 이유로 피한
+ * 것과 같은 문제를 3D branch 선택 레벨에서 반복했다. 실측(etc/
+ * elbow_roll_real_test_thumb_first_pose2d_*.csv)에서 두 손가락이 동시에
+ * 끊기는 구간이 최대 18 frame까지 나타났고, 이보다 짧은 끊김을 허용하지
+ * 않으면 이 클립은 끝까지 손목 각도를 한 번도 출력하지 못한다. 20 frame
+ * (20Hz 기준 약 1초)까지는 끊김을 버티고 누적을 유지하며, 그보다 길게
+ * 끊기면 실제로 자세가 바뀌었을 가능성이 커서 리셋한다.
+ */
+#define PM_FINGER_DROPOUT_TOLERANCE_FRAMES      20U
 
 /* Major pose 계산 실패/누락 시 마지막 정상 target 유지 시간 */
 #define PM_TARGET_HOLD_SEC                      0.35f
 
 /* Time-based EMA */
 #define PM_INPUT_2D_TAU_SEC                     0.10f
+/* Wrist-relative finger offsets used only for tracked 3D reconstruction.
+ * A mild increase over the 0.10s landmark EMA improved wrist_pitch replay
+ * jitter without changing the gripper path; 0.16s changed the initial branch
+ * choice in elbow_roll and is too aggressive for this geometry. */
+#define PM_FINGER_RELATIVE_2D_TAU_SEC           0.12f
 #define PM_POSITION_XY_TAU_SEC                  0.12f
 #define PM_POSITION_Z_TAU_SEC                   0.28f
 #define PM_HAND_NORMAL_TAU_SEC                  0.22f
@@ -124,9 +144,16 @@
 #define PM_ROLL_SPIKE_MARGIN_DEG                35.0f
 #define PM_PITCH_SPIKE_MARGIN_DEG               35.0f
 
-/* Gripper 의도: 0.0=CLOSE, 1.0=OPEN */
-#define PM_GRIPPER_OPEN_RATIO                   0.10f
-#define PM_GRIPPER_CLOSE_RATIO                  0.08f
+/* 2D finger spread / mean 2D wrist-to-fingertip length.
+ * Provisional values: available clips have no labeled open/close ground truth. */
+#define PM_GRIPPER_CLOSE_THRESHOLD              0.10f
+#define PM_GRIPPER_OPEN_THRESHOLD               0.60f
+#define PM_GRIPPER_CLOSE_HYST_THRESHOLD         0.20f
+#define PM_GRIPPER_OPEN_HYST_THRESHOLD          0.40f
+/* Mild EMA after the three-sample median, at the nominal 20 Hz input rate. */
+#define PM_GRIPPER_RATIO_FILTER_ALPHA           0.65f
+/* Reject a collapsed hand reference relative to visible shoulder width. */
+#define PM_GRIPPER_MIN_HAND_SPAN_RATIO           0.05f
 
 /* Human wrist roll zero calibration */
 #define PM_ROLL_ZERO_CALIB_SEC                  0.80f

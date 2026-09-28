@@ -36,12 +36,12 @@
 const ForearmCalibrationConfig forearm_calibration_config = {
     .elbow_roll  = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 90.0f,
                       .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
-    .elbow_pitch = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 90.0f,
+    .elbow_pitch = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 105.0f,
                       .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
-    .wrist_pitch = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 90.0f,
+    .wrist_pitch = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 100.0f,
                       .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
     .wrist_roll  = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 87.0f,
-                      .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
+                      .min_deg = 10.0f, .max_deg = 170.0f, .max_delta_deg = 0.6f },
     /* 순서: elbow_roll, elbow_pitch, wrist_pitch, wrist_roll. */
     .amax_deg_s2 = { 120.0f, 120.0f, 120.0f, 120.0f },
 };
