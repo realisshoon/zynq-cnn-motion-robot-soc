@@ -84,11 +84,20 @@ typedef struct {
     Point3D finger_parent_wrist;
 
     /* Four near/far thumb/index combinations are tracked independently.
-     * No branch is committed before a full evidence window is available. */
+     * The first pick waits for 60 input frames, then uses available evidence. */
     PoseFingerBranchState finger_branch[4];
     uint8_t finger_branch_ring;
     uint8_t finger_branch_selected;
     uint8_t finger_branch_selected_valid;
+    /* Frames since this arm's tracker started, capped at the initial wait.
+     * This clock continues through missed finger detections and branch resets. */
+    uint8_t finger_branch_elapsed_frames;
+    /* First 60 input frames: retain each branch's score and latest wrist-
+     * relative geometry even when its consecutive tracker is reset. */
+    float finger_branch_initial_score_sum[4];
+    uint8_t finger_branch_initial_count[4];
+    Point3D finger_branch_initial_finger1_relative[4];
+    Point3D finger_branch_initial_finger2_relative[4];
     /* Sticky across pm_reset_finger_branch_tracker(): once any branch has
      * ever been picked, later re-acquisition (after a brief dropout, a
      * plane-quality drop, etc.) only needs the short tracking window, not

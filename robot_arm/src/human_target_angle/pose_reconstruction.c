@@ -79,14 +79,10 @@
 #define PM_FINGER_BRANCH_MIN_LEAD           0.020f
 #define PM_FINGER_BRANCH_SWITCH_LEAD        0.010f
 
-/* The first-ever pick needs the full POSE_FINGER_BRANCH_WINDOW (60 frames)
- * of evidence, since there is no prior branch to fall back on. Once a
- * branch has been selected at least once (ctx->finger_branch_ever_selected,
- * which survives pm_reset_finger_branch_tracker()), re-evaluating (to hold,
- * switch, or recover from a brief dropout) only needs a much shorter
- * trailing window — requiring 60 fresh frames after every reset made even a
- * short plane-quality dropout or a single missed detection freeze the
- * reported position for seconds. */
+/* The first-ever pick waits for 60 input frames. Missing or geometrically
+ * unusable fingers do not restart that clock; afterward, use as much valid
+ * branch evidence as is available, even if only one candidate frame survived.
+ * Re-acquisition after a selected branch is reset still uses six observations. */
 #define PM_FINGER_BRANCH_TRACKING_WINDOW    6U
 
 typedef struct {
@@ -766,6 +762,41 @@ static float finger_branch_frame_cost(
     return cost;
 }
 
+int pm_select_initial_finger_branch(PoseMappingContext *ctx)
+{
+    float best_average = FLT_MAX;
+    int best = -1;
+    unsigned i;
+
+    if (ctx == NULL ||
+        ctx->finger_branch_elapsed_frames < POSE_FINGER_BRANCH_WINDOW ||
+        ctx->finger_branch_ever_selected)
+        return -1;
+    if (ctx->finger_branch_selected_valid) return 0;
+    for (i = 0U; i < 4U; ++i) {
+        float average;
+        if (ctx->finger_branch_initial_count[i] == 0U) continue;
+        average = ctx->finger_branch_initial_score_sum[i] /
+                  (float)ctx->finger_branch_initial_count[i];
+        if (average < best_average) {
+            best_average = average;
+            best = (int)i;
+        }
+    }
+    if (best < 0) return -1;
+
+    ctx->finger1_3d = pm_vadd(ctx->wrist_3d,
+        ctx->finger_branch_initial_finger1_relative[best]);
+    ctx->finger2_3d = pm_vadd(ctx->wrist_3d,
+        ctx->finger_branch_initial_finger2_relative[best]);
+    ctx->finger_parent_wrist = ctx->wrist_3d;
+    ctx->finger_pose3d_valid = 1U;
+    ctx->finger_branch_selected = (uint8_t)best;
+    ctx->finger_branch_selected_valid = 1U;
+    ctx->finger_branch_ever_selected = 1U;
+    return 0;
+}
+
 /* Operational forearm path only. Keep the legacy single-frame reconstruction
  * above unchanged for callers that explicitly use the older mapping API. */
 int pm_reconstruct_finger_pose3d_tracked(
@@ -832,6 +863,15 @@ int pm_reconstruct_finger_pose3d_tracked(
             track->prev_valid = 0U;
             continue;
         }
+        if (!ctx->finger_branch_ever_selected &&
+            ctx->finger_branch_initial_count[i] < POSE_FINGER_BRANCH_WINDOW) {
+            ctx->finger_branch_initial_score_sum[i] += cost;
+            ctx->finger_branch_initial_count[i]++;
+            ctx->finger_branch_initial_finger1_relative[i] = pm_vsub(
+                current_finger1[i], ctx->wrist_3d);
+            ctx->finger_branch_initial_finger2_relative[i] = pm_vsub(
+                current_finger2[i], ctx->wrist_3d);
+        }
 
         track->frame_cost[ctx->finger_branch_ring] = cost;
         track->prev_mid_relative = mid_relative;
@@ -844,7 +884,6 @@ int pm_reconstruct_finger_pose3d_tracked(
             unsigned required = ctx->finger_branch_ever_selected
                 ? PM_FINGER_BRANCH_TRACKING_WINDOW
                 : POSE_FINGER_BRANCH_WINDOW;
-
             if (track->consecutive_frames >= required) {
                 float average = 0.0f;
                 unsigned j;
@@ -866,6 +905,9 @@ int pm_reconstruct_finger_pose3d_tracked(
     }
     ctx->finger_branch_ring = (uint8_t)(
         (ctx->finger_branch_ring + 1U) % POSE_FINGER_BRANCH_WINDOW);
+    if (!ctx->finger_branch_selected_valid &&
+        !ctx->finger_branch_ever_selected)
+        return pm_select_initial_finger_branch(ctx);
 
     /* Switching identity (which near/far combination we report) is decided
      * separately from refreshing the position of whichever branch stays
@@ -886,9 +928,8 @@ int pm_reconstruct_finger_pose3d_tracked(
                 just_switched = 1U;
             }
         } else {
-            /* No candidate has filled the first-ever-pick window yet:
-             * retain the caller's previous pitch/roll (gripper stays
-             * independently observable from the 2D fingertip separation). */
+            /* Until the initial wait or a usable candidate exists, retain
+             * the caller's previous pitch/roll. */
             if (best < 0) return -1;
             selected = (unsigned)best;
             just_switched = 1U;

@@ -58,6 +58,7 @@ int pm_reconstruct_finger_pose3d(PoseMappingContext *ctx,
                                  float dt_filter_sec);
 int pm_reconstruct_finger_pose3d_tracked(PoseMappingContext *ctx,
                                          float dt_filter_sec);
+int pm_select_initial_finger_branch(PoseMappingContext *ctx);
 void pm_reset_finger_branch_tracker(PoseMappingContext *ctx);
 
 /* pose_joint.c */
@@ -74,6 +75,10 @@ int pm_calculate_hand_with_reference(PoseMappingContext *ctx,
                                      float shoulder_span_px, float dt_age_sec,
                                      float dt_filter_sec, const Vec3 *reference,
                                      HumanJointTarget *out);
+int pm_calculate_hand_with_reference_ex(PoseMappingContext *ctx,
+                                        float shoulder_span_px, float dt_age_sec,
+                                        float dt_filter_sec, const Vec3 *reference,
+                                        uint8_t update_gripper, HumanJointTarget *out);
 int pm_calculate_hand_angles_and_gripper(PoseMappingContext *ctx,
                                          float shoulder_span_px,
                                          float dt_age_sec,

@@ -144,8 +144,21 @@ int agent2_run(AgentPipelineContext *ctx)
     }
     forearm_motion_control_unwrap_target(&ctx->unwrap, &ctx->target);
 
+    /* With no reconstructed wrist angle yet, keep the robot's current wrist
+     * position and gripper while allowing measured elbow angles to move.
+     * Check the resulting mixed pose, rather than an arbitrary wrist zero. */
+    if (!ctx->target.wrist_valid) {
+        forearm_motion_control_map_target(&ctx->target, &command);
+        forearm_motion_control_apply_limits(&command);
+        command.wrist_pitch_deg = ctx->output.wrist_pitch_deg;
+        command.wrist_roll_deg = ctx->output.wrist_roll_deg;
+        command.gripper_norm = ctx->output.gripper_norm;
+        command.valid = forearm_safety_check_apply(&command, NULL) ? 1U : 0U;
+    } else {
+        command.valid = forearm_calibration_apply(&ctx->target, &command) ? 1U : 0U;
+    }
     /* 무효/위험이면 폐기하고 마지막으로 승인한 목표를 계속 유지한다. */
-    if (!forearm_calibration_apply(&ctx->target, &command)) {
+    if (!command.valid) {
         ctx->commands_rejected++;
         TRACE_SET_A2_MAPPED(ctx, command); /* [TRACE] 거부돼도 매핑된 각도는 남는다(valid만 0). 사유 flags를 로그에서 다시 구한다. */
         TRACE_SET_A2_RESULT(ctx, A2_RESULT_REJECT_SAFETY); /* [TRACE] */

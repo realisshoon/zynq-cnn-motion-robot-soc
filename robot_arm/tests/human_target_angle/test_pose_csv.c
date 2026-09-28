@@ -81,7 +81,7 @@ int main(int argc, char **argv)
         "target_frame_id,elbow_roll_observable,hand_fresh,body_frame_valid,raw_elbow_roll_deg,raw_elbow_pitch_deg,"
         "body_x_x,body_x_y,body_x_z,body_y_x,body_y_y,body_y_z,body_z_x,body_z_y,body_z_z,active_arm,"
         "gripper_d_finger_px,gripper_d_hand_px,gripper_open_ratio,gripper_ratio_used,gripper_state,gripper_hold,gripper_hold_reason,"
-        "finger_branch_max_streak,finger_branch_selected_valid,finger_branch_ever_selected\n"
+        "finger_branch_max_streak,finger_branch_selected_valid,finger_branch_ever_selected,wrist_valid\n"
     );
 
     /* header skip */
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
             "%.6f,%.6f,%.6f,%.6f,%.6f,"
             "%u,%u,%u,%u,%.6f,%.6f,"
             "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u,"
-            "%.6f,%.6f,%.6f,%.6f,%u,%u,%u,%u,%u,%u\n",
+            "%.6f,%.6f,%.6f,%.6f,%u,%u,%u,%u,%u,%u,%u\n",
             frame_id,time_sec,update_ret,(unsigned)target.valid,
             (unsigned)(ctx.shoulder_l.fresh && ctx.shoulder_r.fresh &&
                        ctx.elbow.fresh && ctx.wrist.fresh),
@@ -172,7 +172,8 @@ int main(int argc, char **argv)
             (unsigned)ctx.gripper_hold_reason,
             finger_branch_max_streak,
             (unsigned)ctx.finger_branch_selected_valid,
-            (unsigned)ctx.finger_branch_ever_selected
+            (unsigned)ctx.finger_branch_ever_selected,
+            (unsigned)target.wrist_valid
         );
     }
 

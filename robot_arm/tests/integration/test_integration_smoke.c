@@ -501,7 +501,7 @@ static void set_direct_target(AgentPipelineContext *ctx, float elbow_roll,
         .elbow_roll_deg = elbow_roll, .elbow_pitch_deg = -60.0f,
         .wrist_pitch_deg = wrist_pitch, .wrist_roll_deg = wrist_roll,
         .gripper_norm = 0.25f, .valid = 1U,
-        .elbow_roll_observable = 1U, .hand_fresh = 1U
+        .elbow_roll_observable = 1U, .hand_fresh = 1U, .wrist_valid = 1U
     };
     ctx->target = target;
     ctx->target_ready = 1U;

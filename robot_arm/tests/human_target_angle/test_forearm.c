@@ -474,9 +474,11 @@ static void test_finger_branch_window(void)
     p.finger2.value.y = PM_CAMERA_CY;
 
     for (unsigned i = 1U; i < POSE_FINGER_BRANCH_WINDOW; ++i) {
+        p.finger_branch_elapsed_frames = (uint8_t)i;
         assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == -1);
-        assert(!p.finger_pose3d_valid);
+        assert(!p.finger_pose3d_valid && !p.finger_branch_selected_valid);
     }
+    p.finger_branch_elapsed_frames = POSE_FINGER_BRANCH_WINDOW;
     assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
     assert(p.finger_branch_selected == 0U); /* nearer, forearm-aligned pair */
     assert(p.finger1_3d.z < p.wrist_3d.z);
@@ -502,6 +504,22 @@ static void test_finger_branch_window(void)
     /* The tie-break is stable: re-running does not flip the pick. */
     assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
     assert(p.finger_branch_selected == 0U);
+
+    /* The 60-frame clock survives missing fingers and a reset. After it
+     * expires, the first usable observation can bootstrap the branch. */
+    assert(pose_mapping_init(&p) == 0);
+    p.wrist_3d = pm_vec3(0.0f, 0.0f, 5.0f);
+    p.elbow_3d = pm_vec3(0.0f, 0.0f, 5.65f);
+    p.finger1.value.x = PM_CAMERA_CX - PM_CAMERA_FX * 0.07f / depth;
+    p.finger1.value.y = PM_CAMERA_CY;
+    p.finger2.value.x = PM_CAMERA_CX + PM_CAMERA_FX * 0.07f / depth;
+    p.finger2.value.y = PM_CAMERA_CY;
+    p.finger_branch_elapsed_frames = POSE_FINGER_BRANCH_WINDOW;
+    pm_reset_finger_branch_tracker(&p);
+    assert(p.finger_branch_elapsed_frames == POSE_FINGER_BRANCH_WINDOW);
+    assert(!p.finger_branch_ever_selected);
+    assert(pm_reconstruct_finger_pose3d_tracked(&p, 0.05f) == 0);
+    assert(p.finger_branch_selected_valid && p.finger_branch_ever_selected);
 }
 static void test_pipeline(void)
 {
@@ -559,6 +577,48 @@ static void test_pipeline(void)
     assert(forearm_mapping_update(&c,&p,POSE_ARM_LEFT,1,&t)==-1);
     p=sample(); p.frame_id=400;
     assert(forearm_mapping_update(&c,&p,POSE_ARM_RIGHT,0.05f,&t)==-1);
+}
+
+static void test_initial_branch_scores(void)
+{
+    PoseMappingContext p;
+    assert(pose_mapping_init(&p) == 0);
+    p.wrist_3d = pm_vec3(0.0f, 0.0f, 5.0f);
+    p.finger_branch_elapsed_frames = POSE_FINGER_BRANCH_WINDOW;
+    assert(pm_select_initial_finger_branch(&p) == -1);
+    p.finger_branch_initial_count[0] = 2U;
+    p.finger_branch_initial_score_sum[0] = 0.4f;
+    p.finger_branch_initial_count[1] = 1U;
+    p.finger_branch_initial_score_sum[1] = 0.1f;
+    p.finger_branch_initial_finger1_relative[1] = pm_vec3(0.1f, 0.0f, 0.3f);
+    p.finger_branch_initial_finger2_relative[1] = pm_vec3(-0.1f, 0.0f, 0.3f);
+    pm_reset_finger_branch_tracker(&p);
+    assert(pm_select_initial_finger_branch(&p) == 0);
+    assert(p.finger_branch_selected == 1U && p.finger_branch_ever_selected);
+    near(p.finger1_3d.z, 5.3f, 1e-6f);
+}
+
+static void test_major_only_after_initial_window(void)
+{
+    ForearmMappingContext c;
+    HumanPose2D p = sample();
+    HumanForearmTarget t;
+    assert(forearm_mapping_init(&c) == 0);
+    p.finger1.valid = 0U;
+    p.finger2.valid = 0U;
+    for (unsigned i = 1U; i < POSE_FINGER_BRANCH_WINDOW; ++i) {
+        p.frame_id = i;
+        assert(forearm_mapping_update(&c, &p, POSE_ARM_RIGHT, 0.05f, &t) == -1);
+        assert(!t.valid);
+    }
+    p.frame_id = POSE_FINGER_BRANCH_WINDOW;
+    assert(forearm_mapping_update(&c, &p, POSE_ARM_RIGHT, 0.05f, &t) == 1);
+    assert(t.valid && !t.wrist_valid && !t.hand_fresh);
+    assert(isfinite(t.elbow_roll_deg) && isfinite(t.elbow_pitch_deg));
+    p.frame_id++;
+    p.wrist.x += 10.0f;
+    assert(forearm_mapping_update(&c, &p, POSE_ARM_RIGHT, 0.05f, &t) == 1);
+    assert(t.valid && !t.wrist_valid && !t.hand_fresh);
 }
 static void test_uart(const char *path)
 {
@@ -625,7 +685,8 @@ int main(int argc,char **argv)
     test_wrist_body_reference(); test_gripper_without_wrist_geometry();
     test_gripper_normalized();
     test_finger_branch_window(); test_finger_relative_2d_filter();
-    test_pipeline();
+    test_pipeline(); test_initial_branch_scores();
+    test_major_only_after_initial_window();
     if(argc>1) test_uart(argv[1]);
     puts("Forearm geometry / wrist / temporal / pipeline: PASS");
     return 0;

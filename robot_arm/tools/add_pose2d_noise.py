@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Add reproducible pixel jitter to a HumanPose2D CSV without changing its timing.
+"""Add reproducible, time-correlated pixel jitter to a HumanPose2D CSV.
 
 The input is the CSV produced by extract_real_person_pose_v3.py. Only valid
 landmarks in valid frames are perturbed; frame IDs, timestamps, validity flags,
@@ -15,6 +15,7 @@ from pathlib import Path
 
 
 POINTS = ("shoulder_l", "shoulder_r", "elbow", "wrist", "finger1", "finger2")
+FINGERS = ("finger1", "finger2")
 REQUIRED = ("frame_id", "time_sec", "frame_valid") + tuple(
     f"{point}_{suffix}" for point in POINTS for suffix in ("x", "y", "valid")
 )
@@ -41,13 +42,22 @@ def positive_int(value: str) -> int:
     return result
 
 
-def make_noisy_rows(rows, points, rng, sigma, spike_prob, spike_sigma, width, height):
+def make_noisy_rows(rows, points, rng, sigma, finger_sigma, noise_tau,
+                    spike_prob, spike_sigma, width, height):
     changed_points = 0
     spikes = 0
     clamped = 0
+    previous_noise = {}
+    previous_time = {}
     for row_number, row in enumerate(rows, start=2):
         if row["frame_valid"] != "1":
             continue
+        try:
+            time_sec = float(row["time_sec"])
+        except ValueError as exc:
+            raise ValueError(f"row {row_number}: invalid timestamp") from exc
+        if not math.isfinite(time_sec):
+            raise ValueError(f"row {row_number}: non-finite timestamp")
         for point in points:
             if row[f"{point}_valid"] != "1":
                 continue
@@ -59,8 +69,20 @@ def make_noisy_rows(rows, points, rng, sigma, spike_prob, spike_sigma, width, he
             if not math.isfinite(x) or not math.isfinite(y):
                 raise ValueError(f"row {row_number}: non-finite {point} coordinate")
 
-            dx = rng.gauss(0.0, sigma)
-            dy = rng.gauss(0.0, sigma)
+            point_sigma = finger_sigma if point in FINGERS else sigma
+            if point in previous_noise and noise_tau > 0.0:
+                elapsed = time_sec - previous_time[point]
+                if elapsed < 0.0:
+                    raise ValueError(f"row {row_number}: timestamp moved backwards")
+                retention = math.exp(-elapsed / noise_tau)
+                innovation = math.sqrt(max(0.0, 1.0 - retention * retention))
+                dx = retention * previous_noise[point][0] + innovation * rng.gauss(0.0, point_sigma)
+                dy = retention * previous_noise[point][1] + innovation * rng.gauss(0.0, point_sigma)
+            else:
+                dx = rng.gauss(0.0, point_sigma)
+                dy = rng.gauss(0.0, point_sigma)
+            previous_noise[point] = (dx, dy)
+            previous_time[point] = time_sec
             if rng.random() < spike_prob:
                 dx += rng.gauss(0.0, spike_sigma)
                 dy += rng.gauss(0.0, spike_sigma)
@@ -80,7 +102,11 @@ def main() -> None:
     parser.add_argument("--input-csv", required=True, type=Path)
     parser.add_argument("--output-csv", required=True, type=Path)
     parser.add_argument("--sigma-px", type=nonnegative_float, default=3.0,
-                        help="Gaussian jitter standard deviation in pixels (default: 3)")
+                        help="Gaussian jitter standard deviation for non-finger points in pixels (default: 3)")
+    parser.add_argument("--finger-sigma-px", type=nonnegative_float,
+                        help="finger1/finger2 jitter standard deviation in pixels (default: --sigma-px)")
+    parser.add_argument("--noise-tau-sec", type=nonnegative_float, default=0.3,
+                        help="jitter correlation time in seconds; larger means slower motion, 0 is independent per frame (default: 0.3)")
     parser.add_argument("--seed", type=int, default=26,
                         help="fixed random seed for repeatable experiments (default: 26)")
     parser.add_argument("--points", nargs="+", choices=POINTS, default=POINTS,
@@ -115,9 +141,11 @@ def main() -> None:
     if not rows:
         parser.error("input CSV has no frames")
 
+    finger_sigma = args.sigma_px if args.finger_sigma_px is None else args.finger_sigma_px
     changed, spikes, clamped = make_noisy_rows(
         rows, tuple(dict.fromkeys(args.points)), random.Random(args.seed),
-        args.sigma_px, args.spike_prob, args.spike_sigma_px,
+        args.sigma_px, finger_sigma, args.noise_tau_sec,
+        args.spike_prob, args.spike_sigma_px,
         args.width, args.height,
     )
     with target.open("w" if args.overwrite else "x", newline="", encoding="utf-8") as handle:
@@ -127,7 +155,8 @@ def main() -> None:
 
     print(f"[OK] {target}: {len(rows)} frames, {changed} landmarks perturbed, "
           f"{spikes} spikes, {clamped} coordinates clamped "
-          f"(sigma={args.sigma_px:g}px, seed={args.seed})")
+          f"(sigma={args.sigma_px:g}px, finger_sigma={finger_sigma:g}px, "
+          f"noise_tau={args.noise_tau_sec:g}s, seed={args.seed})")
 
 
 if __name__ == "__main__":
