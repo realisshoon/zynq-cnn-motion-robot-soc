@@ -27,7 +27,6 @@
 #include "../cnn_firmware/display_ctrl_hdmi/display_ctrl.h"
 #include "../cnn_firmware/keypoint_overlay/keypoint_overlay.h"
 #include "../cnn_firmware/cnn/cnn_bringup.h"
-#include "../cnn_firmware/cnn/cnn_csv_logger.h"
 #include "../cnn_firmware/cnn/cnn_diag.h"
 #include "../cnn_firmware/cnn/cnn_hw.h"
 #include "../cnn_firmware/camera_tracking/camera_tracking_app.h"
@@ -48,11 +47,82 @@ static int cnn_continuous_mode;
 static int cnn_single_pending;
 static u32 cnn_continuous_frames;
 static camera_tracking_app_t camera_tracker;
-static cnn_csv_logger_t cnn_logger;
+/* x 요청 시 진행 중 프레임이 끝나거나 timeout된 뒤 soft reset을 수행한다. */
+static int cnn_stopping;
+/* timeout/HW fault/비정상 DONE 이후 x로 복구하기 전까지 유지된다. */
+static int cnn_fault_latched;
 
 static void camera_tracker_service_hook(void *context)
 {
     camera_tracking_app_service((camera_tracking_app_t *)context);
+}
+
+/* 프레임이 DDR 가중치/SG를 사용 중이거나 곧 사용할 수 있으면 참이다. */
+static int cnn_busy(void)
+{
+    return cnn_ctx.running || cnn_continuous_mode ||
+           cnn_single_pending || cnn_stopping ||
+           (cnn_hw_status()&CNN_STATUS_BUSY);
+}
+
+static int cnn_reject_if_busy(char c)
+{
+    if(cnn_fault_latched) {
+        xil_printf("CNN '%c' rejected: fault latched; press 'x' to "
+                   "soft-reset CNN first\r\n",c);
+        return 1;
+    }
+    if(cnn_busy()) {
+        xil_printf("CNN '%c' rejected: inference busy (running=%d auto=%d "
+                   "single=%d stopping=%d); press 'a' to stop continuous "
+                   "mode, wait for the frame to finish, then retry\r\n",
+                   c,cnn_ctx.running,cnn_continuous_mode,
+                   cnn_single_pending,cnn_stopping);
+        return 1;
+    }
+    return 0;
+}
+
+static void cnn_finish_soft_reset(void)
+{
+    cnn_error_t result;
+
+    result=cnn_bringup_recover(&cnn_ctx);
+    if(result!=CNN_OK) {
+        cnn_stopping=0;
+        cnn_fault_latched=1;
+        TRACE_CNN_ERROR(cnn_ctx.next_frame_id,result,cnn_bringup_irq_count());
+        xil_printf("CNN soft reset failed: %s (%d)\r\n",
+                   cnn_error_string(result),(int)result);
+    }
+    else {
+        cnn_stopping=0;
+        cnn_fault_latched=0;
+        xil_printf("CNN soft reset PASS; inference idle\r\n");
+    }
+}
+
+/* 비동기 start/service 오류: 한 줄 요약 + fault 시 원래 진단 덤프 1회. */
+static void cnn_report_async_error(const char *where, cnn_error_t result)
+{
+    int hw_suspect=(result==CNN_ERR_TIMEOUT || result==CNN_ERR_HW_FAULT ||
+                    result==CNN_ERR_INTERRUPT);
+
+    cnn_continuous_mode=0;
+    cnn_single_pending=0;
+    TRACE_CNN_ERROR(cnn_ctx.next_frame_id,result,cnn_bringup_irq_count());
+    xil_printf("CNN %s failed: %s (%d) frame=%lu irq=%lu; inference stopped\r\n",
+               where,cnn_error_string(result),(int)result,
+               (unsigned long)cnn_ctx.next_frame_id,
+               (unsigned long)cnn_bringup_irq_count());
+    if(!hw_suspect) return;
+    if(!cnn_fault_latched) {
+        xil_printf("CNN fault diagnostic begin\r\n");
+        cnn_diag_dump();
+        cnn_fault_latched=1;
+    }
+    if(!cnn_stopping)
+        xil_printf("CNN fault latched; press 'x' to soft-reset before 'w'/'g'/'s'/'a'\r\n");
 }
 
 /* -------------------------------------------------------------------------
@@ -62,19 +132,21 @@ static void menu_help(void)
 {
     xil_printf("\r\n--- CNN bring-up keys ----------------\r\n");
     xil_printf("  p : probe CNN identity\r\n");
-    xil_printf("  w : load and verify SD weights\r\n");
-    xil_printf("  g : build/validate image SG descriptors\r\n");
-    xil_printf("  s : run one frame using completion IRQ\r\n");
+    xil_printf("  w : load and verify SD weights (inference idle only)\r\n");
+    xil_printf("  g : build/validate image SG descriptors (inference idle only)\r\n");
+    xil_printf("  s : run one frame using completion IRQ (rejected while busy)\r\n");
     xil_printf("  a : start/stop continuous IRQ-driven inference\r\n");
+    xil_printf("  q : mute/resume all UART output (CNN and robot keep running)\r\n");
+    xil_printf("  z : mute/resume robot TRACE only (CNN logs remain)\r\n");
     xil_printf("  t : print CNN status and last elapsed time\r\n");
     xil_printf("  r : print last CNN result\r\n");
     xil_printf("  d : CNN diagnostic dump\r\n");
-    xil_printf("  x : stop continuous mode and soft-reset CNN\r\n");
+    xil_printf("  x : stop inference and soft-reset CNN (deferred until the active frame ends)\r\n");
     xil_printf("  o : dump overlay/color registers\r\n");
+    xil_printf("  b : toggle HDMI overlay (robot 6 points / upper body)\r\n");
     xil_printf("  c : force grouped-color overlay test\r\n");
     xil_printf("  n : toggle CNN green-marker detection\r\n");
     xil_printf("  m : enter red/green/blue detection margins\r\n");
-    xil_printf("  l : start/stop SD CSV logging\r\n");
     camera_tracking_app_print_help();
     xil_printf("  ? : help\r\n");
 }
@@ -82,6 +154,7 @@ static void menu_help(void)
 static void menu_run(void)
 {
     cnn_error_t result=CNN_OK;
+    int report_pass=0;
     char c;
 
     if(cnn_console_active()) {
@@ -97,31 +170,54 @@ static void menu_run(void)
         cnn_diag_probe_report();
         break;
     case 'w':
+        if(cnn_reject_if_busy(c)) break;
         result=cnn_bringup_load_weights(&cnn_ctx);
+        report_pass=1;
         break;
     case 'g':
+        if(cnn_reject_if_busy(c)) break;
         result=cnn_bringup_prepare_frame(&cnn_ctx);
+        report_pass=1;
         break;
     case 's':
-        cnn_continuous_mode=0;
+        /* 진행 중 연속 프레임을 단일 프레임으로 재해석하지 않는다. */
+        if(cnn_reject_if_busy(c)) break;
         cnn_single_pending=1;
         break;
     case 'a':
-        cnn_continuous_mode=!cnn_continuous_mode;
         if(cnn_continuous_mode) {
-            cnn_continuous_frames=0U;
-            xil_printf("CNN continuous mode: ON; press 'a' to stop after the current frame\r\n");
+            cnn_continuous_mode=0;
+            xil_printf("CNN continuous mode: OFF after %lu frame(s)%s\r\n",
+                       (unsigned long)cnn_continuous_frames,
+                       cnn_ctx.running?"; active frame will finish":"");
+        }
+        else if(cnn_stopping) {
+            xil_printf("CNN 'a' rejected: soft reset pending; wait for "
+                       "'CNN soft reset PASS'\r\n");
+        }
+        else if(cnn_single_pending) {
+            xil_printf("CNN 'a' rejected: single frame pending; wait for "
+                       "it to finish\r\n");
+        }
+        else if(cnn_fault_latched) {
+            xil_printf("CNN 'a' rejected: fault latched; press 'x' first\r\n");
         }
         else {
-            if(cnn_logger.active)
-                cnn_csv_logger_sync(&cnn_logger);
-            xil_printf("CNN continuous mode: OFF after %lu frame(s)\r\n",
-                       (unsigned long)cnn_continuous_frames);
+            /* 직전 연속 프레임이 아직 진행 중이면 그대로 이어서 사용한다. */
+            cnn_continuous_mode=1;
+            cnn_continuous_frames=0U;
+            xil_printf("CNN continuous mode: ON; press 'a' to stop after the current frame\r\n");
         }
         break;
     case 't':
         cnn_bringup_print_status(&cnn_ctx);
-        cnn_csv_logger_print_status(&cnn_logger);
+        xil_printf("CNN app state: running=%d auto=%d single=%d stopping=%d "
+                   "fault=%d\r\n",cnn_ctx.running,cnn_continuous_mode,
+                   cnn_single_pending,cnn_stopping,cnn_fault_latched);
+        camera_tracking_app_print_mode(&camera_tracker);
+        xil_printf("HDMI overlay: %s\r\n",
+                   cnn_bringup_overlay_robot_only() ? "robot 6 points" :
+                                                    "upper body");
         break;
     case 'r':
         cnn_bringup_print_last_result(&cnn_ctx);
@@ -132,11 +228,45 @@ static void menu_run(void)
     case 'x':
         cnn_continuous_mode=0;
         cnn_single_pending=0;
-        cnn_csv_logger_stop(&cnn_logger);
-        result=cnn_bringup_recover(&cnn_ctx);
+        if(cnn_ctx.running) {
+            /* 실행 중 DMA/SG는 건드리지 않고 다음 service에서 마무리한다. */
+            cnn_stopping=1;
+            xil_printf("CNN stopping: no new frames; soft reset after the "
+                       "active frame finishes or times out\r\n");
+        }
+        else {
+            cnn_finish_soft_reset();
+        }
         break;
     case 'o':
         kpo_debug_dump();
+        break;
+    case 'q':
+        if(platform_uart_output_enabled()) {
+            TRACE_SET_OUTPUT_ENABLED(0);
+            platform_uart_set_output_enabled(0);
+        }
+        else {
+            platform_uart_set_output_enabled(1);
+            TRACE_SET_OUTPUT_ENABLED(1);
+            xil_printf("UART output resumed; CNN and robot control stayed active\r\n");
+        }
+        break;
+    case 'z':
+#ifdef ROBOT_TRACE
+        TRACE_SET_ROBOT_OUTPUT_ENABLED(!TRACE_ROBOT_OUTPUT_ENABLED());
+        xil_printf("Robot TRACE: %s; CNN logs remain active\r\n",
+                   TRACE_ROBOT_OUTPUT_ENABLED() ? "ON" : "OFF");
+#else
+        xil_printf("Robot TRACE unavailable in this build\r\n");
+#endif
+        break;
+    case 'b':
+        cnn_bringup_set_overlay_robot_only(
+            !cnn_bringup_overlay_robot_only());
+        xil_printf("HDMI overlay: %s (next CNN result)\r\n",
+                   cnn_bringup_overlay_robot_only() ? "robot 6 points" :
+                                                    "upper body");
         break;
     case 'c':
         kpo_test_group_colors();
@@ -155,13 +285,6 @@ static void menu_run(void)
     case 'j':
         cnn_console_start_camera(&camera_tracker);
         break;
-    case 'l':
-        if(cnn_logger.active)
-            cnn_csv_logger_stop(&cnn_logger);
-        else if(!cnn_csv_logger_start(&cnn_logger))
-            xil_printf("CNN CSV logger start failed (%lu)\r\n",
-                       (unsigned long)cnn_logger.last_error);
-        break;
     case '?':
         menu_help();
         break;
@@ -176,7 +299,7 @@ static void menu_run(void)
         xil_printf("CNN command failed: %s (%d)\r\n",
                    cnn_error_string(result),(int)result);
     }
-    else if(c=='w' || c=='g' || c=='x') {
+    else if(report_pass) {
         xil_printf("CNN command PASS\r\n");
     }
 }
@@ -186,26 +309,23 @@ static void cnn_continuous_step(void)
     cnn_error_t result;
 
     if(!cnn_ctx.running) {
+        if(cnn_stopping) {
+            cnn_finish_soft_reset();
+            return;
+        }
         if(!cnn_continuous_mode && !cnn_single_pending) return;
         result=cnn_bringup_start(&cnn_ctx,cnn_single_pending);
-        if(result!=CNN_OK) {
-            cnn_continuous_mode=0;
-            cnn_single_pending=0;
-            TRACE_CNN_ERROR(cnn_ctx.next_frame_id,result,cnn_bringup_irq_count());
-            xil_printf("CNN start failed: %s (%d)\r\n",
-                       cnn_error_string(result),(int)result);
-        }
+        if(result!=CNN_OK)
+            cnn_report_async_error("start",result);
         return;
     }
 
     result=cnn_bringup_service(&cnn_ctx);
     if(result==CNN_PENDING) return;
     if(result!=CNN_OK) {
-        cnn_continuous_mode=0;
-        cnn_single_pending=0;
-        TRACE_CNN_ERROR(cnn_ctx.next_frame_id,result,cnn_bringup_irq_count());
-        xil_printf("CNN continuous mode stopped: %s (%d)\r\n",
-                   cnn_error_string(result),(int)result);
+        cnn_report_async_error("frame",result);
+        /* timeout/fault 후에도 x 요청이 있었다면 여기서 복구를 마친다. */
+        if(cnn_stopping) cnn_finish_soft_reset();
         return;
     }
 
@@ -219,12 +339,6 @@ static void cnn_continuous_step(void)
               camera_tracker.gimbal.current_pulse_us[CAMERA_GIMBAL_TILT],
               camera_tracker.gimbal.target_pulse_us[CAMERA_GIMBAL_PAN],
               camera_tracker.gimbal.target_pulse_us[CAMERA_GIMBAL_TILT]);
-    if(cnn_logger.active &&
-       !cnn_csv_logger_write(&cnn_logger,&cnn_ctx.last_result)) {
-        xil_printf("CNN CSV logger write failed (%lu); logging stopped\r\n",
-                   (unsigned long)cnn_logger.last_error);
-        cnn_csv_logger_stop(&cnn_logger);
-    }
     cnn_continuous_frames++;
     if(cnn_single_pending) {
         cnn_single_pending=0;
@@ -256,32 +370,22 @@ static void cnn_auto_start(void)
 {
     cnn_error_t result;
 
-    xil_printf("\r\nCNN automatic startup: w -> u -> a\r\n");
+    xil_printf("\r\nCNN automatic startup: w -> camera FIXED -> a "
+               "(SD CSV logging disabled)\r\n");
     result=cnn_bringup_load_weights(&cnn_ctx);
     if(result!=CNN_OK) {
         TRACE_CNN_ERROR(cnn_ctx.next_frame_id,result,cnn_bringup_irq_count());
         xil_printf("CNN automatic startup stopped: %s (%d)\r\n",
                    cnn_error_string(result),(int)result);
-        xil_printf("UART menu remains available; fix the SD card and press 'w', 'u', 'a'.\r\n");
+        xil_printf("UART menu remains available; fix the SD card and press 'w', 'a'.\r\n");
         return;
-    }
-
-    if(!cnn_csv_logger_start(&cnn_logger)) {
-        xil_printf("CNN automatic CSV logging unavailable (%lu); inference will continue\r\n",
-                   (unsigned long)cnn_logger.last_error);
-    }
-
-    if(!camera_tracker.tracker.enabled) {
-        if(!camera_tracking_app_handle_key(&camera_tracker,'u')) {
-            xil_printf("CNN automatic startup stopped: camera tracker unavailable\r\n");
-            return;
-        }
     }
 
     cnn_continuous_frames=0U;
     cnn_continuous_mode=1;
     xil_printf("CNN continuous mode: ON (automatic boot)\r\n");
-    xil_printf("CNN automatic startup PASS; press 'a' to stop inference or 'u' to stop tracking.\r\n");
+    xil_printf("CNN automatic startup PASS; press 'a' to stop inference, "
+               "'u' to start camera tracking, 'f' to freeze camera.\r\n");
 }
 
 /* -------------------------------------------------------------------------
@@ -356,7 +460,6 @@ static int initialize_cnn(void)
     cnn_error_t result;
 
     kpo_init();
-    cnn_csv_logger_init(&cnn_logger);
     cnn_bringup_init(&cnn_ctx,&vdma,FRAME_BUFFER_ADDR);
     result=cnn_bringup_interrupt_init(platform_vitis_gic());
     if(result!=CNN_OK) {

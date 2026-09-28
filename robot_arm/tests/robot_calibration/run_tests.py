@@ -45,6 +45,12 @@ def main():
         ("test_cnn_trace", ["src/integration/trace.c",
          "tests/integration/test_cnn_trace.c"],
          ["-DROBOT_TRACE", "-ffunction-sections", "-fdata-sections", "-Wl,--gc-sections"], []),
+        ("test_camera_fixed", [
+            "src/cnn_firmware/camera_tracking/camera_gimbal_pwm.c",
+            "src/cnn_firmware/camera_tracking/torso_tracker.c",
+            "src/cnn_firmware/camera_tracking/camera_tracking_app.c",
+            "tests/integration/test_camera_fixed.c"],
+            ["-Itests/integration/stubs", "-Isrc/cnn_firmware/camera_tracking"], []),
         ("test_robot_pwm_disabled", pipeline +
          ["tests/integration/test_robot_pwm_disabled.c"], [], []),
         ("test_integration_smoke", pipeline + uart + ["tests/integration/test_integration_smoke.c"], [], []),

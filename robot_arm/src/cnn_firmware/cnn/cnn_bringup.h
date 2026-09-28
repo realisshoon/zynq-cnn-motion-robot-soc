@@ -34,5 +34,8 @@ u32 cnn_bringup_irq_count(void);
 cnn_error_t cnn_bringup_recover(cnn_bringup_t *ctx);
 void cnn_bringup_print_status(cnn_bringup_t *ctx);
 void cnn_bringup_print_last_result(cnn_bringup_t *ctx);
+/* Display-only switch; takes effect on the next published CNN frame. */
+void cnn_bringup_set_overlay_robot_only(int enabled);
+int cnn_bringup_overlay_robot_only(void);
 
 #endif

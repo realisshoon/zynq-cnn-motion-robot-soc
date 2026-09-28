@@ -16,6 +16,10 @@ void camera_tracking_app_on_result(camera_tracking_app_t *app,
                                    const cnn_result_t *result);
 void camera_tracking_app_service(camera_tracking_app_t *app);
 int camera_tracking_app_handle_key(camera_tracking_app_t *app, char key);
+/* FIXED: 추적 계산 OFF, 카메라 PWM ON, target=current 펄스로 유지 */
+void camera_tracking_app_fix(camera_tracking_app_t *app);
+const char *camera_tracking_app_mode_string(const camera_tracking_app_t *app);
+void camera_tracking_app_print_mode(const camera_tracking_app_t *app);
 void camera_tracking_app_print_help(void);
 void camera_tracking_app_print_status(const camera_tracking_app_t *app);
 
