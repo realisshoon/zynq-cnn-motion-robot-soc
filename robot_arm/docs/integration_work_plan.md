@@ -90,13 +90,19 @@ Agent2 궤적 모듈이나 Agent3 HAL로 편입된 것은 아니다. 모드에 �
   PWM-disabled software 출력 기록을 구분한다. 버퍼가 차면 자동 확정한다.
 - 재생은 전체 preflight 및 매 틱 검증(finite/range/FK, 회전축 속도·가속도,
   gripper 변화량)을 거쳐 저장 샘플을 Agent3에 전달한다. PLAY에서는 Agent2 램프를
-  다시 적용하지 않는다. 첫 샘플 진입과 반복 복귀는 ALIGN에서 Agent2 램프를 사용하며
-  직전 두 성공 명령으로 진입 속도를 복원한다.
+  다시 적용하지 않는다. 첫 샘플 진입은 ALIGN에서 Agent2 램프를 사용하며
+  직전 두 성공 명령으로 진입 속도를 복원한다. 사용자 결정(2026-09-29)으로 자동 반복은
+  하지 않고 **1회 재생 후 HOLDING/COMPLETED**에서 마지막 명령을 유지한다.
+  마지막 샘플에서 HOLD로 전환하는 감속도 preflight/PLAY에서 검사한다. 이동 중 녹화를
+  끊어 종료 감속 제한을 넘는 데이터는 ACCELERATION으로 거부한다.
+  완료 후 `P`를 누르면 LIVE로 복귀한다. 그 다음 `P`로 다시 재생할 수 있다.
 - 틱 누락은 녹화 종료 또는 ALIGN/PLAY의 HOLD를 유발한다. 녹화 중 HAL 실패 샘플은
   저장하지 않고 성공한 부분을 보존한다. ALIGN/PLAY 실패는 HOLD로 전환한다.
-- 실측 `gripper_max_delta_norm_per_tick`과 `align_timeout_ticks`가 미정이라
-  `motion_record_replay_configure_align()`을 main에서 호출하지 않는다. 기록이 있어도
-  `P`는 `ALIGN_CONFIG_REQUIRED_REPLAY_DISABLED`로 거부되며 실측 전에는 활성화하지 않는다.
+- 사용자 승인 시험값(2026-09-29): main에서 `motion_record_replay_configure_align()`을
+  `gripper_max_delta_norm_per_tick=0.01`, `align_timeout_ticks=500`으로 호출한다.
+  명령상 gripper 전 범위 이동 2초, ALIGN 최대 10초다. 실측으로 검증한 정격값은 아니다.
+  재생 설정 잠금은 해제하지만 기본 빌드의 로봇 PWM 비활성 정책은 유지한다.
+- A2 elbow_pitch 상한은 A3의 180도와 일치시켰다(기존 200도). 다른 보정값은 유지한다.
 
 과거 `MotionKeyframe` 재목표 기록/SD flush/버튼2 제안과
 [Agent3 integration handoff](agent3_integration_handoff.md)는 설계 이력이다.

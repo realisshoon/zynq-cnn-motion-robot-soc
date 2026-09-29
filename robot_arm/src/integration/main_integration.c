@@ -36,6 +36,10 @@ int main(void)
     if (agent_pipeline_init_mode(&pipeline, 0) != 0) return -1;
 #endif
     motion_record_replay_init(&record_replay);
+    /* 2026-09-29 사용자 승인 시험값: gripper 전 범위 2초, ALIGN 최대 10초. */
+    if (!motion_record_replay_configure_align(&record_replay, 0.01f, 500U)) {
+        return -1;
+    }
     TRACE_INIT(); /* [TRACE] 컬럼 정의(# 줄)와 BOOT 이벤트 */
     if (cnn_app_init() != 0) return -1;
 
@@ -63,7 +67,7 @@ int main(void)
          * LIVE/RECORDING: agent2_tick -> 검증 -> agent3_apply_command -> 녹화
          * ALIGNING:      agent2_tick -> gripper 제한/검증 -> agent3_apply_command
          * PLAYING:       저장 샘플 검증 -> agent3_apply_command
-         * HOLDING:       마지막 성공 명령 -> agent3_apply_command
+         * HOLDING:       1회 재생 완료/오류 후 마지막 성공 명령 -> agent3_apply_command
          * 녹화는 RECORDING에서 Agent3 적용 성공 후에만 확정한다.
          * agent3_run을 여기서 추가 호출하면 한 틱에 출력이 중복된다. */
         if (platform_tick_due()) {

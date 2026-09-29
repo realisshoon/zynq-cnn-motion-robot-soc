@@ -7,6 +7,7 @@
 #include "drivers/servo_pwm_driver.h"
 #include "record_replay/motion_record_replay.h"
 #include "output_controller/servo_hal.h"
+#include "output_controller/servo_config.h"
 #include "robot_calibration/forearm_calibration_config.h"
 
 static ForearmJointCommand command(float roll, float pitch, float wrist_pitch,
@@ -336,7 +337,7 @@ static void set_target_from_robot_sample(AgentPipelineContext *pipeline,
     pipeline->target_ready = 1U;
 }
 
-static void test_replay_loops_with_safe_return_align(void)
+static void test_replay_once_then_holds_final_command(void)
 {
     AgentPipelineContext pipeline;
     MotionRecordReplay controller;
@@ -347,7 +348,8 @@ static void test_replay_loops_with_safe_return_align(void)
         {90.08f, 90.04f, 90.0f, 90.0f, 0.38f}
     };
     float previous_gripper = 0.0f;
-    unsigned i, loop, align_ticks = 0U;
+    unsigned i, align_ticks = 0U;
+    ForearmJointCommand previous_play, last_play;
 
     init_context(&pipeline, &initial);
     configure(&controller, 0.05f);
@@ -365,13 +367,13 @@ static void test_replay_loops_with_safe_return_align(void)
     assert(align_ticks > 1U);
     assert(motion_record_replay_mode(&controller) == MOTION_RR_PLAYING);
     assert(motion_record_replay_replay_index(&controller) == 0U);
-    for (loop = 0U; loop < 2U; ++loop) {
+    {
         double direct_q[FOREARM_MOTION_JOINT_COUNT];
-        ForearmJointCommand previous_play = command(
+        previous_play = command(
             samples[1].elbow_roll_deg, samples[1].elbow_pitch_deg,
             samples[1].wrist_pitch_deg, samples[1].wrist_roll_deg,
             samples[1].gripper_norm);
-        ForearmJointCommand last_play = command(
+        last_play = command(
             samples[2].elbow_roll_deg, samples[2].elbow_pitch_deg,
             samples[2].wrist_pitch_deg, samples[2].wrist_roll_deg,
             samples[2].gripper_norm);
@@ -392,27 +394,34 @@ static void test_replay_loops_with_safe_return_align(void)
                     assert(pipeline.motion.axes[axis].q == direct_q[axis]);
             }
         }
-        assert(motion_record_replay_mode(&controller) == MOTION_RR_ALIGNING);
-        assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_NONE);
+        assert(motion_record_replay_mode(&controller) == MOTION_RR_HOLDING);
+        assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_COMPLETED);
         assert(motion_record_replay_replay_index(&controller) == 3U);
         assert_command_sample(&pipeline.applied_command, &samples[2]);
-        assert_near((float)pipeline.motion.axes[0].q,
-                    samples[2].elbow_roll_deg);
-        assert_near((float)pipeline.motion.axes[0].v,
-                    (samples[2].elbow_roll_deg -
-                     samples[1].elbow_roll_deg) / 0.020f);
-
-        /* PLAY 마지막 두 명령의 속도까지 이어받아 첫 ALIGN 가속도를 제한한다. */
-        assert(controller_tick(&controller, &pipeline, 0U));
-        assert(motion_record_replay_mode(&controller) == MOTION_RR_ALIGNING);
-        assert_transition_acceleration(
-            &previous_play, &last_play, &pipeline.applied_command);
-        assert(fabsf(pipeline.applied_command.elbow_roll_deg -
-                     samples[2].elbow_roll_deg) <=
-               forearm_calibration_config.elbow_roll.max_delta_deg + 0.0001f);
-        (void)drive_align(&controller, &pipeline, 0U);
-        assert(motion_record_replay_replay_index(&controller) == 0U);
     }
+    /* fresh camera target도 HOLD 중에는 A2 목표로 전달하지 않는다. */
+    set_target_from_robot_sample(&pipeline, &samples[0]);
+    assert(!motion_record_replay_agent2_run_allowed(&controller));
+    for (i = 0U; i < 10U; ++i) {
+        uint32_t ticks_before = pipeline.ticks;
+        assert(controller_tick(&controller, &pipeline, 0U));
+        assert(pipeline.ticks == ticks_before + 1U);
+        assert(motion_record_replay_mode(&controller) == MOTION_RR_HOLDING);
+        assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_COMPLETED);
+        assert(motion_record_replay_replay_index(&controller) == 3U);
+        assert_command_sample(&pipeline.agent3_command, &samples[2]);
+        assert_command_sample(&pipeline.applied_command, &samples[2]);
+        if (i == 0U) {
+            assert_transition_acceleration(
+                &previous_play, &last_play, &pipeline.applied_command);
+        }
+    }
+    /* 사용자가 P를 다시 눌러야 LIVE로 돌아가며 stale target은 버린다. */
+    assert(motion_record_replay_on_play_button_pulse(&controller, &pipeline, 0U));
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_LIVE);
+    assert(!pipeline.target_ready && !pipeline.command_valid);
+    assert_near((float)pipeline.motion.axes[0].q, samples[2].elbow_roll_deg);
+    assert(fabs(pipeline.motion.axes[0].v) < 0.000001);
 }
 
 static void start_and_align(MotionRecordReplay *controller,
@@ -446,6 +455,19 @@ static void test_invalid_samples(void)
     assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_INVALID_COMMAND);
 
     bad = sample(19.0f, 90.0f, 90.0f, 90.0f, 0.5f);
+    assert(motion_record_replay_load_replay(&controller, &bad, 1U));
+    assert(!motion_record_replay_start_play(&controller, &pipeline, 0U));
+    assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_RANGE);
+
+    /* A2가 A3의 180도 상한을 넘는 pitch를 승인하지 않는지 확인한다. */
+    {
+        ForearmJointCommand clamped = command(90.0f, 200.0f, 90.0f, 90.0f, 0.5f);
+        assert_near(forearm_calibration_config.elbow_pitch.max_deg,
+                    servo_config_get(SERVO_ELBOW_PITCH)->max_deg);
+        forearm_motion_control_apply_limits(&clamped);
+        assert_near(clamped.elbow_pitch_deg, 180.0f);
+    }
+    bad = sample(90.0f, 180.01f, 90.0f, 90.0f, 0.5f);
     assert(motion_record_replay_load_replay(&controller, &bad, 1U));
     assert(!motion_record_replay_start_play(&controller, &pipeline, 0U));
     assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_RANGE);
@@ -536,8 +558,8 @@ static void test_full_preflight_and_play_abort_conditions(void)
     assert(controller_tick(&controller, &pipeline, 0U));
     assert(controller_tick(&controller, &pipeline, 0U));
     assert(controller_tick(&controller, &pipeline, 0U));
-    assert(motion_record_replay_mode(&controller) == MOTION_RR_ALIGNING);
-    assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_NONE);
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_HOLDING);
+    assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_COMPLETED);
 
     init_context(&pipeline, &initial);
     start_and_align(&controller, &pipeline, safe_samples, 3U);
@@ -887,12 +909,63 @@ static void test_configuration_and_mode_exclusion(void)
     assert(pipeline.ticks == ticks_before + 1U);
 }
 
+static void test_one_shot_terminal_acceleration_preflight(void)
+{
+    AgentPipelineContext pipeline;
+    MotionRecordReplay controller;
+    ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.5f);
+    /* 0 -> 2 -> 4 deg/s: 샘플 사이는 100 deg/s^2로 통과하지만,
+     * 마지막 4 -> 0 deg/s의 HOLD 전환은 200 deg/s^2가 된다. */
+    MotionSample samples[] = {
+        {90.0f, 90.0f, 90.0f, 90.0f, 0.5f},
+        {90.04f, 90.0f, 90.0f, 90.0f, 0.5f},
+        {90.12f, 90.0f, 90.0f, 90.0f, 0.5f}
+    };
+    init_context(&pipeline, &initial);
+    configure(&controller, 0.01f);
+    assert(motion_record_replay_load_replay(&controller, samples, 3U));
+    assert(!motion_record_replay_start_play(&controller, &pipeline, 0U));
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_LIVE);
+    assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_ACCELERATION);
+    assert_command_sample(&pipeline.applied_command, &samples[0]);
+}
+
+static void test_approved_align_settings_and_single_sample_completion(void)
+{
+    AgentPipelineContext pipeline;
+    MotionRecordReplay controller;
+    ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.0f);
+    MotionSample one = {90.0f, 90.0f, 90.0f, 90.0f, 1.0f};
+    float previous = 0.0f;
+    unsigned ticks = 0U;
+
+    init_context(&pipeline, &initial);
+    motion_record_replay_init(&controller);
+    assert(motion_record_replay_configure_align(&controller, 0.01f, 500U));
+    assert(motion_record_replay_load_replay(&controller, &one, 1U));
+    assert(motion_record_replay_start_play(&controller, &pipeline, 0U));
+    while (motion_record_replay_mode(&controller) == MOTION_RR_ALIGNING) {
+        assert(controller_tick(&controller, &pipeline, 0U));
+        assert(fabsf(pipeline.applied_command.gripper_norm - previous) <= 0.01001f);
+        previous = pipeline.applied_command.gripper_norm;
+        assert(++ticks <= 500U);
+    }
+    assert(ticks == 100U);
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_PLAYING);
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_HOLDING);
+    assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_COMPLETED);
+    assert(strcmp(motion_record_replay_reason_name(controller.reason), "COMPLETED") == 0);
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert_command_sample(&pipeline.applied_command, &one);
+}
+
 int main(void)
 {
     test_record_tick_trajectory();
     test_record_failure_sources_and_buffer_full();
     test_record_timing_and_record_button();
-    test_replay_loops_with_safe_return_align();
+    test_replay_once_then_holds_final_command();
     test_invalid_samples();
     test_full_preflight_and_play_abort_conditions();
     test_decreasing_gripper_align_and_timeout_hold();
@@ -904,6 +977,8 @@ int main(void)
     test_agent3_command_freshness();
     test_play_button_toggle_and_button_exclusion();
     test_configuration_and_mode_exclusion();
-    puts("test_motion_record_replay: PASS (50 Hz record, button pulses, loop align, hold)");
+    test_one_shot_terminal_acceleration_preflight();
+    test_approved_align_settings_and_single_sample_completion();
+    puts("test_motion_record_replay: PASS (50 Hz record, button pulses, one-shot replay, hold)");
     return 0;
 }
