@@ -5,8 +5,14 @@
 #include "record_replay/motion_record_replay.h"
 #include "integration/cnn_app.h"
 
+static void handle_record_or_play_event(MotionRecordReplay *record_replay,
+                                       AgentPipelineContext *pipeline,
+                                       CnnAppEvent event);
+
 /*
- * 통합 진입점: HumanPose2D -> Agent1 -> Agent2 -> Agent3.
+ * 통합 진입점: 새 CNN 프레임의 목표 계산과 20 ms 출력 제어를 분리한다.
+ * 프레임: agent1_run -> [LIVE/RECORDING] agent2_run.
+ * 제어 틱: Record/Replay 제어기가 모드에 따라 Agent2/Agent3를 호출한다.
  * src/main.c(Agent3의 HAL 데모)는 그대로 두고, 이 파일을 Vitis 통합 단계에서 main으로 쓴다.
  * CNN 완료 결과가 input_pose_cnn을 통해 프레임 경로로 들어온다.
  *
@@ -34,51 +40,66 @@ int main(void)
     if (cnn_app_init() != 0) return -1;
 
     for (;;) {
+        /* 1. CNN 완료 결과 처리 + UART R/P에 따른 녹화/재생 모드 전환. */
         cnn_app_service();
         if (cnn_app_take_control_event(&control_event)) {
-            int accepted = 0;
-            if (control_event == CNN_APP_EVENT_RECORD_TOGGLE) {
-                accepted = motion_record_replay_on_record_button_pulse(
-                    &record_replay);
-            } else if (control_event == CNN_APP_EVENT_PLAY_TOGGLE) {
-                accepted = motion_record_replay_on_play_button_pulse(
-                    &record_replay, &pipeline,
-                    platform_tick_overrun_count());
-            }
-            cnn_app_report_control_result(
-                control_event, accepted,
-                motion_record_replay_mode_name(
-                    motion_record_replay_mode(&record_replay)),
-                motion_record_replay_reason_name(
-                    motion_record_replay_reason(&record_replay)),
-                (unsigned long)motion_record_replay_record_count(&record_replay),
-                (unsigned long)motion_record_replay_replay_count(&record_replay),
-                motion_record_replay_source_name(
-                    motion_record_replay_record_source(&record_replay)),
-                motion_record_replay_source_name(
-                    motion_record_replay_replay_source(&record_replay)));
+            handle_record_or_play_event(&record_replay, &pipeline, control_event);
         }
-        /* 프레임 경로(가변 주기): 새 pose가 오면 목표를 갱신한다. */
+
+        /* 2. 프레임 경로(가변 주기): 사람 자세 -> 로봇 목표.
+         * A1은 모든 모드에서 실행하고, A2 목표는 LIVE/RECORDING에서만 갱신한다. */
         if (input_pose_ready() && input_pose_take(&pose, &dt_sec)) {
             TRACE_IN(&pose);
             TRACE_MARK(); /* [TRACE] 실행시간 측정 시작 */
             agent1_run(&pipeline, &pose, dt_sec);
-            TRACE_A1(&pipeline); /* [TRACE] A1, P3. agent2_run 전에 찍어야 원본이다(unwrap이 타겟을 고친다) */
+            TRACE_A1(&pipeline); /* [TRACE] A1, P3: A2 처리 전 입력을 기록한다. */
             if (motion_record_replay_agent2_run_allowed(&record_replay)) {
                 agent2_run(&pipeline);
                 TRACE_A2(&pipeline); /* [TRACE] A2 */
             }
         }
 
-        /* 제어 틱 경로(고정 20ms): 램프를 한 틱 진행해서 서보에 적용한다. */
+        /* 3. 제어 틱 경로(20 ms): 아래 호출 내부에서 모드별로 출력한다.
+         * LIVE/RECORDING: agent2_tick -> 검증 -> agent3_apply_command -> 녹화
+         * ALIGNING:      agent2_tick -> gripper 제한/검증 -> agent3_apply_command
+         * PLAYING:       저장 샘플 검증 -> agent3_apply_command
+         * HOLDING:       마지막 성공 명령 -> agent3_apply_command
+         * 녹화는 RECORDING에서 Agent3 적용 성공 후에만 확정한다.
+         * agent3_run을 여기서 추가 호출하면 한 틱에 출력이 중복된다. */
         if (platform_tick_due()) {
             TRACE_MARK(); /* [TRACE] 실행시간 측정 시작 */
             motion_record_replay_control_tick(
                 &record_replay, &pipeline, platform_tick_overrun_count());
-            TRACE_TK(&pipeline); /* [TRACE] TK. 서보 쓰기 뒤에 찍으므로 서보 지연에 영향이 없다 */
+            TRACE_TK(&pipeline); /* [TRACE] TK: 이번 제어 틱의 출력 처리 뒤 기록. */
         }
 
+        /* 4. 진단 로그 배출과 UART 송신 서비스. */
         TRACE_POLL(&pipeline); /* [TRACE] 링버퍼를 UART로 비운다(논블로킹). 1초마다 SM 줄 */
         platform_uart_service();
     }
+}
+
+/* 모드 전환과 UART 응답의 세부 처리는 main의 프레임/틱 흐름에서 분리한다. */
+static void handle_record_or_play_event(MotionRecordReplay *record_replay,
+                                       AgentPipelineContext *pipeline,
+                                       CnnAppEvent event)
+{
+    int accepted = 0;
+
+    if (event == CNN_APP_EVENT_RECORD_TOGGLE) {
+        accepted = motion_record_replay_on_record_button_pulse(record_replay);
+    } else if (event == CNN_APP_EVENT_PLAY_TOGGLE) {
+        accepted = motion_record_replay_on_play_button_pulse(
+            record_replay, pipeline, platform_tick_overrun_count());
+    }
+    cnn_app_report_control_result(
+        event, accepted,
+        motion_record_replay_mode_name(motion_record_replay_mode(record_replay)),
+        motion_record_replay_reason_name(motion_record_replay_reason(record_replay)),
+        (unsigned long)motion_record_replay_record_count(record_replay),
+        (unsigned long)motion_record_replay_replay_count(record_replay),
+        motion_record_replay_source_name(
+            motion_record_replay_record_source(record_replay)),
+        motion_record_replay_source_name(
+            motion_record_replay_replay_source(record_replay)));
 }
