@@ -36,14 +36,27 @@ int main(void)
     for (;;) {
         cnn_app_service();
         if (cnn_app_take_control_event(&control_event)) {
+            int accepted = 0;
             if (control_event == CNN_APP_EVENT_RECORD_TOGGLE) {
-                (void)motion_record_replay_on_record_button_pulse(
+                accepted = motion_record_replay_on_record_button_pulse(
                     &record_replay);
             } else if (control_event == CNN_APP_EVENT_PLAY_TOGGLE) {
-                (void)motion_record_replay_on_play_button_pulse(
+                accepted = motion_record_replay_on_play_button_pulse(
                     &record_replay, &pipeline,
                     platform_tick_overrun_count());
             }
+            cnn_app_report_control_result(
+                control_event, accepted,
+                motion_record_replay_mode_name(
+                    motion_record_replay_mode(&record_replay)),
+                motion_record_replay_reason_name(
+                    motion_record_replay_reason(&record_replay)),
+                (unsigned long)motion_record_replay_record_count(&record_replay),
+                (unsigned long)motion_record_replay_replay_count(&record_replay),
+                motion_record_replay_source_name(
+                    motion_record_replay_record_source(&record_replay)),
+                motion_record_replay_source_name(
+                    motion_record_replay_replay_source(&record_replay)));
         }
         /* 프레임 경로(가변 주기): 새 pose가 오면 목표를 갱신한다. */
         if (input_pose_ready() && input_pose_take(&pose, &dt_sec)) {

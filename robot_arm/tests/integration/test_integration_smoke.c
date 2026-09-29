@@ -71,6 +71,24 @@ static const float max_delta_deg[JOINTS] = {0.6f, 0.6f, 0.6f, 0.6f};
 /* This host suite exercises the existing UART script; CNN hardware is absent. */
 int cnn_app_init(void) { return 0; }
 void cnn_app_service(void) { }
+void cnn_app_report_control_result(CnnAppEvent event,
+                                   int accepted,
+                                   const char *mode,
+                                   const char *reason,
+                                   unsigned long record_count,
+                                   unsigned long replay_count,
+                                   const char *record_source,
+                                   const char *replay_source)
+{
+    (void)event;
+    (void)accepted;
+    (void)mode;
+    (void)reason;
+    (void)record_count;
+    (void)replay_count;
+    (void)record_source;
+    (void)replay_source;
+}
 
 static void pwm_values(const ServoPwmCommand *pwm, uint16_t values[CHANNELS])
 {

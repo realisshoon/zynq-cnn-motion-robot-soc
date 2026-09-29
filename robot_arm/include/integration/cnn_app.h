@@ -20,4 +20,15 @@ void cnn_app_service(void);
 /* UART 메뉴가 만든 software event를 한 번 가져오고 pending 값을 비운다. */
 int cnn_app_take_control_event(CnnAppEvent *event);
 
+/* main이 처리한 Record/Replay event 결과를 기존 UART TX 경로로 알린다.
+ * 상태 전이는 main/RecordReplay 모듈이 담당하며 cnn_app은 문자열만 출력한다. */
+void cnn_app_report_control_result(CnnAppEvent event,
+                                   int accepted,
+                                   const char *mode,
+                                   const char *reason,
+                                   unsigned long record_count,
+                                   unsigned long replay_count,
+                                   const char *record_source,
+                                   const char *replay_source);
+
 #endif

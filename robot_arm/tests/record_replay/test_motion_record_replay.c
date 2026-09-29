@@ -147,27 +147,56 @@ static void test_record_tick_trajectory(void)
     assert(motion_record_replay_replay_count(&controller) == 50U);
 }
 
-static void test_record_buffer_full_and_hal_independence(void)
+static void test_record_failure_sources_and_buffer_full(void)
 {
     AgentPipelineContext pipeline;
     MotionRecordReplay controller;
     ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.5f);
     ServoPwmCommand before;
-    MotionSample last_before, last_after;
+    MotionSample first, replayed, last_before, last_after;
     uint32_t i;
 
     init_context(&pipeline, &initial);
     motion_record_replay_init(&controller);
     assert(motion_record_replay_start_record(&controller));
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(motion_record_replay_record_count(&controller) == 1U);
+    assert(motion_record_replay_get_record_sample(&controller, 0U, &first));
     before = pipeline.pwm;
     reset_mock();
     for (i = 0U; i < 127U; ++i) assert(servo_hal_disable());
     assert(!motion_record_replay_control_tick(&controller, &pipeline, 0U));
     assert(motion_record_replay_record_count(&controller) == 1U);
+    assert(motion_record_replay_replay_count(&controller) == 1U);
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_LIVE);
+    assert(motion_record_replay_reason(&controller) ==
+           MOTION_RR_REASON_AGENT3_FAILURE);
+    assert(motion_record_replay_record_source(&controller) ==
+           MOTION_RR_APPLIED_HAL);
+    assert(motion_record_replay_replay_source(&controller) ==
+           MOTION_RR_APPLIED_HAL);
+    assert(motion_record_replay_get_replay_sample(&controller, 0U, &replayed));
+    assert_sample(&replayed, &first);
     assert(same_pwm(&pipeline.pwm, &before));
     assert(pipeline.servo_errors == 1U);
 
-    for (i = 1U; i < MOTION_RECORD_REPLAY_MAX_SAMPLES; ++i) {
+    /* PWM-disabled recording is explicitly marked as software output. */
+    init_context(&pipeline, &initial);
+    pipeline.output_enabled = 0U;
+    motion_record_replay_init(&controller);
+    assert(motion_record_replay_start_record(&controller));
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(motion_record_replay_record_source(&controller) ==
+           MOTION_RR_APPLIED_SOFTWARE_OUTPUT);
+    assert(motion_record_replay_on_record_button_pulse(&controller));
+    assert(motion_record_replay_replay_source(&controller) ==
+           MOTION_RR_APPLIED_SOFTWARE_OUTPUT);
+
+    /* Buffer full automatically finalizes all 1024 successful samples. */
+    init_context(&pipeline, &initial);
+    motion_record_replay_init(&controller);
+    assert(motion_record_replay_start_record(&controller));
+    for (i = 0U; i < MOTION_RECORD_REPLAY_MAX_SAMPLES; ++i) {
         assert(controller_tick(&controller, &pipeline, 0U));
     }
     assert(motion_record_replay_record_count(&controller) ==
@@ -175,16 +204,25 @@ static void test_record_buffer_full_and_hal_independence(void)
     assert(motion_record_replay_mode(&controller) == MOTION_RR_LIVE);
     assert(motion_record_replay_reason(&controller) ==
            MOTION_RR_REASON_BUFFER_FULL);
-    assert(motion_record_replay_record_count(&controller) ==
+    assert(motion_record_replay_replay_count(&controller) ==
            MOTION_RECORD_REPLAY_MAX_SAMPLES);
+    assert(motion_record_replay_replay_source(&controller) ==
+           MOTION_RR_APPLIED_HAL);
     assert(motion_record_replay_get_record_sample(
         &controller, MOTION_RECORD_REPLAY_MAX_SAMPLES - 1U, &last_before));
-    assert(controller_tick(&controller, &pipeline, 0U));
-    assert(motion_record_replay_record_count(&controller) ==
-           MOTION_RECORD_REPLAY_MAX_SAMPLES);
-    assert(motion_record_replay_get_record_sample(
+    assert(motion_record_replay_get_replay_sample(
         &controller, MOTION_RECORD_REPLAY_MAX_SAMPLES - 1U, &last_after));
     assert_sample(&last_after, &last_before);
+
+    /* Full 종료 뒤 R을 다시 눌러도 확정된 replay는 지워지지 않는다. */
+    assert(motion_record_replay_on_record_button_pulse(&controller));
+    assert(motion_record_replay_record_count(&controller) == 0U);
+    assert(motion_record_replay_replay_count(&controller) ==
+           MOTION_RECORD_REPLAY_MAX_SAMPLES);
+    assert(motion_record_replay_get_replay_sample(
+        &controller, MOTION_RECORD_REPLAY_MAX_SAMPLES - 1U, &last_after));
+    assert_sample(&last_after, &last_before);
+    assert(motion_record_replay_on_record_button_pulse(&controller));
 }
 
 static void test_record_timing_and_record_button(void)
@@ -210,6 +248,7 @@ static void test_record_timing_and_record_button(void)
     assert(motion_record_replay_mode(&controller) == MOTION_RR_LIVE);
     assert(motion_record_replay_reason(&controller) ==
            MOTION_RR_REASON_TICK_OVERRUN);
+    assert(motion_record_replay_replay_count(&controller) == 1U);
 
     /* A failed Agent2 control step terminates recording without a hole. */
     assert(motion_record_replay_on_record_button_pulse(&controller));
@@ -276,8 +315,8 @@ static void test_replay_loops_with_safe_return_align(void)
     ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.0f);
     MotionSample samples[] = {
         {90.0f, 90.0f, 90.0f, 90.0f, 0.3f},
-        {90.6f, 90.2f, 90.0f, 90.0f, 0.4f},
-        {91.2f, 90.4f, 90.0f, 90.0f, 0.5f}
+        {90.04f, 90.02f, 90.0f, 90.0f, 0.34f},
+        {90.08f, 90.04f, 90.0f, 90.0f, 0.38f}
     };
     float previous_gripper = 0.0f;
     unsigned i, loop, align_ticks = 0U;
@@ -416,10 +455,18 @@ static void test_full_preflight_and_play_abort_conditions(void)
         {90.0f, 90.0f, 90.0f, 90.0f, 0.5f},
         {90.0f, 90.0f, 90.0f, 90.0f, 1.1f}
     };
-    MotionSample hold_samples[] = {
+    MotionSample acceleration_samples[] = {
         {90.0f, 90.0f, 90.0f, 90.0f, 0.5f},
-        {90.6f, 90.0f, 90.0f, 90.0f, 0.5f},
-        {90.6f, 90.0f, 90.0f, 90.0f, 0.5f}
+        {90.1f, 90.0f, 90.0f, 90.0f, 0.5f}
+    };
+    MotionSample gripper_samples[] = {
+        {90.0f, 90.0f, 90.0f, 90.0f, 0.5f},
+        {90.0f, 90.0f, 90.0f, 90.0f, 0.8f}
+    };
+    MotionSample safe_samples[] = {
+        {90.0f, 90.0f, 90.0f, 90.0f, 0.5f},
+        {90.04f, 90.0f, 90.0f, 90.0f, 0.5f},
+        {90.08f, 90.0f, 90.0f, 90.0f, 0.5f}
     };
 
     /* Sample 0 is valid in every case. A bad later sample must prevent ALIGN
@@ -436,11 +483,16 @@ static void test_full_preflight_and_play_abort_conditions(void)
     init_context(&pipeline, &initial);
     assert_preflight_rejected(&pipeline, &controller, delta_samples,
                               MOTION_RR_REASON_DELTA);
-
-    /* A normal 0.6 degree step followed by emergency-style zero delta is not
-     * rejected by an acceleration rule in v1. */
     init_context(&pipeline, &initial);
-    start_and_align(&controller, &pipeline, hold_samples, 3U);
+    assert_preflight_rejected(&pipeline, &controller, acceleration_samples,
+                              MOTION_RR_REASON_ACCELERATION);
+    init_context(&pipeline, &initial);
+    assert_preflight_rejected(&pipeline, &controller, gripper_samples,
+                              MOTION_RR_REASON_GRIPPER_DELTA);
+
+    /* Position, gripper, and acceleration limits all pass this trajectory. */
+    init_context(&pipeline, &initial);
+    start_and_align(&controller, &pipeline, safe_samples, 3U);
     assert(controller_tick(&controller, &pipeline, 0U));
     assert(controller_tick(&controller, &pipeline, 0U));
     assert(controller_tick(&controller, &pipeline, 0U));
@@ -448,12 +500,12 @@ static void test_full_preflight_and_play_abort_conditions(void)
     assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_NONE);
 
     init_context(&pipeline, &initial);
-    start_and_align(&controller, &pipeline, hold_samples, 3U);
+    start_and_align(&controller, &pipeline, safe_samples, 3U);
     assert(!controller_tick(&controller, &pipeline, 1U));
     assert(motion_record_replay_mode(&controller) == MOTION_RR_HOLDING);
     assert(motion_record_replay_reason(&controller) ==
            MOTION_RR_REASON_TICK_OVERRUN);
-    assert_command_sample(&pipeline.output, &hold_samples[0]);
+    assert_command_sample(&pipeline.output, &safe_samples[0]);
 }
 
 static void test_decreasing_gripper_align_and_timeout_hold(void)
@@ -506,6 +558,96 @@ static void test_decreasing_gripper_align_and_timeout_hold(void)
            MOTION_RR_REASON_TICK_OVERRUN);
 }
 
+static void test_record_start_while_moving_is_rejected_at_replay(void)
+{
+    AgentPipelineContext pipeline;
+    MotionRecordReplay controller;
+    ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.5f);
+    ForearmJointCommand target = command(110.0f, 90.0f, 90.0f, 90.0f, 0.5f);
+    MotionSample first, second;
+    unsigned i;
+
+    init_context(&pipeline, &initial);
+    motion_record_replay_init(&controller);
+    forearm_calibration_set_target(&pipeline.motion, &target);
+    for (i = 0U; i < 8U; ++i) {
+        assert(controller_tick(&controller, &pipeline, 0U));
+    }
+    assert(fabs(pipeline.motion.axes[0].v) > 0.05);
+
+    assert(motion_record_replay_on_record_button_pulse(&controller));
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(motion_record_replay_on_record_button_pulse(&controller));
+    assert(motion_record_replay_get_replay_sample(&controller, 0U, &first));
+    assert(motion_record_replay_get_replay_sample(&controller, 1U, &second));
+    assert(fabsf(second.elbow_roll_deg - first.elbow_roll_deg) >
+           forearm_calibration_config.amax_deg_s2[0] * 0.020f * 0.020f);
+
+    assert(motion_record_replay_configure_align(&controller, 0.1f, 800U));
+    assert(!motion_record_replay_start_play(&controller, &pipeline, 0U));
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_LIVE);
+    assert(motion_record_replay_reason(&controller) ==
+           MOTION_RR_REASON_ACCELERATION);
+}
+
+static void test_record_stationary_lead_in_is_replayable(void)
+{
+    AgentPipelineContext pipeline;
+    MotionRecordReplay controller;
+    ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.5f);
+    ForearmJointCommand target = command(92.0f, 90.0f, 90.0f, 90.0f, 0.5f);
+    unsigned i;
+
+    init_context(&pipeline, &initial);
+    motion_record_replay_init(&controller);
+    assert(motion_record_replay_on_record_button_pulse(&controller));
+    /* Sample0을 정지 자세로 확보한 뒤 움직이면 ALIGN의 v=0 경계와 일치한다. */
+    assert(controller_tick(&controller, &pipeline, 0U));
+    forearm_calibration_set_target(&pipeline.motion, &target);
+    for (i = 0U; i < 20U; ++i) {
+        assert(controller_tick(&controller, &pipeline, 0U));
+    }
+    assert(motion_record_replay_on_record_button_pulse(&controller));
+    assert(motion_record_replay_configure_align(&controller, 0.1f, 800U));
+    assert(motion_record_replay_start_play(&controller, &pipeline, 0U));
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_ALIGNING);
+}
+
+static void test_play_after_hal_failure_reseeds_from_last_success(void)
+{
+    AgentPipelineContext pipeline;
+    MotionRecordReplay controller;
+    ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.5f);
+    ForearmJointCommand target = command(100.0f, 90.0f, 90.0f, 90.0f, 0.5f);
+    ForearmJointCommand last_success;
+    MotionSample replay = {91.0f, 90.0f, 90.0f, 90.0f, 0.5f};
+    uint32_t i;
+
+    init_context(&pipeline, &initial);
+    last_success = pipeline.applied_command;
+    forearm_calibration_set_target(&pipeline.motion, &target);
+    assert(agent2_tick(&pipeline));
+    assert(fabsf(pipeline.output.elbow_roll_deg -
+                 last_success.elbow_roll_deg) > 0.001f);
+
+    reset_mock();
+    for (i = 0U; i < 127U; ++i) assert(servo_hal_disable());
+    assert(!agent3_apply_command(&pipeline, &pipeline.output));
+    assert_near(pipeline.applied_command.elbow_roll_deg,
+                last_success.elbow_roll_deg);
+
+    configure(&controller, 0.1f);
+    assert(motion_record_replay_load_replay(&controller, &replay, 1U));
+    assert(motion_record_replay_start_play(&controller, &pipeline, 0U));
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_ALIGNING);
+    assert(controller.last_applied_replay_source == MOTION_RR_APPLIED_HAL);
+    assert_near(pipeline.output.elbow_roll_deg, last_success.elbow_roll_deg);
+    assert_near((float)pipeline.motion.axes[0].q,
+                last_success.elbow_roll_deg);
+    assert(fabs(pipeline.motion.axes[0].v) < 0.000001);
+}
+
 static void test_agent3_failure_preserves_pwm_and_aborts_play(void)
 {
     AgentPipelineContext pipeline;
@@ -513,7 +655,7 @@ static void test_agent3_failure_preserves_pwm_and_aborts_play(void)
     ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.5f);
     MotionSample samples[] = {
         {90.0f, 90.0f, 90.0f, 90.0f, 0.5f},
-        {90.5f, 90.0f, 90.0f, 90.0f, 0.5f}
+        {90.04f, 90.0f, 90.0f, 90.0f, 0.5f}
     };
     ServoPwmCommand before;
     uint32_t i;
@@ -553,7 +695,7 @@ static void test_play_button_toggle_and_button_exclusion(void)
     ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.5f);
     MotionSample samples[] = {
         {90.0f, 90.0f, 90.0f, 90.0f, 0.5f},
-        {90.5f, 90.0f, 90.0f, 90.0f, 0.5f}
+        {90.04f, 90.0f, 90.0f, 90.0f, 0.5f}
     };
     uint32_t retargets;
 
@@ -650,6 +792,9 @@ static void test_configuration_and_mode_exclusion(void)
     assert(motion_record_replay_load_replay(&controller, &one, 1U));
     assert(!motion_record_replay_start_play(&controller, &pipeline, 0U));
     assert(motion_record_replay_reason(&controller) == MOTION_RR_REASON_CONFIG);
+    assert(strcmp(motion_record_replay_reason_name(
+                      motion_record_replay_reason(&controller)),
+                  "ALIGN_CONFIG_REQUIRED_REPLAY_DISABLED") == 0);
     assert(motion_record_replay_start_record(&controller));
     assert(!motion_record_replay_start_record(&controller));
     assert(!motion_record_replay_start_play(&controller, &pipeline, 0U));
@@ -671,12 +816,15 @@ static void test_configuration_and_mode_exclusion(void)
 int main(void)
 {
     test_record_tick_trajectory();
-    test_record_buffer_full_and_hal_independence();
+    test_record_failure_sources_and_buffer_full();
     test_record_timing_and_record_button();
     test_replay_loops_with_safe_return_align();
     test_invalid_samples();
     test_full_preflight_and_play_abort_conditions();
     test_decreasing_gripper_align_and_timeout_hold();
+    test_record_start_while_moving_is_rejected_at_replay();
+    test_record_stationary_lead_in_is_replayable();
+    test_play_after_hal_failure_reseeds_from_last_success();
     test_agent3_failure_preserves_pwm_and_aborts_play();
     test_agent3_command_freshness();
     test_play_button_toggle_and_button_exclusion();

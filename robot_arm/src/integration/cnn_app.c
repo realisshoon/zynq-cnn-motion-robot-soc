@@ -53,6 +53,27 @@ static int cnn_stopping;
 /* timeout/HW fault/비정상 DONE 이후 x로 복구하기 전까지 유지된다. */
 static int cnn_fault_latched;
 
+void cnn_app_report_control_result(CnnAppEvent event,
+                                   int accepted,
+                                   const char *mode,
+                                   const char *reason,
+                                   unsigned long record_count,
+                                   unsigned long replay_count,
+                                   const char *record_source,
+                                   const char *replay_source)
+{
+    const char *command = event == CNN_APP_EVENT_RECORD_TOGGLE
+        ? "RECORD" : "PLAY";
+    xil_printf("[RR] %s %s: mode=%s reason=%s record=%lu(%s) replay=%lu(%s)\r\n",
+               command, accepted ? "accepted" : "rejected",
+               mode != NULL ? mode : "UNKNOWN",
+               reason != NULL ? reason : "UNKNOWN",
+               record_count,
+               record_source != NULL ? record_source : "UNKNOWN",
+               replay_count,
+               replay_source != NULL ? replay_source : "UNKNOWN");
+}
+
 static void camera_tracker_service_hook(void *context)
 {
     camera_tracking_app_service((camera_tracking_app_t *)context);

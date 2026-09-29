@@ -58,6 +58,8 @@ typedef enum {
     MOTION_RR_REASON_RANGE,
     MOTION_RR_REASON_SAFETY,
     MOTION_RR_REASON_DELTA,
+    MOTION_RR_REASON_ACCELERATION,
+    MOTION_RR_REASON_GRIPPER_DELTA,
     MOTION_RR_REASON_TICK_OVERRUN,
     MOTION_RR_REASON_AGENT3_FAILURE,
     MOTION_RR_REASON_ALIGN_TIMEOUT,
@@ -87,6 +89,11 @@ typedef struct {
     uint8_t last_applied_replay_valid; /* 위 command를 사용할 수 있으면 1 */
     uint8_t record_tick_baseline_valid; /* RECORD overrun 기준을 잡았으면 1 */
     MotionRecordReplayAppliedSource last_applied_replay_source;
+    /* 저장값은 항상 A2 출력 명령이다. 아래 source는 그 명령이 같은 tick에
+     * 실제 HAL 적용까지 성공했는지, PWM-disabled software 변환만 성공했는지를
+     * 구분한다. */
+    MotionRecordReplayAppliedSource record_source;
+    MotionRecordReplayAppliedSource replay_source;
 } MotionRecordReplay;
 
 void motion_record_replay_init(MotionRecordReplay *controller);
@@ -153,6 +160,14 @@ MotionRecordReplayReason motion_record_replay_reason(const MotionRecordReplay *c
 uint32_t motion_record_replay_record_count(const MotionRecordReplay *controller);
 uint32_t motion_record_replay_replay_count(const MotionRecordReplay *controller);
 uint32_t motion_record_replay_replay_index(const MotionRecordReplay *controller);
+MotionRecordReplayAppliedSource motion_record_replay_record_source(
+    const MotionRecordReplay *controller);
+MotionRecordReplayAppliedSource motion_record_replay_replay_source(
+    const MotionRecordReplay *controller);
+const char *motion_record_replay_mode_name(MotionRecordReplayMode mode);
+const char *motion_record_replay_reason_name(MotionRecordReplayReason reason);
+const char *motion_record_replay_source_name(
+    MotionRecordReplayAppliedSource source);
 int motion_record_replay_get_record_sample(const MotionRecordReplay *controller,
                                            uint32_t index,
                                            MotionSample *sample);

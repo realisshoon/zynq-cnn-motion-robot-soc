@@ -8,6 +8,11 @@
 #include "robot_calibration/forearm_safety_check.h"
 
 #define MOTION_RR_DELTA_TOLERANCE_DEG 0.0001f
+/* float sample 양자화가 20 ms 두 번 미분될 때 생기는 약 0.02 deg/s^2
+ * 오차보다 크고, 설정값 120 deg/s^2의 0.1%보다 작은 수치 허용치다. */
+#define MOTION_RR_ACCEL_TOLERANCE_DEG_S2 0.1f
+#define MOTION_RR_GRIPPER_TOLERANCE 0.0001f
+#define MOTION_RR_CONTROL_DT_SEC 0.020f
 #define MOTION_RR_ALIGN_POSITION_TOLERANCE_DEG 0.05f
 #define MOTION_RR_ALIGN_VELOCITY_TOLERANCE_DEG_S 0.05
 #define MOTION_RR_ALIGN_GRIPPER_TOLERANCE 0.0001f
@@ -107,24 +112,88 @@ static MotionRecordReplayReason validate_delta(const ForearmJointCommand *previo
     return MOTION_RR_REASON_NONE;
 }
 
+static int acceleration_ok(float before_previous, float previous, float current,
+                           float maximum)
+{
+    float previous_velocity =
+        (previous - before_previous) / MOTION_RR_CONTROL_DT_SEC;
+    float current_velocity = (current - previous) / MOTION_RR_CONTROL_DT_SEC;
+    float acceleration =
+        (current_velocity - previous_velocity) / MOTION_RR_CONTROL_DT_SEC;
+    return fabsf(acceleration) <= maximum + MOTION_RR_ACCEL_TOLERANCE_DEG_S2;
+}
+
+/* ALIGN 완료 시 회전축 속도는 0이다. sample0에서 sample1로 나가는 첫 이동도
+ * 정지 상태에서 낼 수 있는 가속도인지 검사한다. */
+static MotionRecordReplayReason validate_acceleration(
+    const ForearmJointCommand *before_previous,
+    const ForearmJointCommand *previous,
+    const ForearmJointCommand *current)
+{
+    if (!acceleration_ok(before_previous->elbow_roll_deg,
+                         previous->elbow_roll_deg,
+                         current->elbow_roll_deg,
+                         forearm_calibration_config.amax_deg_s2[0]) ||
+        !acceleration_ok(before_previous->elbow_pitch_deg,
+                         previous->elbow_pitch_deg,
+                         current->elbow_pitch_deg,
+                         forearm_calibration_config.amax_deg_s2[1]) ||
+        !acceleration_ok(before_previous->wrist_pitch_deg,
+                         previous->wrist_pitch_deg,
+                         current->wrist_pitch_deg,
+                         forearm_calibration_config.amax_deg_s2[2]) ||
+        !acceleration_ok(before_previous->wrist_roll_deg,
+                         previous->wrist_roll_deg,
+                         current->wrist_roll_deg,
+                         forearm_calibration_config.amax_deg_s2[3])) {
+        return MOTION_RR_REASON_ACCELERATION;
+    }
+    return MOTION_RR_REASON_NONE;
+}
+
+static MotionRecordReplayReason validate_gripper_delta(
+    const ForearmJointCommand *previous,
+    const ForearmJointCommand *current,
+    float maximum)
+{
+    if (fabsf(current->gripper_norm - previous->gripper_norm) >
+        maximum + MOTION_RR_GRIPPER_TOLERANCE) {
+        return MOTION_RR_REASON_GRIPPER_DELTA;
+    }
+    return MOTION_RR_REASON_NONE;
+}
+
 /*
  * PLAY/ALIGN을 시작하기 전에 replay_buffer 전체를 선검사한다.
  * 뒤쪽 sample 하나라도 잘못됐으면 로봇을 Sample0으로 움직이기 전에 거부한다.
  * PLAY 중에도 같은 검사를 다시 수행하여 메모리 훼손 같은 실행 중 오류를 막는다.
  */
-static MotionRecordReplayReason preflight_replay(uint32_t count)
+static MotionRecordReplayReason preflight_replay(
+    const MotionRecordReplay *controller)
 {
+    ForearmJointCommand before_previous;
     ForearmJointCommand previous;
     uint32_t i;
 
-    for (i = 0U; i < count; ++i) {
+    for (i = 0U; i < controller->replay_count; ++i) {
         ForearmJointCommand current = sample_to_command(&replay_buffer[i]);
         MotionRecordReplayReason reason = validate_command(&current);
         if (reason != MOTION_RR_REASON_NONE) return reason;
         if (i > 0U) {
             reason = validate_delta(&previous, &current);
             if (reason != MOTION_RR_REASON_NONE) return reason;
+            reason = validate_gripper_delta(
+                &previous, &current,
+                controller->align_gripper_max_delta_norm);
+            if (reason != MOTION_RR_REASON_NONE) return reason;
+            /* i==1이면 ALIGN 종료 시의 정지 상태를 previous와 같은 위치로
+             * 표현한다. i>=2부터는 실제 앞선 두 sample의 속도를 사용한다. */
+            reason = validate_acceleration(
+                i == 1U ? &previous : &before_previous,
+                &previous, &current);
+            if (reason != MOTION_RR_REASON_NONE) return reason;
         }
+        if (i > 0U) before_previous = previous;
         previous = current;
     }
     return MOTION_RR_REASON_NONE;
@@ -213,6 +282,25 @@ static void remember_agent3_success(MotionRecordReplay *controller,
         : MOTION_RR_APPLIED_SOFTWARE_OUTPUT;
 }
 
+static void copy_recording_to_replay(MotionRecordReplay *controller)
+{
+    if (controller->record_count == 0U) return;
+    memcpy(replay_buffer, record_buffer,
+           controller->record_count * sizeof(record_buffer[0]));
+    controller->replay_count = controller->record_count;
+    controller->replay_index = 0U;
+    controller->replay_source = controller->record_source;
+}
+
+/* 자동 중단도 마지막으로 성공이 확정된 prefix를 재생 버퍼에 보존한다. */
+static void finalize_recording(MotionRecordReplay *controller,
+                               MotionRecordReplayReason reason)
+{
+    copy_recording_to_replay(controller);
+    controller->mode = MOTION_RR_LIVE;
+    controller->reason = reason;
+}
+
 void motion_record_replay_init(MotionRecordReplay *controller)
 {
     if (controller == NULL) return;
@@ -243,6 +331,7 @@ int motion_record_replay_start_record(MotionRecordReplay *controller)
     }
     controller->record_count = 0U;
     controller->record_tick_baseline_valid = 0U;
+    controller->record_source = MOTION_RR_APPLIED_NONE;
     controller->reason = MOTION_RR_REASON_NONE;
     controller->mode = MOTION_RR_RECORDING;
     return 1;
@@ -260,10 +349,7 @@ int motion_record_replay_copy_record_to_replay(MotionRecordReplay *controller)
 {
     if (controller == NULL || controller->mode != MOTION_RR_LIVE ||
         controller->record_count == 0U) return 0;
-    memcpy(replay_buffer, record_buffer,
-           controller->record_count * sizeof(record_buffer[0]));
-    controller->replay_count = controller->record_count;
-    controller->replay_index = 0U;
+    copy_recording_to_replay(controller);
     controller->reason = MOTION_RR_REASON_NONE;
     return 1;
 }
@@ -278,6 +364,7 @@ int motion_record_replay_load_replay(MotionRecordReplay *controller,
     memcpy(replay_buffer, samples, count * sizeof(replay_buffer[0]));
     controller->replay_count = count;
     controller->replay_index = 0U;
+    controller->replay_source = MOTION_RR_APPLIED_NONE;
     controller->reason = MOTION_RR_REASON_NONE;
     return 1;
 }
@@ -304,7 +391,7 @@ int motion_record_replay_start_play(MotionRecordReplay *controller,
         return 0;
     }
 
-    reason = preflight_replay(controller->replay_count);
+    reason = preflight_replay(controller);
     if (reason != MOTION_RR_REASON_NONE) {
         controller->reason = reason;
         return 0;
@@ -338,6 +425,10 @@ int motion_record_replay_start_play(MotionRecordReplay *controller,
     controller->observed_tick_overruns = tick_overrun_count;
     controller->reason = MOTION_RR_REASON_NONE;
     controller->mode = MOTION_RR_ALIGNING;
+    /* ALIGN은 마지막 HAL 성공 명령(또는 명시된 software fallback)을 실제
+     * 출발점으로 사용해야 한다. HAL 실패 tick에서 먼저 진행된 Motion q/v를
+     * 그대로 두면 첫 ALIGN step이 잘못된 자세에서 계산된다. */
+    reseed_motion(pipeline, &controller->last_applied_replay_command);
     forearm_calibration_set_target(&pipeline->motion, &sample0);
     pipeline->target_ready = 0U;
     return 1;
@@ -345,7 +436,7 @@ int motion_record_replay_start_play(MotionRecordReplay *controller,
 
 /*
  * LIVE와 RECORD의 공통 control step.
- * RECORD hook은 반드시 Agent2 출력 생성/검증 뒤, Agent3 적용 전에 실행된다.
+ * RECORD sample은 Agent2 출력 생성/검증과 Agent3 적용 성공 뒤 확정한다.
  * timestamp가 없으므로 overrun이나 Agent2 실패로 한 sample이라도 빠질 상황이면
  * 녹화를 종료하여 배열 index=20 ms라는 시간축 계약을 보존한다.
  */
@@ -358,17 +449,17 @@ static int live_or_record_tick(MotionRecordReplay *controller,
 
     if (!agent2_tick(pipeline)) {
         if (recording) {
-            controller->mode = MOTION_RR_LIVE;
-            controller->reason = MOTION_RR_REASON_INVALID_COMMAND;
+            finalize_recording(controller, MOTION_RR_REASON_INVALID_COMMAND);
         }
         return 0;
     }
     reason = validate_command(&pipeline->output);
     if (reason != MOTION_RR_REASON_NONE) {
         if (recording) {
-            controller->mode = MOTION_RR_LIVE;
+            finalize_recording(controller, reason);
+        } else {
+            controller->reason = reason;
         }
-        controller->reason = reason;
         return 0;
     }
 
@@ -380,26 +471,38 @@ static int live_or_record_tick(MotionRecordReplay *controller,
                    controller->record_tick_overrun_baseline) {
             /* 누락된 20 ms 뒤 sample을 추가하면 Replay 시간이 압축된다.
              * sample은 저장하지 않되 이번 LIVE 제어 출력은 Agent3까지 전달한다. */
-            controller->mode = MOTION_RR_LIVE;
-            controller->reason = MOTION_RR_REASON_TICK_OVERRUN;
-            return agent3_apply_command(pipeline, &pipeline->output);
-        }
-        if (controller->record_count < MOTION_RECORD_REPLAY_MAX_SAMPLES) {
-            record_buffer[controller->record_count++] =
-                command_to_sample(&pipeline->output);
-            if (controller->record_count == MOTION_RECORD_REPLAY_MAX_SAMPLES) {
-                controller->mode = MOTION_RR_LIVE;
-                controller->reason = MOTION_RR_REASON_BUFFER_FULL;
+            if (!agent3_apply_command(pipeline, &pipeline->output)) {
+                finalize_recording(controller,
+                                   MOTION_RR_REASON_AGENT3_FAILURE);
+                return 0;
             }
-        } else {
-            controller->mode = MOTION_RR_LIVE;
-            controller->reason = MOTION_RR_REASON_BUFFER_FULL;
+            finalize_recording(controller, MOTION_RR_REASON_TICK_OVERRUN);
+            return 1;
         }
     }
 
-    /* 녹화 대상은 Agent2가 생성한 trajectory다. append 뒤 HAL 적용이 실패해도
-     * 이미 기록한 sample을 되돌리지 않는 기존 계약을 유지한다. */
-    return agent3_apply_command(pipeline, &pipeline->output);
+    if (!agent3_apply_command(pipeline, &pipeline->output)) {
+        if (recording) {
+            /* 실패한 명령은 실제 적용 성공 sample로 확정하지 않는다. */
+            finalize_recording(controller, MOTION_RR_REASON_AGENT3_FAILURE);
+        }
+        return 0;
+    }
+
+    if (recording) {
+        MotionRecordReplayAppliedSource source = pipeline->output_enabled != 0U
+            ? MOTION_RR_APPLIED_HAL
+            : MOTION_RR_APPLIED_SOFTWARE_OUTPUT;
+        if (controller->record_source == MOTION_RR_APPLIED_NONE) {
+            controller->record_source = source;
+        }
+        record_buffer[controller->record_count++] =
+            command_to_sample(&pipeline->output);
+        if (controller->record_count == MOTION_RECORD_REPLAY_MAX_SAMPLES) {
+            finalize_recording(controller, MOTION_RR_REASON_BUFFER_FULL);
+        }
+    }
+    return 1;
 }
 
 /*
@@ -484,6 +587,20 @@ static int play_tick(MotionRecordReplay *controller,
         ForearmJointCommand previous =
             sample_to_command(&replay_buffer[controller->replay_index - 1U]);
         reason = validate_delta(&previous, &command);
+        if (reason == MOTION_RR_REASON_NONE) {
+            reason = validate_gripper_delta(
+                &previous, &command,
+                controller->align_gripper_max_delta_norm);
+        }
+        if (reason == MOTION_RR_REASON_NONE) {
+            ForearmJointCommand before_previous =
+                controller->replay_index == 1U
+                    ? previous
+                    : sample_to_command(
+                        &replay_buffer[controller->replay_index - 2U]);
+            reason = validate_acceleration(
+                &before_previous, &previous, &command);
+        }
     }
     if (reason != MOTION_RR_REASON_NONE) {
         return enter_holding(controller, reason);
@@ -633,6 +750,67 @@ uint32_t motion_record_replay_replay_count(const MotionRecordReplay *controller)
 uint32_t motion_record_replay_replay_index(const MotionRecordReplay *controller)
 {
     return controller != NULL ? controller->replay_index : 0U;
+}
+
+MotionRecordReplayAppliedSource motion_record_replay_record_source(
+    const MotionRecordReplay *controller)
+{
+    return controller != NULL ? controller->record_source
+                              : MOTION_RR_APPLIED_NONE;
+}
+
+MotionRecordReplayAppliedSource motion_record_replay_replay_source(
+    const MotionRecordReplay *controller)
+{
+    return controller != NULL ? controller->replay_source
+                              : MOTION_RR_APPLIED_NONE;
+}
+
+const char *motion_record_replay_mode_name(MotionRecordReplayMode mode)
+{
+    switch (mode) {
+        case MOTION_RR_LIVE: return "LIVE";
+        case MOTION_RR_RECORDING: return "RECORDING";
+        case MOTION_RR_ALIGNING: return "ALIGNING";
+        case MOTION_RR_PLAYING: return "PLAYING";
+        case MOTION_RR_HOLDING: return "HOLDING";
+        default: return "UNKNOWN";
+    }
+}
+
+const char *motion_record_replay_reason_name(MotionRecordReplayReason reason)
+{
+    switch (reason) {
+        case MOTION_RR_REASON_NONE: return "NONE";
+        case MOTION_RR_REASON_STOPPED: return "STOPPED";
+        case MOTION_RR_REASON_BUFFER_FULL: return "BUFFER_FULL";
+        case MOTION_RR_REASON_BUSY: return "BUSY";
+        case MOTION_RR_REASON_EMPTY: return "EMPTY";
+        case MOTION_RR_REASON_CONFIG:
+            return "ALIGN_CONFIG_REQUIRED_REPLAY_DISABLED";
+        case MOTION_RR_REASON_INVALID_COMMAND: return "INVALID_COMMAND";
+        case MOTION_RR_REASON_RANGE: return "RANGE";
+        case MOTION_RR_REASON_SAFETY: return "SAFETY";
+        case MOTION_RR_REASON_DELTA: return "DELTA";
+        case MOTION_RR_REASON_ACCELERATION: return "ACCELERATION";
+        case MOTION_RR_REASON_GRIPPER_DELTA: return "GRIPPER_DELTA";
+        case MOTION_RR_REASON_TICK_OVERRUN: return "TICK_OVERRUN";
+        case MOTION_RR_REASON_AGENT3_FAILURE: return "AGENT3_FAILURE";
+        case MOTION_RR_REASON_ALIGN_TIMEOUT: return "ALIGN_TIMEOUT";
+        case MOTION_RR_REASON_EOF: return "EOF";
+        default: return "UNKNOWN";
+    }
+}
+
+const char *motion_record_replay_source_name(
+    MotionRecordReplayAppliedSource source)
+{
+    switch (source) {
+        case MOTION_RR_APPLIED_NONE: return "NONE";
+        case MOTION_RR_APPLIED_HAL: return "HAL_APPLIED_COMMAND";
+        case MOTION_RR_APPLIED_SOFTWARE_OUTPUT: return "SOFTWARE_OUTPUT_ONLY";
+        default: return "UNKNOWN";
+    }
 }
 
 int motion_record_replay_get_record_sample(const MotionRecordReplay *controller,
