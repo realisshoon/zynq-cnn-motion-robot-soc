@@ -17,6 +17,7 @@
 #include "integration/trace.h"
 #include "input_pose_cnn.h"
 #include "cnn_console.h"
+#include "cnn_app_event.h"
 #include "../cnn_firmware/cam_gpio/cam_gpio.h"
 #include "../cnn_firmware/iic_sccb_cfg/iic_sccb_cfg.h"
 #include "../cnn_firmware/ov5640/OV5640.h"
@@ -51,6 +52,27 @@ static camera_tracking_app_t camera_tracker;
 static int cnn_stopping;
 /* timeout/HW fault/비정상 DONE 이후 x로 복구하기 전까지 유지된다. */
 static int cnn_fault_latched;
+
+void cnn_app_report_control_result(CnnAppEvent event,
+                                   int accepted,
+                                   const char *mode,
+                                   const char *reason,
+                                   unsigned long record_count,
+                                   unsigned long replay_count,
+                                   const char *record_source,
+                                   const char *replay_source)
+{
+    const char *command = event == CNN_APP_EVENT_RECORD_TOGGLE
+        ? "RECORD" : "PLAY";
+    xil_printf("[RR] %s %s: mode=%s reason=%s record=%lu(%s) replay=%lu(%s)\r\n",
+               command, accepted ? "accepted" : "rejected",
+               mode != NULL ? mode : "UNKNOWN",
+               reason != NULL ? reason : "UNKNOWN",
+               record_count,
+               record_source != NULL ? record_source : "UNKNOWN",
+               replay_count,
+               replay_source != NULL ? replay_source : "UNKNOWN");
+}
 
 static void camera_tracker_service_hook(void *context)
 {
@@ -147,6 +169,10 @@ static void menu_help(void)
     xil_printf("  c : force grouped-color overlay test\r\n");
     xil_printf("  n : toggle CNN green-marker detection\r\n");
     xil_printf("  m : enter red/green/blue detection margins\r\n");
+    xil_printf("  %c : toggle robot motion recording\r\n",
+               CNN_APP_UART_CMD_RECORD);
+    xil_printf("  %c : start/stop robot motion replay\r\n",
+               CNN_APP_UART_CMD_PLAY);
     camera_tracking_app_print_help();
     xil_printf("  ? : help\r\n");
 }
@@ -165,6 +191,8 @@ static void menu_run(void)
         return;
 
     c=(char)XUartPs_RecvByte(STDIN_BASEADDRESS);
+    if(cnn_app_control_event_post_uart(c))
+        return;
     switch(c) {
     case 'p':
         cnn_diag_probe_report();
@@ -502,6 +530,7 @@ static void print_video_status(void)
 
 int cnn_app_init(void)
 {
+    cnn_app_control_event_reset();
     print_banner();
 
     if(!initialize_camera_capture())

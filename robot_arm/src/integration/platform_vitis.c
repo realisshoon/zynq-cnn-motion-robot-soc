@@ -217,6 +217,10 @@ int platform_tick_due(void)
     return 1;
 }
 
+uint32_t platform_tick_overrun_count(void)
+{
+    return s_tick_overruns;
+}
 #ifdef ROBOT_TRACE
 /*
  * [TRACE] trace 플랫폼 경계 (integration/trace.h). 호스트 테스트는 이 3개의 가짜 구현을 제공한다.

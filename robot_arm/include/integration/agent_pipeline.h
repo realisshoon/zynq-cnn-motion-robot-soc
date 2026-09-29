@@ -51,8 +51,14 @@ typedef struct {
 
     /* 틱 경로 */
     ForearmJointCommand output;       /* 이번 틱의 Agent2 출력 */
-    ServoPwmCommand pwm;       /* 마지막으로 변환에 성공한 PWM 명령 */
+    /* PWM enabled면 마지막 HAL 성공값, disabled면 마지막 변환 성공값. */
+    ServoPwmCommand pwm;
     uint8_t output_enabled;    /* 0: compute/trace only; robot PWM remains disabled */
+    ForearmJointCommand agent3_command; /* 가장 최근 Agent3 전달 시도 명령(TK trace용) */
+    uint8_t agent3_command_valid;
+    uint32_t agent3_command_tick; /* 위 명령을 전달하려 한 실행 control step 번호 */
+    ForearmJointCommand applied_command; /* HAL 적용까지 성공한 마지막 관절 명령 */
+    uint8_t applied_command_valid;
 
     /* 디버그용 통계 */
     uint32_t frames_in;
@@ -60,6 +66,8 @@ typedef struct {
     uint32_t commands_accepted;
     uint32_t commands_rejected;
     uint32_t retargets;
+    /* 실제로 실행한 Robot control step 횟수. missed timer tick은 platform이
+     * overrun으로 버리므로 발생한 모든 20 ms timer tick의 개수는 아니다. */
     uint32_t ticks;
     uint32_t servo_writes;
     uint32_t servo_errors;
@@ -85,10 +93,21 @@ int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec)
 /* validate -> 대표각 정규화 -> 범위 밖 축 HOLD -> 안전검사 -> set_target. 승인했으면 1. */
 int agent2_run(AgentPipelineContext *ctx);
 
-/* 제어 틱 1회: 램프를 한 틱 진행. 출력이 유효하면 1. */
+/* LIVE/RECORD/ALIGN 제어 틱 1회: 전체 tick을 세고 램프를 한 틱 진행한다.
+ * Direct PLAY는 Agent2를 우회하므로 Record/Replay controller가 같은 counter를 센다. */
 int agent2_tick(AgentPipelineContext *ctx);
 
 /* ForearmJointCommand -> PWM 변환 후 서보 레지스터에 적용. 성공 1. */
 int agent3_run(AgentPipelineContext *ctx);
+
+/* 명시적인 command를 PWM으로 변환한다. PWM enabled에서는 HAL 성공 후에만
+ * ctx->pwm과 applied_command를 확정한다. PWM disabled에서는 HAL을 호출하지 않고
+ * 변환된 PWM을 software/trace용 ctx->pwm에 저장하며 applied_command는 갱신하지
+ * 않는다. Replay가 ctx->output을 덮어쓰지 않고 이 API를 사용한다. */
+int agent3_apply_command(AgentPipelineContext *ctx,
+                         const ForearmJointCommand *command);
+
+/* TK trace가 이전 control step의 Agent3 command를 재사용하지 않게 한다. */
+int agent3_command_is_current_tick(const AgentPipelineContext *ctx);
 
 #endif /* INTEGRATION_AGENT_PIPELINE_H */

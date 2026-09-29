@@ -614,6 +614,9 @@ static void test_tick_sm_ev(void)
     ctx.output.wrist_pitch_deg = -3.04f;
     ctx.output.wrist_roll_deg = 0.04f;
     ctx.output.gripper_norm = 0.5f;
+    ctx.agent3_command = ctx.output;
+    ctx.agent3_command_valid = 1U;
+    ctx.agent3_command_tick = ctx.ticks;
     ctx.pwm.elbow_roll_pwm_us = 1500U;
     ctx.pwm.elbow_pitch_pwm_us = 1250U;
     ctx.pwm.wrist_pitch_pwm_us = 1400U;
@@ -642,7 +645,9 @@ static void test_tick_sm_ev(void)
     assert(get_line("TK,", 1U, line, sizeof(line)) && field_is(line, 15U, "0") && field_is(line, 16U, "0"));
     assert(get_line("TK,", 2U, line, sizeof(line)) && field_is(line, 15U, "0") && field_is(line, 16U, "1"));
     assert(get_line("EV,", 1U, line, sizeof(line)) && field_is(line, 2U, "SERVO_ERR") && field_is(line, 3U, "1"));
-    ctx.output.valid = 0U;
+    /* A later control step that did not call Agent3 must not print the prior
+     * command as if it were fresh. PWM remains the last applied hardware state. */
+    ++ctx.ticks;
     ctx.motion.has_target = 0;
     g_out_len = 0U;
     g_out[0] = '\0';
@@ -840,9 +845,9 @@ int main(void)
     test_formatter();
     test_ring();
     test_boot();
+    test_tick_sm_ev();
     test_a1_p3();
     test_a2();
-    test_tick_sm_ev();
     test_pipeline_flow();
     printf("test_trace: PASS\n");
     return 0;

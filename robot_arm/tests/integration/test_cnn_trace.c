@@ -23,6 +23,11 @@ int forearm_safety_check_apply(const ForearmJointCommand *command,
     (void)flags;
     return 0;
 }
+int agent3_command_is_current_tick(const AgentPipelineContext *ctx)
+{
+    return ctx != NULL && ctx->agent3_command_valid != 0U &&
+           ctx->agent3_command_tick == ctx->ticks;
+}
 
 uint32_t platform_trace_time_us(void) { return now_us; }
 void platform_trace_stats(TracePlatformStats *stats)
