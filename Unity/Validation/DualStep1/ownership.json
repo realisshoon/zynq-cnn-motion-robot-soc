@@ -1,0 +1,13 @@
+{
+    "utcMs": 1790050632099,
+    "checkedFrames": 1729353,
+    "checkedRightFrames": 1728746,
+    "leftChangedFrames": 0,
+    "overwriteFrames": 0,
+    "listenerErrors": 0,
+    "armCount": 2,
+    "receiverCount": 1,
+    "listenerCount": 1,
+    "framePresent": true,
+    "startResetGuard": true
+}

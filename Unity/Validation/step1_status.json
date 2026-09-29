@@ -1,0 +1,25 @@
+{
+    "utcMs": 1790038824561,
+    "received": 1354,
+    "applied": 1352,
+    "captured": 1352,
+    "stale": 0,
+    "malformed": 0,
+    "invalid": 0,
+    "missedCapture": 0,
+    "frame": 1354,
+    "listening": false,
+    "manualRegression": true,
+    "playing": true,
+    "error": "",
+    "command": {
+        "frame_id": 1354,
+        "base_deg": 42.50959014892578,
+        "shoulder_deg": 110.97808074951172,
+        "elbow_deg": 170.0,
+        "wrist_pitch_deg": 151.70822143554688,
+        "wrist_roll_deg": 136.06045532226563,
+        "gripper_norm": 1.0,
+        "valid": true
+    }
+}
