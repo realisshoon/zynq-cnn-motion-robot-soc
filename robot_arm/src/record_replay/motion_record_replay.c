@@ -192,6 +192,12 @@ static MotionRecordReplayReason preflight_replay(
                 i == 1U ? &previous : &before_previous,
                 &previous, &current);
             if (reason != MOTION_RR_REASON_NONE) return reason;
+            /* 마지막 sample 다음은 같은 명령 HOLD다. 움직이는 도중 잘라낸
+             * 녹화가 종료 시 가속도 한계를 넘지 않는지도 ALIGN 전에 확인한다. */
+            if (i + 1U == controller->replay_count) {
+                reason = validate_acceleration(&previous, &current, &current);
+                if (reason != MOTION_RR_REASON_NONE) return reason;
+            }
         }
         if (i > 0U) before_previous = previous;
         previous = current;
@@ -698,6 +704,10 @@ static int play_tick(MotionRecordReplay *controller,
             reason = validate_acceleration(
                 &before_previous, &previous, &command);
         }
+        if (reason == MOTION_RR_REASON_NONE &&
+            controller->replay_index + 1U == controller->replay_count) {
+            reason = validate_acceleration(&previous, &command, &command);
+        }
     }
     if (reason != MOTION_RR_REASON_NONE) {
         return enter_holding(controller, reason);
@@ -709,29 +719,16 @@ static int play_tick(MotionRecordReplay *controller,
     remember_agent3_success(controller, pipeline, &command);
     ++controller->replay_index;
     if (controller->replay_index == controller->replay_count) {
-        ForearmJointCommand sample0 = sample_to_command(&replay_buffer[0]);
-
-        /* Direct PLAY 동안 Motion 내부 상태는 이전 Sample0 부근에 남아 있다.
-         * 실제 마지막 HAL 성공 자세로 q/v를 먼저 reseed하고 Sample0을 target으로
-         * 설정해야 마지막→Sample0 경계를 20 ms에 점프하지 않고 ALIGN할 수 있다. */
-        if (!reseed_motion(controller, pipeline,
-                           &controller->last_applied_replay_command)) {
-            return enter_holding(controller, MOTION_RR_REASON_DELTA);
-        }
-        forearm_calibration_set_target(&pipeline->motion, &sample0);
-        controller->align_target = sample0;
-        controller->align_gripper_norm =
-            controller->last_applied_replay_command.gripper_norm;
-        controller->align_ticks = 0U;
-        controller->observed_tick_overruns = tick_overrun_count;
-        controller->reason = MOTION_RR_REASON_NONE;
-        controller->mode = MOTION_RR_ALIGNING;
+        /* 사용자 정책: 자동 반복/라이브 복귀 없이 마지막 명령을 유지한다.
+         * 마지막 sample은 정상 적용됐으므로 이번 tick은 성공을 반환한다. */
+        controller->mode = MOTION_RR_HOLDING;
+        controller->reason = MOTION_RR_REASON_COMPLETED;
         pipeline->target_ready = 0U;
     }
     return 1;
 }
 
-/* 오류 뒤 마지막 Agent3 성공 command를 매 20 ms 다시 적용해 자세를 유지한다. */
+/* 완료/오류 뒤 마지막 Agent3 성공 command를 매 20 ms 다시 적용한다. */
 static int holding_tick(MotionRecordReplay *controller,
                         AgentPipelineContext *pipeline)
 {
@@ -886,6 +883,7 @@ const char *motion_record_replay_reason_name(MotionRecordReplayReason reason)
     switch (reason) {
         case MOTION_RR_REASON_NONE: return "NONE";
         case MOTION_RR_REASON_STOPPED: return "STOPPED";
+        case MOTION_RR_REASON_COMPLETED: return "COMPLETED";
         case MOTION_RR_REASON_BUFFER_FULL: return "BUFFER_FULL";
         case MOTION_RR_REASON_BUSY: return "BUSY";
         case MOTION_RR_REASON_EMPTY: return "EMPTY";

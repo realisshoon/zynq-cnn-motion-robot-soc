@@ -36,7 +36,7 @@ typedef enum {
     MOTION_RR_RECORDING, /* LIVE 제어 결과를 매 20 ms record_buffer에 추가 */
     MOTION_RR_ALIGNING,  /* Motion 제어로 Replay Sample0까지 안전하게 이동 */
     MOTION_RR_PLAYING,   /* Motion을 우회하고 replay_buffer를 50 Hz 직접 출력 */
-    MOTION_RR_HOLDING    /* Replay 오류 후 마지막 HAL 성공 명령을 계속 유지 */
+    MOTION_RR_HOLDING    /* 1회 재생 완료 또는 오류 후 마지막 성공 명령 유지 */
 } MotionRecordReplayMode;
 
 typedef enum {
@@ -63,9 +63,8 @@ typedef enum {
     MOTION_RR_REASON_TICK_OVERRUN,
     MOTION_RR_REASON_AGENT3_FAILURE,
     MOTION_RR_REASON_ALIGN_TIMEOUT,
-    /* 호환성과 내부 index 이상 검출용. 정상 PLAY 끝은 EOF가 아니라
-     * Sample0 복귀 ALIGN으로 이어지므로 이 값을 사용하지 않는다. */
-    MOTION_RR_REASON_EOF
+    MOTION_RR_REASON_EOF, /* 내부 index 이상 검출용 */
+    MOTION_RR_REASON_COMPLETED /* 정상 1회 재생 완료, 마지막 명령 HOLD */
 } MotionRecordReplayReason;
 
 /*
@@ -103,8 +102,9 @@ void motion_record_replay_init(MotionRecordReplay *controller);
 
 /*
  * ALIGN의 gripper 속도와 timeout을 설정한다.
- * 검증되지 않은 실물 속도를 코드에 임의로 넣지 않기 위해 설정 전에는
- * PLAY 시작을 거부한다. gripper 값은 0~1 정규화 단위의 tick당 변화량이다.
+ * 설정 전에는 PLAY 시작을 거부한다. 통합 main의 사용자 승인 시험값은
+ * 0.01/tick, 500 ticks이며 실물 안전성이 검증된 정격값은 아니다.
+ * gripper 값은 0~1 정규화 단위의 tick당 변화량이며 PLAY sample 검사에도 쓴다.
  */
 int motion_record_replay_configure_align(MotionRecordReplay *controller,
                                          float gripper_max_delta_norm_per_tick,
@@ -133,7 +133,7 @@ int motion_record_replay_start_play(MotionRecordReplay *controller,
 int motion_record_replay_stop_play(MotionRecordReplay *controller,
                                    AgentPipelineContext *pipeline);
 
-/* 오류 HOLD만 해제하는 기존 호환 API. 오류 reason은 보존한 채 LIVE로 간다. */
+/* 완료/오류 HOLD를 해제하는 API. reason은 보존한 채 LIVE로 간다. */
 int motion_record_replay_resume_live(MotionRecordReplay *controller,
                                      AgentPipelineContext *pipeline);
 

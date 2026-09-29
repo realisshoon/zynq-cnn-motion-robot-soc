@@ -39,7 +39,8 @@ const ForearmCalibrationConfig forearm_calibration_config = {
                       .min_deg = 20.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
     //마찬가지로 기본적인 자세가 로봇+방향(밑쪽)으로 기울어져 있어서 offset과 max를 높였음
     .elbow_pitch = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 120.0f,
-                      .min_deg = 20.0f, .max_deg = 200.0f, .max_delta_deg = 0.6f },
+                      /* A3 ServoConfig의 180도 상한과 일치시킨다. */
+                      .min_deg = 20.0f, .max_deg = 180.0f, .max_delta_deg = 0.6f },
     //초기값은 손목이 ㄱ자 방향으로 설정되어서 기준을 조금 낮췄음
     .wrist_pitch = { .scale = 1.0f, .direction = 1, .zero_offset_deg = 80.0f,
                       .min_deg = 10.0f, .max_deg = 160.0f, .max_delta_deg = 0.6f },
