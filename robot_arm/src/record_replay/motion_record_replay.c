@@ -227,17 +227,59 @@ static int rotary_align_complete(const AgentPipelineContext *pipeline,
     return 1;
 }
 
-/*
- * Motion 내부 q를 실제 마지막 명령 자세로 다시 만든다.
- * state_init 뒤 command를 최초 target으로 넣으므로 q=command, v=0에서 시작한다.
- * Direct PLAY가 Motion state를 진행하지 않기 때문에 loop 복귀 전에 반드시 필요하다.
- */
-static void reseed_motion(AgentPipelineContext *pipeline,
-                          const ForearmJointCommand *command)
+static int same_command(const ForearmJointCommand *left,
+                        const ForearmJointCommand *right)
 {
+    return left->elbow_roll_deg == right->elbow_roll_deg &&
+           left->elbow_pitch_deg == right->elbow_pitch_deg &&
+           left->wrist_pitch_deg == right->wrist_pitch_deg &&
+           left->wrist_roll_deg == right->wrist_roll_deg &&
+           left->gripper_norm == right->gripper_norm &&
+           left->valid == right->valid;
+}
+
+/*
+ * Motion 내부 q를 실제 마지막 명령 자세로 다시 만든다. 직전 두 Agent3 성공
+ * 명령이 있으면 그 차이로 진입 속도를 복원하고, 없을 때만 v=0으로 시작한다.
+ * Direct PLAY가 Motion state를 진행하지 않기 때문에 mode 경계에서 반드시 필요하다.
+ */
+static int reseed_motion(MotionRecordReplay *controller,
+                         AgentPipelineContext *pipeline,
+                         const ForearmJointCommand *command)
+{
+    double velocity[FOREARM_MOTION_JOINT_COUNT] = {0.0, 0.0, 0.0, 0.0};
+    unsigned i;
+
+    if (controller->previous_applied_replay_valid != 0U &&
+        controller->last_applied_replay_valid != 0U &&
+        controller->previous_applied_replay_source ==
+            controller->last_applied_replay_source &&
+        same_command(command, &controller->last_applied_replay_command)) {
+        velocity[0] = (command->elbow_roll_deg -
+                       controller->previous_applied_replay_command.elbow_roll_deg) /
+                      MOTION_RR_CONTROL_DT_SEC;
+        velocity[1] = (command->elbow_pitch_deg -
+                       controller->previous_applied_replay_command.elbow_pitch_deg) /
+                      MOTION_RR_CONTROL_DT_SEC;
+        velocity[2] = (command->wrist_pitch_deg -
+                       controller->previous_applied_replay_command.wrist_pitch_deg) /
+                      MOTION_RR_CONTROL_DT_SEC;
+        velocity[3] = (command->wrist_roll_deg -
+                       controller->previous_applied_replay_command.wrist_roll_deg) /
+                      MOTION_RR_CONTROL_DT_SEC;
+    }
+
     forearm_calibration_state_init(&pipeline->motion);
     forearm_calibration_set_target(&pipeline->motion, command);
+    for (i = 0U; i < FOREARM_MOTION_JOINT_COUNT; ++i) {
+        if (!isfinite(velocity[i]) ||
+            fabs(velocity[i]) > pipeline->motion.axes[i].vmax + 0.001) {
+            return 0;
+        }
+        pipeline->motion.axes[i].v = velocity[i];
+    }
     pipeline->output = *command;
+    return 1;
 }
 
 /*
@@ -251,7 +293,10 @@ static void resync_live(MotionRecordReplay *controller,
 {
     ForearmJointCommand command = controller->last_applied_replay_command;
 
-    reseed_motion(pipeline, &command);
+    if (!reseed_motion(controller, pipeline, &command)) {
+        controller->previous_applied_replay_valid = 0U;
+        (void)reseed_motion(controller, pipeline, &command);
+    }
     memset(&pipeline->command, 0, sizeof(pipeline->command));
     pipeline->command_valid = 0U;
     forearm_motion_control_unwrap_state_init(&pipeline->unwrap);
@@ -275,11 +320,53 @@ static void remember_agent3_success(MotionRecordReplay *controller,
                                     const AgentPipelineContext *pipeline,
                                     const ForearmJointCommand *command)
 {
-    controller->last_applied_replay_command = *command;
-    controller->last_applied_replay_valid = 1U;
-    controller->last_applied_replay_source = pipeline->output_enabled != 0U
+    MotionRecordReplayAppliedSource source = pipeline->output_enabled != 0U
         ? MOTION_RR_APPLIED_HAL
         : MOTION_RR_APPLIED_SOFTWARE_OUTPUT;
+
+    if (controller->last_applied_replay_valid != 0U &&
+        controller->last_applied_replay_source == source) {
+        controller->previous_applied_replay_command =
+            controller->last_applied_replay_command;
+        controller->previous_applied_replay_valid = 1U;
+        controller->previous_applied_replay_source =
+            controller->last_applied_replay_source;
+    } else {
+        controller->previous_applied_replay_valid = 0U;
+    }
+    controller->last_applied_replay_command = *command;
+    controller->last_applied_replay_valid = 1U;
+    controller->last_applied_replay_source = source;
+}
+
+/* controller는 pipeline 뒤에 초기화되므로 첫 LIVE tick 전의 boot HAL 명령을
+ * 여기서 이력의 시작점으로 가져온다. 그래야 첫 이동 tick 직후 P도 속도를 안다. */
+static void seed_live_history(MotionRecordReplay *controller,
+                              const AgentPipelineContext *pipeline)
+{
+    if (controller->last_applied_replay_valid != 0U ||
+        pipeline->output_enabled == 0U ||
+        pipeline->applied_command_valid == 0U) return;
+    controller->last_applied_replay_command = pipeline->applied_command;
+    controller->last_applied_replay_valid = 1U;
+    controller->last_applied_replay_source = MOTION_RR_APPLIED_HAL;
+}
+
+/* start_play이 선택한 실제 출발 command가 LIVE에서 추적한 마지막 성공값과
+ * 같으면 두 command의 이력을 보존한다. 다르면 속도를 추정하지 않는다. */
+static void select_replay_start_command(
+    MotionRecordReplay *controller,
+    const ForearmJointCommand *command,
+    MotionRecordReplayAppliedSource source)
+{
+    if (controller->last_applied_replay_valid == 0U ||
+        controller->last_applied_replay_source != source ||
+        !same_command(command, &controller->last_applied_replay_command)) {
+        controller->previous_applied_replay_valid = 0U;
+        controller->last_applied_replay_command = *command;
+        controller->last_applied_replay_valid = 1U;
+        controller->last_applied_replay_source = source;
+    }
 }
 
 static void copy_recording_to_replay(MotionRecordReplay *controller)
@@ -400,19 +487,17 @@ int motion_record_replay_start_play(MotionRecordReplay *controller,
 
     if (pipeline->applied_command_valid != 0U &&
         validate_command(&pipeline->applied_command) == MOTION_RR_REASON_NONE) {
-        controller->last_applied_replay_command = pipeline->applied_command;
-        controller->last_applied_replay_valid = 1U;
-        controller->last_applied_replay_source = MOTION_RR_APPLIED_HAL;
+        select_replay_start_command(
+            controller, &pipeline->applied_command, MOTION_RR_APPLIED_HAL);
         controller->align_gripper_norm = pipeline->applied_command.gripper_norm;
     } else if (validate_command(&pipeline->output) == MOTION_RR_REASON_NONE) {
         /* 현재 dev/robot은 boot command를 HAL에 적용하므로 정상 통합에서는
          * 위 applied_command 경로를 사용한다. 이 분기는 구형/host context를
          * 위한 호환 fallback이며 실제 HAL write가 증명된 자세가 아니다.
          * 향후 output_enabled/PWM-disabled 정책에서도 이 구분을 유지해야 한다. */
-        controller->last_applied_replay_command = pipeline->output;
-        controller->last_applied_replay_valid = 1U;
-        controller->last_applied_replay_source =
-            MOTION_RR_APPLIED_SOFTWARE_OUTPUT;
+        select_replay_start_command(
+            controller, &pipeline->output,
+            MOTION_RR_APPLIED_SOFTWARE_OUTPUT);
         controller->align_gripper_norm = pipeline->output.gripper_norm;
     } else {
         controller->reason = MOTION_RR_REASON_INVALID_COMMAND;
@@ -428,7 +513,15 @@ int motion_record_replay_start_play(MotionRecordReplay *controller,
     /* ALIGN은 마지막 HAL 성공 명령(또는 명시된 software fallback)을 실제
      * 출발점으로 사용해야 한다. HAL 실패 tick에서 먼저 진행된 Motion q/v를
      * 그대로 두면 첫 ALIGN step이 잘못된 자세에서 계산된다. */
-    reseed_motion(pipeline, &controller->last_applied_replay_command);
+    if (!reseed_motion(controller, pipeline,
+                       &controller->last_applied_replay_command)) {
+        controller->previous_applied_replay_valid = 0U;
+        (void)reseed_motion(controller, pipeline,
+                            &controller->last_applied_replay_command);
+        controller->mode = MOTION_RR_LIVE;
+        controller->reason = MOTION_RR_REASON_DELTA;
+        return 0;
+    }
     forearm_calibration_set_target(&pipeline->motion, &sample0);
     pipeline->target_ready = 0U;
     return 1;
@@ -463,6 +556,8 @@ static int live_or_record_tick(MotionRecordReplay *controller,
         return 0;
     }
 
+    seed_live_history(controller, pipeline);
+
     if (recording) {
         if (controller->record_tick_baseline_valid == 0U) {
             controller->record_tick_overrun_baseline = tick_overrun_count;
@@ -476,6 +571,7 @@ static int live_or_record_tick(MotionRecordReplay *controller,
                                    MOTION_RR_REASON_AGENT3_FAILURE);
                 return 0;
             }
+            remember_agent3_success(controller, pipeline, &pipeline->output);
             finalize_recording(controller, MOTION_RR_REASON_TICK_OVERRUN);
             return 1;
         }
@@ -488,6 +584,7 @@ static int live_or_record_tick(MotionRecordReplay *controller,
         }
         return 0;
     }
+    remember_agent3_success(controller, pipeline, &pipeline->output);
 
     if (recording) {
         MotionRecordReplayAppliedSource source = pipeline->output_enabled != 0U
@@ -617,7 +714,10 @@ static int play_tick(MotionRecordReplay *controller,
         /* Direct PLAY 동안 Motion 내부 상태는 이전 Sample0 부근에 남아 있다.
          * 실제 마지막 HAL 성공 자세로 q/v를 먼저 reseed하고 Sample0을 target으로
          * 설정해야 마지막→Sample0 경계를 20 ms에 점프하지 않고 ALIGN할 수 있다. */
-        reseed_motion(pipeline, &controller->last_applied_replay_command);
+        if (!reseed_motion(controller, pipeline,
+                           &controller->last_applied_replay_command)) {
+            return enter_holding(controller, MOTION_RR_REASON_DELTA);
+        }
         forearm_calibration_set_target(&pipeline->motion, &sample0);
         controller->align_target = sample0;
         controller->align_gripper_norm =
@@ -639,8 +739,11 @@ static int holding_tick(MotionRecordReplay *controller,
     if (controller->last_applied_replay_valid == 0U) return 0;
     /* 동일 command 재적용까지 실패해도 최초 HOLD 원인은 보존한다.
      * 추가 HAL 실패 횟수는 Agent3의 servo_errors에 별도로 기록된다. */
-    return agent3_apply_command(
-        pipeline, &controller->last_applied_replay_command);
+    if (!agent3_apply_command(
+            pipeline, &controller->last_applied_replay_command)) return 0;
+    remember_agent3_success(
+        controller, pipeline, &controller->last_applied_replay_command);
+    return 1;
 }
 
 int motion_record_replay_control_tick(MotionRecordReplay *controller,

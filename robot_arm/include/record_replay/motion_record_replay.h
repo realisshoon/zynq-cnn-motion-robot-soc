@@ -85,10 +85,13 @@ typedef struct {
     float align_gripper_norm;        /* rate limit을 적용한 현재 gripper 값 */
     float align_gripper_max_delta_norm; /* ALIGN 한 tick의 gripper 최대 변화량 */
     ForearmJointCommand align_target; /* 현재 ALIGN 목적지, 항상 Sample0 */
+    ForearmJointCommand previous_applied_replay_command; /* 직전 Agent3 성공 명령 */
     ForearmJointCommand last_applied_replay_command; /* 마지막 Agent3 성공 명령 */
+    uint8_t previous_applied_replay_valid; /* 전환 진입속도를 계산할 수 있으면 1 */
     uint8_t last_applied_replay_valid; /* 위 command를 사용할 수 있으면 1 */
     uint8_t record_tick_baseline_valid; /* RECORD overrun 기준을 잡았으면 1 */
     MotionRecordReplayAppliedSource last_applied_replay_source;
+    MotionRecordReplayAppliedSource previous_applied_replay_source;
     /* 저장값은 항상 A2 출력 명령이다. 아래 source는 그 명령이 같은 tick에
      * 실제 HAL 적용까지 성공했는지, PWM-disabled software 변환만 성공했는지를
      * 구분한다. */
