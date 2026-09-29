@@ -36,7 +36,7 @@ typedef enum {
     MOTION_RR_RECORDING, /* LIVE 제어 결과를 매 20 ms record_buffer에 추가 */
     MOTION_RR_ALIGNING,  /* Motion 제어로 Replay Sample0까지 안전하게 이동 */
     MOTION_RR_PLAYING,   /* Motion을 우회하고 replay_buffer를 50 Hz 직접 출력 */
-    MOTION_RR_HOLDING    /* 1회 재생 완료 또는 오류 후 마지막 성공 명령 유지 */
+    MOTION_RR_HOLDING    /* 1회 재생 완료(반복 OFF) 또는 오류 후 마지막 명령 유지 */
 } MotionRecordReplayMode;
 
 typedef enum {
@@ -89,6 +89,7 @@ typedef struct {
     uint8_t previous_applied_replay_valid; /* 전환 진입속도를 계산할 수 있으면 1 */
     uint8_t last_applied_replay_valid; /* 위 command를 사용할 수 있으면 1 */
     uint8_t record_tick_baseline_valid; /* RECORD overrun 기준을 잡았으면 1 */
+    uint8_t repeat_play; /* 끝에서 Sample0으로 ALIGN한 뒤 재생 반복 */
     MotionRecordReplayAppliedSource last_applied_replay_source;
     MotionRecordReplayAppliedSource previous_applied_replay_source;
     /* 저장값은 항상 A2 출력 명령이다. 아래 source는 그 명령이 같은 tick에
@@ -109,6 +110,9 @@ void motion_record_replay_init(MotionRecordReplay *controller);
 int motion_record_replay_configure_align(MotionRecordReplay *controller,
                                          float gripper_max_delta_norm_per_tick,
                                          uint32_t timeout_ticks);
+
+/* 기본값은 1회 재생. 통합 앱에서 반복 재생을 명시적으로 켠다. */
+void motion_record_replay_set_repeat(MotionRecordReplay *controller, int enabled);
 
 int motion_record_replay_start_record(MotionRecordReplay *controller);
 int motion_record_replay_stop_record(MotionRecordReplay *controller);

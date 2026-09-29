@@ -40,6 +40,7 @@ int main(void)
     if (!motion_record_replay_configure_align(&record_replay, 0.01f, 500U)) {
         return -1;
     }
+    motion_record_replay_set_repeat(&record_replay, 1);
     TRACE_INIT(); /* [TRACE] 컬럼 정의(# 줄)와 BOOT 이벤트 */
     if (cnn_app_init() != 0) return -1;
 

@@ -176,6 +176,33 @@ static void test_record_tick_trajectory(void)
     assert(motion_record_replay_replay_count(&controller) == 50U);
 }
 
+static void test_record_gripper_is_replayable(void)
+{
+    AgentPipelineContext pipeline;
+    MotionRecordReplay controller;
+    ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.05f);
+    ForearmJointCommand target = command(90.0f, 90.0f, 90.0f, 90.0f, 1.0f);
+    MotionSample recorded;
+    float previous = initial.gripper_norm;
+    uint32_t i;
+
+    init_context(&pipeline, &initial);
+    configure(&controller, 0.01f);
+    forearm_calibration_set_target(&pipeline.motion, &target);
+    assert(motion_record_replay_start_record(&controller));
+    for (i = 0U; i < 110U; ++i) {
+        assert(controller_tick(&controller, &pipeline, 0U));
+        assert(motion_record_replay_get_record_sample(&controller, i, &recorded));
+        assert(fabsf(recorded.gripper_norm - previous) <= 0.01001f);
+        assert_near(recorded.gripper_norm, pipeline.applied_command.gripper_norm);
+        previous = recorded.gripper_norm;
+    }
+    assert_near(previous, 1.0f);
+    assert(motion_record_replay_on_record_button_pulse(&controller));
+    assert(motion_record_replay_replay_count(&controller) == 110U);
+    assert(motion_record_replay_start_play(&controller, &pipeline, 0U));
+}
+
 static void test_record_failure_sources_and_buffer_full(void)
 {
     AgentPipelineContext pipeline;
@@ -960,9 +987,45 @@ static void test_approved_align_settings_and_single_sample_completion(void)
     assert_command_sample(&pipeline.applied_command, &one);
 }
 
+static void test_repeated_play_aligns_between_cycles_and_stops(void)
+{
+    AgentPipelineContext pipeline;
+    MotionRecordReplay controller;
+    ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.3f);
+    MotionSample samples[] = {
+        {90.0f, 90.0f, 90.0f, 90.0f, 0.3f},
+        {90.04f, 90.02f, 90.0f, 90.0f, 0.34f},
+        {90.08f, 90.04f, 90.0f, 90.0f, 0.38f}
+    };
+    unsigned i;
+
+    init_context(&pipeline, &initial);
+    configure(&controller, 0.05f);
+    motion_record_replay_set_repeat(&controller, 1);
+    assert(motion_record_replay_load_replay(&controller, samples, 3U));
+    assert(motion_record_replay_on_play_button_pulse(&controller, &pipeline, 0U));
+    drive_align(&controller, &pipeline, 0U);
+    for (i = 0U; i < 3U; ++i) {
+        assert(controller_tick(&controller, &pipeline, 0U));
+        assert_command_sample(&pipeline.applied_command, &samples[i]);
+    }
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_ALIGNING);
+    assert_command_sample(&pipeline.applied_command, &samples[2]);
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_ALIGNING);
+    assert(pipeline.applied_command.elbow_roll_deg > samples[0].elbow_roll_deg);
+    drive_align(&controller, &pipeline, 0U);
+    assert(controller.replay_index == 0U);
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert_command_sample(&pipeline.applied_command, &samples[0]);
+    assert(motion_record_replay_on_play_button_pulse(&controller, &pipeline, 0U));
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_LIVE);
+}
+
 int main(void)
 {
     test_record_tick_trajectory();
+    test_record_gripper_is_replayable();
     test_record_failure_sources_and_buffer_full();
     test_record_timing_and_record_button();
     test_replay_once_then_holds_final_command();
@@ -979,6 +1042,7 @@ int main(void)
     test_configuration_and_mode_exclusion();
     test_one_shot_terminal_acceleration_preflight();
     test_approved_align_settings_and_single_sample_completion();
-    puts("test_motion_record_replay: PASS (50 Hz record, button pulses, one-shot replay, hold)");
+    test_repeated_play_aligns_between_cycles_and_stops();
+    puts("test_motion_record_replay: PASS (50 Hz record, button pulses, single and repeated replay)");
     return 0;
 }
