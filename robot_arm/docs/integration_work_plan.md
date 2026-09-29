@@ -1,4 +1,4 @@
-# CNN + 5축 로봇 통합 작업 기준 (2026-09-28)
+# CNN + 5축 로봇 통합 작업 기준 (2026-09-29)
 
 이 문서는 `dev/integration`에서 모든 에이전트가 공유하는 **현행 통합 계약과
 수정 범위**다. 실행 결과와 Agent4 리뷰 근거는 [cnn_integration.md](cnn_integration.md),
@@ -13,13 +13,18 @@
    PS가 프레임용 SG를 준비하여 CNN 추론을 시작한다. CNN 완료 **IRQ**는 완료 상태를
    기록하고, 결과 판독과 다음 프레임 시작은 foreground의 `cnn_bringup_service()`가 한다.
 2. CNN 결과를 `input_pose_cnn_publish()`가 `HumanPose2D`로 바꾼다. 새 결과가
-   준비되면 `agent1_run()`이 `HumanForearmTarget`을, `agent2_run()`이 검증된
-   `ForearmJointCommand` 목표를 만든다. 입력 주기는 CNN 처리 시간에 따라 가변이다.
+   준비되면 `agent1_run()`이 `HumanForearmTarget`을 만든다. LIVE/RECORDING에서만
+   `agent2_run()`이 검증된 `ForearmJointCommand` 목표를 갱신한다. 재생 중에도 A1은
+   실행하지만 라이브 목표로 재생 목표를 덮지 않는다. 입력 주기는 CNN 처리 시간에 따라 가변이다.
 3. AXI Timer IRQ는 20 ms 틱을 기록한다. 메인 루프가 틱을 소비할 때
-   `agent2_tick()`이 궤적을 한 번 진행하고 `agent3_run()`이
-   `ServoPwmCommand`로 변환한다. 기본 빌드는 로봇 PWM 적용을 끈다.
+   `motion_record_replay_control_tick()`이 모드에 따라 Agent2와 Agent3를 호출한다.
+   LIVE/RECORDING은 `agent2_tick()` → 명령 검증 → `agent3_apply_command()` 순서다.
+   ALIGNING은 Agent2 램프와 gripper 제한을 거치고, PLAYING은 저장 샘플을 검증한 뒤
+   Agent3에 직접 전달한다. HOLDING은 마지막 성공 명령을 재적용한다.
+   `agent3_run()`은 호환 래퍼로 남지만 이 메인 경로에서는 별도로 호출하지 않는다.
+   기본 빌드는 로봇 PWM 적용을 끈다.
    `ROBOT_ARM_PWM_ENABLE`을 정의한 별도 빌드에서만 로봇 PWM을 실제 적용한다.
-4. 입력이 잠시 없으면 Agent2는 **마지막 승인 목표까지 계속 이동**하고 도착 후
+4. LIVE/RECORDING에서 입력이 잠시 없으면 Agent2는 **마지막 승인 목표까지 계속 이동**하고 도착 후
    마지막 명령 자세를 유지한다. 새 프레임이 없을 때 Agent1의 HOLD 나이가
    자동으로 증가하지 않는 점은 사실이나, 이를 이유로 이동 중인 궤적을
    타임아웃 시 즉시 취소하는 watchdog은 추가하지 않는다. 서보 위치 피드백은
@@ -29,6 +34,11 @@ CNN 완료, 타이머 틱은 인터럽트 기반이지만 Agent1/2/3과 UART 메
 실행하지 않는다. UART RX 명령과 TX FIFO 서비스는 foreground polling이다.
 TRACE 빌드는 921600 8N1이며, 이 전송 속도가 무제한 로그나 동기 SD 작업의
 지연을 없애지는 않는다.
+
+`main_integration.c`에는 CNN/UART 서비스, 프레임 경로, 20 ms 제어 경로,
+로그 배출을 순서대로 둔다. UART R/P 전환 및 응답 형식은 파일 내부의
+`handle_record_or_play_event()`로 묶고, 모드별 출력 검증과 기록 처리는
+Record/Replay 제어기 안에서 수행한다. main에서 Agent3를 중복 호출하지 않는다.
 
 ## 합의된 운영 방향과 현재 차이
 
@@ -62,53 +72,48 @@ Agent3는 사람 각도나 CNN 픽셀 좌표를 직접 받지 않는다. 로봇 
 비활성인 빌드에서는 변환 결과를 검사할 수 있어도 레지스터 적용은 하지 않는다.
 무입력 시 마지막 목표 추종에는 Agent3 API 변경이 필요하지 않다.
 
-### Agent3 동작 저장·재생 병렬 작업
+### Agent3 동작 저장·재생 통합 (PR #75)
 
-사용자는 기준 커밋 `b4a695204f7fba9259301fd3c76ce8851a4bbfbc`에서 Agent3에게
-**로봇 동작 저장·재생** 기능의 설계 지침을 이미 전달했다. 이것은 CNN 결과의
-SD CSV 기록과 별도 기능이며, 현재 통합 소스에 구현된 상태는 아니다. 과거
-[Agent3 integration handoff](agent3_integration_handoff.md)의 "Record/Playback 폐기"는
-당시 구현을 정리한 이력이지, 이번 신규 작업을 취소하는 지침이 아니다.
-남은 `tests/output_controller/test_record.c`는 삭제된 `motion_record.h`를
-참조하는 과거 테스트이므로 새 기능의 동작 증거로 사용하지 않는다.
+사용자 승인으로 PR #75(`8366eb1`)를 `dev/integration`에 병합했다(`d0fcf0b`).
+`src/record_replay/motion_record_replay.c`는 Agent3가 작성한 **통합 제어기**이며,
+Agent2 궤적 모듈이나 Agent3 HAL로 편입된 것은 아니다. 모드에 따라 이들의 API를
+호출한다. 기존 A1 각도 정의, A2 보정/FK/램프, A3 PWM 보정값은 이번 가독성 정리에서
+변경하지 않는다.
 
-Agent3에게 전달된 **제안**은 앱 링커가 보호하는 DDR 영역 안에 static
-`MotionKeyframe` 버퍼(상대시각과 4개 서보 각도·gripper)를 두고, Agent2가
-승인한 `ForearmJointCommand` 재목표 이벤트를 기록하는 A안이다. 녹화 중
-SD 쓰기 없음, 저장 확정 시 SD flush, 재생 전 파일 무결성 및 각 명령의
-가동범위·안전검사 재확인을 요구했다. 새 고정 DDR 주소를 사용하지 않는다.
-버튼2의 "누르는 동안 녹화, 놓을 때 저장" 의미는 아직 사용자 확정이 필요하다.
+- UART `R`은 녹화 시작/종료, `P`는 재생 시작/종료다. main이 CNN 앱의 제어 이벤트를
+  소비한다. GPIO 버튼 및 SD 저장은 이번 v1에 포함되지 않는다.
+- DDR의 static `MotionSample` 배열 두 개에 각각 최대 1024개를 보관한다.
+  한 샘플은 5개 float(20 bytes), 합계 40,960 bytes이며 50 Hz 기준 약 20.48초다.
+  앱 링커가 보호하는 영역을 사용하고 새 고정 DDR 주소를 잡지 않는다.
+- 녹화는 재목표 이벤트가 아닌 **20 ms 출력 명령 샘플링**이다. Agent2 출력 검증과
+  Agent3 적용 성공 뒤에만 저장한다. 실측 관절 위치가 아니며 HAL 성공 기록과
+  PWM-disabled software 출력 기록을 구분한다. 버퍼가 차면 자동 확정한다.
+- 재생은 전체 preflight 및 매 틱 검증(finite/range/FK, 회전축 속도·가속도,
+  gripper 변화량)을 거쳐 저장 샘플을 Agent3에 전달한다. PLAY에서는 Agent2 램프를
+  다시 적용하지 않는다. 첫 샘플 진입과 반복 복귀는 ALIGN에서 Agent2 램프를 사용하며
+  직전 두 성공 명령으로 진입 속도를 복원한다.
+- 틱 누락은 녹화 종료 또는 ALIGN/PLAY의 HOLD를 유발한다. 녹화 중 HAL 실패 샘플은
+  저장하지 않고 성공한 부분을 보존한다. ALIGN/PLAY 실패는 HOLD로 전환한다.
+- 실측 `gripper_max_delta_norm_per_tick`과 `align_timeout_ticks`가 미정이라
+  `motion_record_replay_configure_align()`을 main에서 호출하지 않는다. 기록이 있어도
+  `P`는 `ALIGN_CONFIG_REQUIRED_REPLAY_DISABLED`로 거부되며 실측 전에는 활성화하지 않는다.
 
-통합 경계에서 아래 네 가지를 Agent3와 함께 확정해야 한다. 연결용 새 코드는
-`agent2_run()`과 `agent3_run()` 중 알맞은 위치에 **추가할 수 있다**. 기존
-라이브 경로의 검증·unwrap·목표 설정·20 ms 궤적·PWM 변환/적용 로직 및
-호출 순서는 수정하지 않는다. 기본 모드는 같은 입력에 같은 출력을 내야 하며,
-재생은 별도 모드 경로로 추가한다.
+과거 `MotionKeyframe` 재목표 기록/SD flush/버튼2 제안과
+[Agent3 integration handoff](agent3_integration_handoff.md)는 설계 이력이다.
+향후 SD 저장을 추가할 때는 20 ms 루프 지연 대책과 파일 검증을 별도로 설계한다.
+Agent3의 후속 작업은 현행 통합 기준에서 PR로 검토하고, 통합 담당은 사용자가
+승인한 범위에서 병합한다. 이 문서의 과거 dev/robot 경유 절차는 이번 PR에 적용하지 않는다.
 
-1. `agent2_run()`과 `agent3_run()`은 둘 다 `src/integration/agent_pipeline.c`에
-   있다. 전자는 새 입력이 있을 때, 후자는 20 ms 틱마다 호출된다.
-   `agent3_run()`에서 `retargets` 증가만 비교하면 한 틱 사이에 발생한 여러
-   재목표를 놓칠 수 있으므로 이벤트 누락 여부를 설계·검증한다. 기록 훅은
-   어느 함수에 추가해도 되지만 기존 함수의 로직은 그대로 보존한다.
-   연결부는 통합 담당과 Agent3가 함께 검토하며 Agent1/2 내부를 고치지 않는다.
-2. 재생 시 라이브 CNN 목표가 같은 `ForearmMotionState`에 동시에 새 목표를
-   쓰지 않도록 별도 모드/경로가 필요하다. 일반 라이브 모드의 기존 호출은
-   바꾸지 않는다. 저장된 명령도 신뢰하지 않고 범위·안전검사를 거친 뒤
-   현재 20 ms 궤적 경로에 넣어야 한다. Agent3가 직접 PWM을 재생해 Agent2
-   안전검사·속도제한을 우회하지 않는다.
-3. 버튼을 놓은 뒤 1회만 하는 SD 저장이라도 foreground에서 수백 ms 이상
-   걸리면 20 ms 틱이 누락된다. "1초 안팎이므로 괜찮다"는 실측 근거가 없다.
-   저장 중 제어를 어떻게 유지할지(작은 청크로 분할, 명시적 저장 상태 등)
-   정하고 보드에서 지연을 측정해야 한다. CNN CSV 상시 기록 중단 결정과
-   혼동하지 않는다.
-4. Agent3 작업은 먼저 `dev/robot`에 PR로 반영해 검증하고, 사용자가
-   `dev/integration`으로 최종 병합한다는 전달 절차를 따른다. 통합 담당은
-   Agent3 병렬 작업의 파일을 중복 구현하거나 임의로 병합하지 않는다.
+2026-09-29 재검증: PR 최신 커밋은 호스트 10 PASS와 기준점 `c49d0df`에도 존재하는
+5개 실패(`test_integration_smoke`, `test_trace`, `test_axis_replay`,
+`test_forearm_calibration`, `test_forearm_replay`)를 재현했다. PWM-disabled Vitis 빌드
+성공, record/replay `.bss` 버퍼는 각각 `0x0014803c`/`0x0014d03c`(각 `0x5000` bytes)로
+CNN 프레임 버퍼와 겹치지 않는다. 이 검증은 보드 동작 검증을 대신하지 않는다.
 
 ## 검증 순서와 남은 문제
 
 1. 호스트에서 CNN 결과 변환, 메뉴 명령과 추론의 동시성, 고정 카메라 모드,
-   5축 출력 계약을 각각 확인한다. 기존 전체 테스트의 4개 실패는 통합 전
+   5축 출력 계약을 각각 확인한다. 기존 전체 테스트의 5개 실패는 통합 전
    기준점과 분리해서 보고한다.
 2. 새 XSA/ELF를 빌드하고 로봇 PWM 없이 보드에서 CNN 완료 IRQ, 카메라
    PWM 고정/추적 전환, `CN`→`IN`→`A1`→`A2`와 `TK`/`SM`, SD 쓰기 중단,
