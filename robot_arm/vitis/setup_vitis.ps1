@@ -10,6 +10,8 @@
     5) 앱을 빌드한다.
 
   주의
+    - 기본 빌드는 ROBOT_ARM_PWM_ENABLE을 정의하여 로봇 서보 PWM을 실제 출력한다.
+      보드에서 실행하기 전에 서보 전원과 기구 자세를 확인한다.
     - 워크스페이스 경로는 짧아야 한다(80자 이하, 예: D:\vws). Windows 경로 길이 제한(260자) 때문이다.
     - 이 스크립트를 돌리는 동안 Vitis IDE는 이 워크스페이스를 열지 않은 상태여야 한다.
     - xsct 임시폴더(.Xil)와 로그는 "<워크스페이스>_setup_logs" 폴더에 만들어져서 저장소를 더럽히지 않는다.
@@ -20,7 +22,7 @@
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Workspace,
-    [string]$Xsa,                        # 기본값: xsa\cnn_camera_gimbal.xsa
+    [string]$Xsa,                        # 기본값: xsa\cnn_camera_gimbal_rgby_pack77.xsa
     [string]$RepoRoot,                   # 기본값: 이 스크립트의 상위 폴더(robot_arm)
     [string]$VitisBin = "C:\Xilinx\Vitis\2020.2\bin",
     [string]$PlatformName = "cnn_camera_gimbal",
@@ -31,7 +33,7 @@ $ErrorActionPreference = "Stop"
 
 # Windows PowerShell 5.1 에서는 param 기본값 안의 $PSScriptRoot 가 비어 있어서 본문에서 계산한다.
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-if (-not $Xsa) { $Xsa = Join-Path $scriptDir "xsa\cnn_camera_gimbal.xsa" }
+if (-not $Xsa) { $Xsa = Join-Path $scriptDir "xsa\cnn_camera_gimbal_rgby_pack77.xsa" }
 if (-not $RepoRoot) { $RepoRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path }
 function ToTcl([string]$p) { return ($p -replace '\\', '/') }
 
@@ -63,7 +65,7 @@ function Run-Xsct([string]$tclText, [string]$name) {
     $tcl = Join-Path $logs "$name.tcl"
     Set-Content -Path $tcl -Value $tclText -Encoding ascii
     $out = Join-Path $logs "$name.out"; $err = Join-Path $logs "$name.err"
-    $p = Start-Process -FilePath $xsct -ArgumentList "`"$tcl`"" -WorkingDirectory $logs -NoNewWindow -PassThru `
+    $p = Start-Process -FilePath $xsct -ArgumentList "`"$tcl`"" -WorkingDirectory $logs -WindowStyle Hidden -PassThru `
          -RedirectStandardOutput $out -RedirectStandardError $err
     $null = $p.Handle    # Windows PowerShell 5.1: 핸들을 미리 잡아 두지 않으면 종료 후 ExitCode 가 비어 나온다
     if (-not $p.WaitForExit(900000)) { $p.Kill(); throw "xsct 시간 초과($name)" }
@@ -92,6 +94,7 @@ app config -name $AppName -add include-path $repo/config
 app config -name $AppName -add include-path $repo/src/cnn_firmware
 app config -name $AppName -add define-compiler-symbols SERVO_PWM_DRIVER_USE_XILINX
 app config -name $AppName -add define-compiler-symbols ROBOT_TRACE
+app config -name $AppName -add define-compiler-symbols ROBOT_ARM_PWM_ENABLE
 app config -name $AppName -add libraries m
 puts "include-path: [app config -name $AppName include-path]"
 puts "symbols: [app config -name $AppName define-compiler-symbols]"

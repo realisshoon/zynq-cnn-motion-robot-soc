@@ -1,4 +1,4 @@
-# CNN + 5축 로봇 통합 작업 기준 (2026-09-29)
+# CNN + 5축 로봇 통합 작업 기준 (2026-09-30)
 
 이 문서는 `dev/integration`에서 모든 에이전트가 공유하는 **현행 통합 계약과
 수정 범위**다. 실행 결과와 Agent4 리뷰 근거는 [cnn_integration.md](cnn_integration.md),
@@ -22,8 +22,8 @@
    ALIGNING은 Agent2 램프와 gripper 제한을 거치고, PLAYING은 저장 샘플을 검증한 뒤
    Agent3에 직접 전달한다. HOLDING은 마지막 성공 명령을 재적용한다.
    `agent3_run()`은 호환 래퍼로 남지만 이 메인 경로에서는 별도로 호출하지 않는다.
-   기본 빌드는 로봇 PWM 적용을 끈다.
-   `ROBOT_ARM_PWM_ENABLE`을 정의한 별도 빌드에서만 로봇 PWM을 실제 적용한다.
+   현재 `vitis/setup_vitis.ps1` 기본 빌드는 `ROBOT_ARM_PWM_ENABLE`을 정의해
+   로봇 PWM을 실제 적용한다. 로봇을 연결하지 않는 진단 빌드는 이 심볼을 제외한다.
 4. LIVE/RECORDING에서 입력이 잠시 없으면 Agent2는 **마지막 승인 목표까지 계속 이동**하고 도착 후
    마지막 명령 자세를 유지한다. 새 프레임이 없을 때 Agent1의 HOLD 나이가
    자동으로 증가하지 않는 점은 사실이나, 이를 이유로 이동 중인 궤적을
@@ -48,7 +48,7 @@ Record/Replay 제어기 안에서 수행한다. main에서 Agent3를 중복 호�
 | 카메라 초기 자세 검증 | 추적 계산을 멈추고 pan/tilt PWM을 일정한 값으로 유지해 카메라를 고정. 최종 통합 기능인 사람 추적은 보존 | 부팅 FIXED(초기 1500 µs), UART `f` 고정, `u` 추적 재개 구현. 실제 펄스 유지·방향은 보드 미검증 |
 | SD | 부팅 시 CNN 가중치 로드는 유지. 추론 중 CNN 결과 CSV 기록은 끄고 SD 쓰기 지연을 제거 | 자동·프레임별 CSV와 수동 `l` 제거. 가중치 로드는 유지 |
 | UART | 먼저 TRACE의 틱 누락·출력량과 실제 수신 문제를 측정. 필요할 때 RX IRQ/TX 정책 검토 | 수신 메뉴와 TX FIFO 배출 모두 polling. `q`는 출력만 음소거/재개하며 CNN·로봇 제어는 계속 실행. 출력이 켜졌을 때 `outbyte()`는 32 KiB 큐가 가득 차면 기다림 |
-| 로봇 PWM | PWM 없는 TRACE 검증 후 별도 서보 시험 | 기본 빌드 비활성; 카메라 PWM은 별도 IP라 켜질 수 있음 |
+| 로봇 PWM | PWM 없는 TRACE 검증 후 별도 서보 시험 | 2026-09-30 기본 빌드 활성; 카메라 PWM은 별도 IP |
 
 카메라 고정은 PS UART `f` 메뉴에서 전환하며 UART RX IRQ는 필요하지 않다.
 FIXED는 tracker enable과 camera PWM enable을 분리한다. 기존 `u`는
@@ -59,7 +59,7 @@ FIXED는 tracker enable과 camera PWM enable을 분리한다. 기존 `u`는
 
 | 담당 | 수정할 영역 / 확인할 일 | 다른 담당과의 경계 |
 |---|---|---|
-| 통합 담당(Codex) | `src/integration/main_integration.c`, `agent_pipeline.c/h`, `input_pose_cnn.c/h`, `platform_vitis.c/h`, `trace.c/h`, `vitis/setup_vitis.ps1` 등 연결부. 데이터 흐름, 로봇 PWM 기본 비활성, 무입력 진단, 20 ms 틱과 UART 지연 계측 | A1 각도 정의, A2 보정/FK, A3 서보 보정값을 임의 변경하지 않음 |
+| 통합 담당(Codex) | `src/integration/main_integration.c`, `agent_pipeline.c/h`, `input_pose_cnn.c/h`, `platform_vitis.c/h`, `trace.c/h`, `vitis/setup_vitis.ps1` 등 연결부. 데이터 흐름, 로봇 PWM 빌드 설정, 무입력 진단, 20 ms 틱과 UART 지연 계측 | A1 각도 정의, A2 보정/FK, A3 서보 보정값을 임의 변경하지 않음 |
 | CNN/카메라 담당(Agent4, 통합 담당에게 설계 권한 위임) | `src/cnn_firmware/*`, `src/integration/cnn_app.c`, `cnn_console.c/h`, CNN XSA 경계. SD CSV 상시 기록 제거, 고정 카메라 모드, 추론 중 `w`/`g` 안전 처리, `s`/`x` 동작 정리, 오류 snapshot, 원래 CNN/HDMI/overlay/카메라 추적 기능 보존 | `main_integration.c` 및 로봇 파이프라인의 public 계약을 바꿀 때 통합 담당과 함께 검토 |
 | Agent1 | `HumanPose2D` → `HumanForearmTarget`, 재구성·각도 계산과 해당 테스트 | 카메라 고정/UART/로봇 PWM 정책을 A1 각도 계산에 임의 반영하지 않음 |
 | Agent2 | `HumanForearmTarget` 검증·unwrap·보정·안전검사·20 ms 궤적 및 해당 테스트 | 무입력 시 마지막 승인 목표 유지가 현재 정책. 입력 타임아웃 즉시 정지를 추가하지 않음 |
@@ -68,8 +68,8 @@ FIXED는 tracker enable과 camera PWM enable을 분리한다. 기존 `u`는
 Agent3의 현행 입력은 Agent2가 승인한 `ForearmJointCommand`의 서보 각도
 (`elbow_roll`, `elbow_pitch`, `wrist_pitch`, `wrist_roll`)와 정규화된 `gripper`다.
 출력은 `ServoPwmCommand`의 5개 펄스(µs)이며 로봇 IP CH0..CH4에 대응한다.
-Agent3는 사람 각도나 CNN 픽셀 좌표를 직접 받지 않는다. 로봇 PWM이 기본
-비활성인 빌드에서는 변환 결과를 검사할 수 있어도 레지스터 적용은 하지 않는다.
+Agent3는 사람 각도나 CNN 픽셀 좌표를 직접 받지 않는다. 로봇 PWM 심볼을
+제외한 진단 빌드에서는 변환 결과를 검사할 수 있어도 레지스터 적용은 하지 않는다.
 무입력 시 마지막 목표 추종에는 Agent3 API 변경이 필요하지 않다.
 
 ### Agent3 동작 저장·재생 통합 (PR #75)
@@ -103,7 +103,7 @@ Agent2 궤적 모듈이나 Agent3 HAL로 편입된 것은 아니다. 모드에 �
   `gripper_max_delta_norm_per_tick=0.01`, `align_timeout_ticks=500`으로 호출한다.
   명령상 gripper 전 범위 이동 2초, ALIGN 최대 10초다. 실측으로 검증한 정격값은 아니다.
   녹화 중 gripper 변화량 제한은 녹화 종료 후 LIVE에서도 목표에 도달할 때까지 유지한다.
-  재생 설정 잠금은 해제하지만 기본 빌드의 로봇 PWM 비활성 정책은 유지한다.
+  2026-09-30 기본 Vitis 빌드에서는 로봇 PWM을 활성화했다.
 - A2 elbow_pitch 상한은 A3의 180도와 일치시켰다(기존 200도). 다른 보정값은 유지한다.
 
 과거 `MotionKeyframe` 재목표 기록/SD flush/버튼2 제안과
@@ -118,12 +118,21 @@ Agent3의 후속 작업은 현행 통합 기준에서 PR로 검토하고, 통합
 성공, record/replay `.bss` 버퍼는 각각 `0x0014803c`/`0x0014d03c`(각 `0x5000` bytes)로
 CNN 프레임 버퍼와 겹치지 않는다. 이 검증은 보드 동작 검증을 대신하지 않는다.
 
+2026-09-30 RGBY pack77 통합: PR #80을 병합하고 기본 XSA를
+`cnn_camera_gimbal_rgby_pack77.xsa`로 바꿨다. `ROBOT_ARM_PWM_ENABLE`을 정의한
+새 Vitis workspace `D:\vws_rgby80`에서 FSBL/BSP/ELF 빌드 성공.
+`E:\BOOT.BIN`은 해당 FSBL·bitstream·ELF의 Bootgen 이미지로 교체했다
+(SHA-256 `67B418F0A3749A0B0BC5BF33B3022244AEA77E32C0AF8DEAE117A85227461A85`).
+SD 가중치 SHA-256은
+`77D4E3BB0E747AB5DF62AAA41A85784BE3215489941C6D271F401A50218E7DE3`이다.
+보드 실행은 아직 하지 않았고, CNN팀 보고의 새 RTL 전체 timing FAIL은 남아 있다.
+
 ## 검증 순서와 남은 문제
 
 1. 호스트에서 CNN 결과 변환, 메뉴 명령과 추론의 동시성, 고정 카메라 모드,
    5축 출력 계약을 각각 확인한다. 기존 전체 테스트의 5개 실패는 통합 전
    기준점과 분리해서 보고한다.
-2. 새 XSA/ELF를 빌드하고 로봇 PWM 없이 보드에서 CNN 완료 IRQ, 카메라
+2. 새 XSA/ELF를 빌드하고 서보 전원을 분리한 상태에서 CNN 완료 IRQ, 카메라
    PWM 고정/추적 전환, `CN`→`IN`→`A1`→`A2`와 `TK`/`SM`, SD 쓰기 중단,
    UART 출력량·틱 누락을 측정한다.
 3. 그다음 실제 서보 방향·중립·가동범위와 A2 FK/충돌 가정을 확인한다.

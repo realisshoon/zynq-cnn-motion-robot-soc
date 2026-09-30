@@ -3,7 +3,24 @@
 > 다음 통합 작업의 현행 결정과 에이전트별 수정 범위는
 > [integration_work_plan.md](integration_work_plan.md)를 따른다. 이 문서는
 > 현재 구현과 2026-09-27 Agent4 리뷰의 검증 기록이다. 아래 Agent4 리뷰 절은
-> 당시 스냅샷이며, 2026-09-28 변경 상태는 다음 절을 따른다.
+> 당시 스냅샷이며, 2026-09-28 및 2026-09-30 변경 상태는 다음 절을 따른다.
+
+## 2026-09-30 RGBY pack77 통합 빌드
+
+- PR #80의 yellow 검출·HDMI 표시·UART 설정과 새 XSA를 `dev/integration`에 병합했다.
+  현재 기본 XSA는 `vitis/xsa/cnn_camera_gimbal_rgby_pack77.xsa`이고,
+  `vitis/setup_vitis.ps1`는 `ROBOT_ARM_PWM_ENABLE`을 정의해 로봇 PWM을 출력한다.
+  아래의 과거 기본 PWM 비활성 설명은 이 빌드에 적용되지 않는다.
+- Vitis 2020.2 새 workspace `D:\vws_rgby80`에서 FSBL/BSP/통합 ELF 빌드 성공.
+  ELF SHA-256 `B2DEE97F5D33842E48ADA5388775241D362B988D3D2998EE25A5F9EDB60D082F`.
+  Bootgen 이미지 `D:\vws_rgby80_boot\BOOT.BIN` SHA-256
+  `67B418F0A3749A0B0BC5BF33B3022244AEA77E32C0AF8DEAE117A85227461A85`는
+  해당 FSBL → pack77 bitstream → 통합 ELF 세 파티션을 포함한다.
+- SD `E:\BOOT.BIN`을 같은 해시로 교체하고 직전 이미지는
+  `E:\BOOT.pre_yellow_20260930.BIN`으로 보존했다. SD `WGT_V4.BIN`의 SHA-256은
+  `77D4E3BB0E747AB5DF62AAA41A85784BE3215489941C6D271F401A50218E7DE3`이다.
+- 호스트 테스트 10 PASS, 기존 5 FAIL 재현. 이 빌드는 보드에서 실행하지 않았다.
+  새 RTL의 전체 post-route timing FAIL은 아래 배포 절의 미해결 사항이다.
 
 ## 2026-09-28 통합 런타임 변경
 
@@ -36,7 +53,24 @@
   러너의 기존 실패 4개는 그대로다. 보드 download·카메라/서보 구동은
   수행하지 않았으므로 PWM 유지와 reset 완료의 실물 동작은 미검증이다.
 
-현재 실행 진입점은 `src/integration/main_integration.c` 하나다. `src/cnn_firmware/`는 CNN 팀 Vitis 앱의 드라이버와 기능 모듈을 옮긴 것이며, 원본 `main.c`는 빌드하지 않고 `vitis/reference/cnn_original_main.c.txt`에 비교용으로 보존했다. FPGA 하드웨어는 `vitis/xsa/cnn_camera_gimbal.xsa`를 쓴다 (SHA-256 `CF19EB89BEBDF960EEF33622464BF3C40AEA2CEC6133EAFCC099ED97BFA5D5AF`). 기존 `etc/`와 UART 자료는 삭제하지 않았다.
+현재 실행 진입점은 `src/integration/main_integration.c` 하나다. `src/cnn_firmware/`는 CNN 팀 Vitis 앱의 드라이버와 기능 모듈을 옮긴 것이며, 원본 `main.c`는 빌드하지 않고 `vitis/reference/cnn_original_main.c.txt`에 비교용으로 보존했다. 기본 FPGA 하드웨어는 `vitis/xsa/cnn_camera_gimbal_rgby_pack77.xsa`이다. 기존 `vitis/xsa/cnn_camera_gimbal.xsa`(SHA-256 `CF19EB89BEBDF960EEF33622464BF3C40AEA2CEC6133EAFCC099ED97BFA5D5AF`)는 이력용으로 보존하며 새 가중치 펌웨어와 함께 사용하지 않는다. 기존 `etc/`와 UART 자료는 삭제하지 않았다.
+
+## 2026-09-30 새 가중치와 하드웨어 배포
+
+- SD 루트 파일명: `WGT_V4.BIN`, 1,287,680 bytes, SHA-256 `77D4E3BB0E747AB5DF62AAA41A85784BE3215489941C6D271F401A50218E7DE3`.
+- 원본 파일: `D:\AI_train\runs\20260929_103234_double_training_import\export\WGT_V4.BIN`. 빌드 결과 및 SD용 복사본을 배포 전에 같은 SHA-256으로 대조한다.
+- 펌웨어 `cnn_weights.c`는 위 SHA-256 전체를 검증한다. `cnn_hw.h`는 CNN AXI-Lite `0x0AC`의 PACK_ID `0x77D4E3BB`를 요구한다. 기존 PACK_ID `0xC9854BB2` 하드웨어에서는 probe가 실패한다.
+- Vivado 재빌드는 `D:\system_verilog\gimbal_rgby_pack77`의 격리 복사본에서 수행한다. 이전 RGBY 설계에 대한 RTL 변경은 `cnn_accelerator_top.v`의 `0x0AC` 읽기값 한 줄뿐이며, 정확한 패치는 `vitis/reference/cnn_pack77_id.patch`에 있다. IP core revision은 4다. CNN 토폴로지, DMA 길이, 레지스터 주소, BD 배선, XDC 핀 배치는 그대로다.
+- `vitis/setup_vitis.ps1`의 기본 XSA를 새 이름 `cnn_camera_gimbal_rgby_pack77.xsa`로 지정했다. 새 Vitis workspace에서 BSP와 통합 ELF를 다시 빌드해야 한다. 이전 XSA 또는 이전 ELF로 만든 BOOT.BIN은 새 가중치 배포에 쓰지 않는다.
+- 새 bitstream 포함 XSA SHA-256: `01D5491E6FF494091BA93399FCF7AE41E3D1C3F4689C09AB7224B73389A46EED`. Vivado/Vitis/Bootgen 2020.2. XSA 안에 `cnn_camera_gimbal_rgby_pack77.bit`(4,045,676 bytes)와 `design_1.hwh`가 있다. HWH의 CNN IP는 4.1 revision 4, overlay는 1.0 revision 5다.
+- 최신 `dev/integration` 기반 PR 소스에서 새 XSA로 Vitis 2020.2 플랫폼/BSP/ELF를 다시 빌드했다. `D:\vws_pr77\robot_testbench\Debug\robot_testbench.elf`(SHA-256 `BD62977DC203674E6955F01397621D776029A2DA37C85BEAC5FCA4845DB0D932`)에 `main_integration.o`와 새 `cnn_weights.o`가 포함되고 단독 `main.o`는 제외됐다. 기본 빌드에 `ROBOT_ARM_PWM_ENABLE`은 정의되지 않았다.
+- 새 `xparameters.h` 확인값: CNN `0x43C60000`/IRQ 61, overlay `0x43C50000`, 로봇 PWM `0x43C70000`, AXI Timer `0x43C80000`/IRQ 62, 카메라 PWM `0x43C90000`.
+- SD 카드 FAT32 파티션 루트에는 같은 빌드의 FSBL·비트스트림·통합 ELF로 만든 `BOOT.BIN`과 위 `WGT_V4.BIN`을 둔다. Zybo Z7-20을 SD 부팅 모드로 설정한다. 부팅 시 가중치 검증이 통과해야 자동 CNN 추론이 시작된다.
+- `D:\system_verilog\gimbal_rgby_pack77\sd_deploy\BOOT.BIN`은 이 PR을 최신 `dev/integration`에 맞추기 **전** 통합 ELF로 만든 평가 이미지다. 이 PR의 ELF와 동일하지 않으므로 통합 부팅에는 사용하지 않는다. 통합팀은 새 XSA와 이 PR 소스로 FSBL/ELF를 빌드하고 BOOT.BIN을 재생성해야 한다. `WGT_V4.BIN`의 SHA-256은 위 값으로 검증한다.
+- 실행 중 수동 `w`(가중치 재로딩)와 `g`(영상 SG 재생성)는 CNN 추론이 진행 중이면 `CNN_ERR_BUSY`로 거부한다. 연속 추론을 끈 뒤 사용한다.
+- 새 가중치의 29-op exact 검증은 입력으로 제공된 결과다. 아래 이력의 보드 검증 상태는 이번 새 가중치의 실물 검증으로 해석하지 않는다.
+- 이번 재빌드의 post-route 전체 WNS/TNS는 `-2.450/-4.862 ns`, setup/hold 실패는 각각 D-PHY HS 외부 입력 2개다. 내부 `clk_fpga_0`은 setup 실패 0개, WNS `+0.007 ns`; route 완료, DRC error/critical warning 0개다. **전체 timing은 FAIL**이므로 이 BOOT.BIN은 평가용이다. 새 가중치로 보드 실행은 아직 하지 않았다. 보고서: `D:\system_verilog\gimbal_rgby_pack77\PACK77_DEPLOYMENT_REPORT.md`.
+- 통합팀의 기존 UART `f`(카메라 FIXED), `b`(오버레이 보기 전환)는 유지한다. RGBY 조절은 `m`, 노란색 on/off는 `y`, 몸 관절 전체/개별 HDMI 표시 제어는 `B`/`J`다. 기존 통합 정책대로 CSV 자동 기록은 시작하지 않는다.
 
 ## 실행 경로
 

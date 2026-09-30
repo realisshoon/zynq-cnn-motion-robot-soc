@@ -51,17 +51,21 @@ void cnn_diag_probe_report(void)
     xil_printf("  version  : 0x%08x\r\n",cnn_hw_read(CNN_REG_VERSION));
     xil_printf("  features : 0x%08x\r\n",cnn_hw_read(CNN_REG_FEATURES));
     xil_printf("  pack id  : 0x%08x\r\n",cnn_hw_read(CNN_REG_PACK_ID));
-    xil_printf("  color en : 0x%08x (red/blue/green=%lu/%lu/%lu)\r\n",
+    xil_printf("  color en : 0x%08x (red/blue/green/yellow=%lu/%lu/%lu/%lu)\r\n",
                cnn_hw_read(CNN_REG_COLOR_ENABLE),
                (unsigned long)((cnn_hw_read(CNN_REG_COLOR_ENABLE) >> 0) & 1U),
                (unsigned long)((cnn_hw_read(CNN_REG_COLOR_ENABLE) >> 1) & 1U),
-               (unsigned long)((cnn_hw_read(CNN_REG_COLOR_ENABLE) >> 2) & 1U));
-    xil_printf("  thresholds R/B/G: %06x / %06x / %06x\r\n",
+               (unsigned long)((cnn_hw_read(CNN_REG_COLOR_ENABLE) >> 2) & 1U),
+               (unsigned long)((cnn_hw_read(CNN_REG_COLOR_ENABLE) >> 3) & 1U));
+    xil_printf("  thresholds R/B/G/Y: %06x / %06x / %06x / %06x\r\n",
                cnn_hw_read(CNN_REG_RED_THRESHOLD),
                cnn_hw_read(CNN_REG_BLUE_THRESHOLD),
-               cnn_hw_read(CNN_REG_GREEN_THRESHOLD));
+               cnn_hw_read(CNN_REG_GREEN_THRESHOLD),
+               cnn_hw_read(CNN_REG_YELLOW_THRESHOLD));
     xil_printf("  margins B/G/R    : %06x\r\n",
                cnn_hw_read(CNN_REG_COLOR_MARGIN));
+    xil_printf("  yellow margins RG/B-gap: %04x\r\n",
+               cnn_hw_read(CNN_REG_YELLOW_MARGIN));
     xil_printf("  color min count  : %lu\r\n",
                (unsigned long)cnn_hw_read(CNN_REG_MIN_COUNT));
     xil_printf("  result   : %s\r\n",cnn_error_string(e));
@@ -102,14 +106,18 @@ void cnn_diag_dump(void)
     value=cnn_hw_read(CNN_REG_SG_BASE); xil_printf(" image SG base              : %08x\r\n",value);
     value=cnn_hw_read(CNN_REG_FRAME_BASE); xil_printf(" selected frame base        : %08x\r\n",value);
     value=cnn_hw_read(CNN_REG_TIMEOUT); xil_printf(" hardware watchdog limit    : %08x\r\n",value);
-    value=cnn_hw_read(CNN_REG_COLOR_ENABLE); xil_printf(" color enable R/B/G         : %lu / %lu / %lu\r\n",
+    value=cnn_hw_read(CNN_REG_COLOR_ENABLE); xil_printf(" color enable R/B/G/Y       : %lu / %lu / %lu / %lu\r\n",
         (unsigned long)((value >> 0) & 1U),
         (unsigned long)((value >> 1) & 1U),
-        (unsigned long)((value >> 2) & 1U));
-    xil_printf(" color thresholds R/B/G     : %06x / %06x / %06x\r\n",
+        (unsigned long)((value >> 2) & 1U),
+        (unsigned long)((value >> 3) & 1U));
+    xil_printf(" color thresholds R/B/G/Y   : %06x / %06x / %06x / %06x\r\n",
         cnn_hw_read(CNN_REG_RED_THRESHOLD),
         cnn_hw_read(CNN_REG_BLUE_THRESHOLD),
-        cnn_hw_read(CNN_REG_GREEN_THRESHOLD));
+        cnn_hw_read(CNN_REG_GREEN_THRESHOLD),
+        cnn_hw_read(CNN_REG_YELLOW_THRESHOLD));
+    xil_printf(" yellow margins RG/B-gap    : %04x\r\n",
+        cnn_hw_read(CNN_REG_YELLOW_MARGIN));
     value=cnn_hw_read(CNN_REG_COLOR_MARGIN); xil_printf(" color margins B/G/R        : %lu / %lu / %lu\r\n",
         (unsigned long)((value >> 16) & 0xffU),
         (unsigned long)((value >> 8) & 0xffU),
@@ -178,8 +186,9 @@ void cnn_diag_print_result(const cnn_result_t *r)
         xil_printf(" joint[%02lu] x=%4u y=%3u score=%4d valid=%u\r\n",
                    (unsigned long)i,r->joint[i].x,r->joint[i].y,
                    (int)r->joint[i].score,r->joint[i].valid);
-    xil_printf(" markers red=0x%08x blue=0x%08x green=0x%08x\r\n",
-               r->red_marker,r->blue_marker,r->green_marker);
+    xil_printf(" markers red=0x%08x blue=0x%08x green=0x%08x yellow=0x%08x\r\n",
+               r->red_marker,r->blue_marker,r->green_marker,
+               r->yellow_marker);
 }
 
 void cnn_diag_print_sg(u32 descriptor_base)

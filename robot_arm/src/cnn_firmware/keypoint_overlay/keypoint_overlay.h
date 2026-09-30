@@ -36,7 +36,7 @@ void kpo_set_source_frame_id(u32 frame_id);
 void kpo_set_joint(int index, u16 x, u16 y, u8 score);
 /* CNN marker word: [31] found, [20:11] y, [10:0] x. */
 void kpo_set_color_results(u32 red_marker_word, u32 blue_marker_word,
-                           u32 green_marker_word);
+                           u32 green_marker_word, u32 yellow_marker_word);
 void kpo_commit(void);
 int  kpo_commit_pending(void);
 int  kpo_wait_commit(u32 timeout);
