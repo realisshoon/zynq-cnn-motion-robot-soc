@@ -415,6 +415,11 @@ int motion_record_replay_configure_align(MotionRecordReplay *controller,
     return 1;
 }
 
+void motion_record_replay_set_repeat(MotionRecordReplay *controller, int enabled)
+{
+    if (controller != NULL) controller->repeat_play = enabled != 0;
+}
+
 int motion_record_replay_start_record(MotionRecordReplay *controller)
 {
     if (controller == NULL) return 0;
@@ -544,6 +549,7 @@ static int live_or_record_tick(MotionRecordReplay *controller,
                                uint32_t tick_overrun_count)
 {
     MotionRecordReplayReason reason;
+    ForearmJointCommand applied_command;
     int recording = controller->mode == MOTION_RR_RECORDING;
 
     if (!agent2_tick(pipeline)) {
@@ -563,6 +569,21 @@ static int live_or_record_tick(MotionRecordReplay *controller,
     }
 
     seed_live_history(controller, pipeline);
+    applied_command = pipeline->output;
+    if (recording && controller->align_gripper_max_delta_norm > 0.0f) {
+        const ForearmJointCommand *previous = NULL;
+        if (controller->last_applied_replay_valid != 0U) {
+            previous = &controller->last_applied_replay_command;
+        } else if (pipeline->agent3_command_valid != 0U) {
+            previous = &pipeline->agent3_command;
+        }
+        if (previous != NULL) {
+            /* Record the command actually sent to Agent3. LIVE remains unchanged. */
+            applied_command.gripper_norm = approach(
+                previous->gripper_norm, applied_command.gripper_norm,
+                controller->align_gripper_max_delta_norm);
+        }
+    }
 
     if (recording) {
         if (controller->record_tick_baseline_valid == 0U) {
@@ -572,25 +593,25 @@ static int live_or_record_tick(MotionRecordReplay *controller,
                    controller->record_tick_overrun_baseline) {
             /* 누락된 20 ms 뒤 sample을 추가하면 Replay 시간이 압축된다.
              * sample은 저장하지 않되 이번 LIVE 제어 출력은 Agent3까지 전달한다. */
-            if (!agent3_apply_command(pipeline, &pipeline->output)) {
+            if (!agent3_apply_command(pipeline, &applied_command)) {
                 finalize_recording(controller,
                                    MOTION_RR_REASON_AGENT3_FAILURE);
                 return 0;
             }
-            remember_agent3_success(controller, pipeline, &pipeline->output);
+            remember_agent3_success(controller, pipeline, &applied_command);
             finalize_recording(controller, MOTION_RR_REASON_TICK_OVERRUN);
             return 1;
         }
     }
 
-    if (!agent3_apply_command(pipeline, &pipeline->output)) {
+    if (!agent3_apply_command(pipeline, &applied_command)) {
         if (recording) {
             /* 실패한 명령은 실제 적용 성공 sample로 확정하지 않는다. */
             finalize_recording(controller, MOTION_RR_REASON_AGENT3_FAILURE);
         }
         return 0;
     }
-    remember_agent3_success(controller, pipeline, &pipeline->output);
+    remember_agent3_success(controller, pipeline, &applied_command);
 
     if (recording) {
         MotionRecordReplayAppliedSource source = pipeline->output_enabled != 0U
@@ -600,7 +621,7 @@ static int live_or_record_tick(MotionRecordReplay *controller,
             controller->record_source = source;
         }
         record_buffer[controller->record_count++] =
-            command_to_sample(&pipeline->output);
+            command_to_sample(&applied_command);
         if (controller->record_count == MOTION_RECORD_REPLAY_MAX_SAMPLES) {
             finalize_recording(controller, MOTION_RR_REASON_BUFFER_FULL);
         }
@@ -719,6 +740,23 @@ static int play_tick(MotionRecordReplay *controller,
     remember_agent3_success(controller, pipeline, &command);
     ++controller->replay_index;
     if (controller->replay_index == controller->replay_count) {
+        if (controller->repeat_play != 0U) {
+            /* 마지막 성공 command에서 다시 Sample0까지 제한된 속도로 이동한다.
+             * 서로 다른 끝/첫 sample을 한 tick에 직접 연결하지 않는다. */
+            if (!reseed_motion(controller, pipeline,
+                               &controller->last_applied_replay_command)) {
+                return enter_holding(controller, MOTION_RR_REASON_DELTA);
+            }
+            controller->align_target = sample_to_command(&replay_buffer[0]);
+            controller->align_gripper_norm =
+                controller->last_applied_replay_command.gripper_norm;
+            controller->align_ticks = 0U;
+            forearm_calibration_set_target(&pipeline->motion,
+                                           &controller->align_target);
+            controller->mode = MOTION_RR_ALIGNING;
+            pipeline->target_ready = 0U;
+            return 1;
+        }
         /* 사용자 정책: 자동 반복/라이브 복귀 없이 마지막 명령을 유지한다.
          * 마지막 sample은 정상 적용됐으므로 이번 tick은 성공을 반환한다. */
         controller->mode = MOTION_RR_HOLDING;
