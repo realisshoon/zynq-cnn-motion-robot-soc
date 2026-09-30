@@ -90,9 +90,11 @@ typedef struct {
     uint8_t last_applied_replay_valid; /* 위 command를 사용할 수 있으면 1 */
     uint8_t record_tick_baseline_valid; /* RECORD overrun 기준을 잡았으면 1 */
     uint8_t repeat_play; /* 끝에서 Sample0으로 ALIGN한 뒤 재생 반복 */
+    uint8_t gripper_catchup; /* RECORD 종료 후 LIVE에서 gripper 제한을 이어감 */
     MotionRecordReplayAppliedSource last_applied_replay_source;
     MotionRecordReplayAppliedSource previous_applied_replay_source;
-    /* 저장값은 항상 A2 출력 명령이다. 아래 source는 그 명령이 같은 tick에
+    /* 저장값은 A2 출력에 gripper 변화량 제한을 적용해 Agent3에 전달한 명령이다.
+     * 아래 source는 그 명령이 같은 tick에
      * 실제 HAL 적용까지 성공했는지, PWM-disabled software 변환만 성공했는지를
      * 구분한다. */
     MotionRecordReplayAppliedSource record_source;

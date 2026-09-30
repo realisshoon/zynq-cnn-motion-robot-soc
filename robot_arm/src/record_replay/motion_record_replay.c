@@ -391,6 +391,7 @@ static void finalize_recording(MotionRecordReplay *controller,
 {
     copy_recording_to_replay(controller);
     controller->mode = MOTION_RR_LIVE;
+    controller->gripper_catchup = 1U;
     controller->reason = reason;
 }
 
@@ -439,6 +440,7 @@ int motion_record_replay_stop_record(MotionRecordReplay *controller)
 {
     if (controller == NULL || controller->mode != MOTION_RR_RECORDING) return 0;
     controller->mode = MOTION_RR_LIVE;
+    controller->gripper_catchup = 1U;
     controller->reason = MOTION_RR_REASON_STOPPED;
     return 1;
 }
@@ -570,7 +572,8 @@ static int live_or_record_tick(MotionRecordReplay *controller,
 
     seed_live_history(controller, pipeline);
     applied_command = pipeline->output;
-    if (recording && controller->align_gripper_max_delta_norm > 0.0f) {
+    if ((recording || controller->gripper_catchup != 0U) &&
+        controller->align_gripper_max_delta_norm > 0.0f) {
         const ForearmJointCommand *previous = NULL;
         if (controller->last_applied_replay_valid != 0U) {
             previous = &controller->last_applied_replay_command;
@@ -578,7 +581,7 @@ static int live_or_record_tick(MotionRecordReplay *controller,
             previous = &pipeline->agent3_command;
         }
         if (previous != NULL) {
-            /* Record the command actually sent to Agent3. LIVE remains unchanged. */
+            /* 녹화 중과 직후의 gripper 명령을 같은 변화량으로 이어준다. */
             applied_command.gripper_norm = approach(
                 previous->gripper_norm, applied_command.gripper_norm,
                 controller->align_gripper_max_delta_norm);
@@ -612,6 +615,10 @@ static int live_or_record_tick(MotionRecordReplay *controller,
         return 0;
     }
     remember_agent3_success(controller, pipeline, &applied_command);
+    if (!recording && controller->gripper_catchup != 0U &&
+        applied_command.gripper_norm == pipeline->output.gripper_norm) {
+        controller->gripper_catchup = 0U;
+    }
 
     if (recording) {
         MotionRecordReplayAppliedSource source = pipeline->output_enabled != 0U

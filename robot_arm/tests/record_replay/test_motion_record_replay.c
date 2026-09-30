@@ -203,6 +203,32 @@ static void test_record_gripper_is_replayable(void)
     assert(motion_record_replay_start_play(&controller, &pipeline, 0U));
 }
 
+static void test_gripper_does_not_jump_when_recording_stops(void)
+{
+    AgentPipelineContext pipeline;
+    MotionRecordReplay controller;
+    ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.05f);
+    ForearmJointCommand target = command(90.0f, 90.0f, 90.0f, 90.0f, 1.0f);
+    float previous;
+    unsigned i;
+
+    init_context(&pipeline, &initial);
+    configure(&controller, 0.01f);
+    forearm_calibration_set_target(&pipeline.motion, &target);
+    assert(motion_record_replay_start_record(&controller));
+    for (i = 0U; i < 10U; ++i) assert(controller_tick(&controller, &pipeline, 0U));
+    previous = pipeline.applied_command.gripper_norm;
+    assert_near(previous, 0.15f);
+    assert(motion_record_replay_on_record_button_pulse(&controller));
+    assert(motion_record_replay_mode(&controller) == MOTION_RR_LIVE);
+    for (i = 0U; i < 90U; ++i) {
+        assert(controller_tick(&controller, &pipeline, 0U));
+        assert(pipeline.applied_command.gripper_norm - previous <= 0.01001f);
+        previous = pipeline.applied_command.gripper_norm;
+    }
+    assert_near(previous, 1.0f);
+}
+
 static void test_record_failure_sources_and_buffer_full(void)
 {
     AgentPipelineContext pipeline;
@@ -1026,6 +1052,7 @@ int main(void)
 {
     test_record_tick_trajectory();
     test_record_gripper_is_replayable();
+    test_gripper_does_not_jump_when_recording_stops();
     test_record_failure_sources_and_buffer_full();
     test_record_timing_and_record_button();
     test_replay_once_then_holds_final_command();
