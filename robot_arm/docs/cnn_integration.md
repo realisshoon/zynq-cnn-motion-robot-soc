@@ -5,6 +5,23 @@
 > 현재 구현과 2026-09-27 Agent4 리뷰의 검증 기록이다. 아래 Agent4 리뷰 절은
 > 당시 스냅샷이며, 2026-09-28 및 2026-09-30 변경 상태는 다음 절을 따른다.
 
+## 2026-09-30 RGBY pack77 통합 빌드
+
+- PR #80의 yellow 검출·HDMI 표시·UART 설정과 새 XSA를 `dev/integration`에 병합했다.
+  현재 기본 XSA는 `vitis/xsa/cnn_camera_gimbal_rgby_pack77.xsa`이고,
+  `vitis/setup_vitis.ps1`는 `ROBOT_ARM_PWM_ENABLE`을 정의해 로봇 PWM을 출력한다.
+  아래의 과거 기본 PWM 비활성 설명은 이 빌드에 적용되지 않는다.
+- Vitis 2020.2 새 workspace `D:\vws_rgby80`에서 FSBL/BSP/통합 ELF 빌드 성공.
+  ELF SHA-256 `B2DEE97F5D33842E48ADA5388775241D362B988D3D2998EE25A5F9EDB60D082F`.
+  Bootgen 이미지 `D:\vws_rgby80_boot\BOOT.BIN` SHA-256
+  `67B418F0A3749A0B0BC5BF33B3022244AEA77E32C0AF8DEAE117A85227461A85`는
+  해당 FSBL → pack77 bitstream → 통합 ELF 세 파티션을 포함한다.
+- SD `E:\BOOT.BIN`을 같은 해시로 교체하고 직전 이미지는
+  `E:\BOOT.pre_yellow_20260930.BIN`으로 보존했다. SD `WGT_V4.BIN`의 SHA-256은
+  `77D4E3BB0E747AB5DF62AAA41A85784BE3215489941C6D271F401A50218E7DE3`이다.
+- 호스트 테스트 10 PASS, 기존 5 FAIL 재현. 이 빌드는 보드에서 실행하지 않았다.
+  새 RTL의 전체 post-route timing FAIL은 아래 배포 절의 미해결 사항이다.
+
 ## 2026-09-28 통합 런타임 변경
 
 - CNN 메뉴 `w`/`g`와 공개 bringup 진입점은 추론 중 가중치·SG 메모리 쓰기를

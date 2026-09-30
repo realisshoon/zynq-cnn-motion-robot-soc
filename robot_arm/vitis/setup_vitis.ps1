@@ -10,6 +10,8 @@
     5) 앱을 빌드한다.
 
   주의
+    - 기본 빌드는 ROBOT_ARM_PWM_ENABLE을 정의하여 로봇 서보 PWM을 실제 출력한다.
+      보드에서 실행하기 전에 서보 전원과 기구 자세를 확인한다.
     - 워크스페이스 경로는 짧아야 한다(80자 이하, 예: D:\vws). Windows 경로 길이 제한(260자) 때문이다.
     - 이 스크립트를 돌리는 동안 Vitis IDE는 이 워크스페이스를 열지 않은 상태여야 한다.
     - xsct 임시폴더(.Xil)와 로그는 "<워크스페이스>_setup_logs" 폴더에 만들어져서 저장소를 더럽히지 않는다.
@@ -92,6 +94,7 @@ app config -name $AppName -add include-path $repo/config
 app config -name $AppName -add include-path $repo/src/cnn_firmware
 app config -name $AppName -add define-compiler-symbols SERVO_PWM_DRIVER_USE_XILINX
 app config -name $AppName -add define-compiler-symbols ROBOT_TRACE
+app config -name $AppName -add define-compiler-symbols ROBOT_ARM_PWM_ENABLE
 app config -name $AppName -add libraries m
 puts "include-path: [app config -name $AppName include-path]"
 puts "symbols: [app config -name $AppName define-compiler-symbols]"
