@@ -17,11 +17,14 @@ package cnn_dma_stream_pkg;
     `include "cnn_dma_stream_env.sv"
     `include "cnn_dma_stream_base_seq.sv"
     `include "cnn_dma_control_smoke_seq.sv"
+
     `include "cnn_dma_s01_no_stall_seq.sv"
+    `include "cnn_dma_s02_input_gap_seq.sv"
 
     `include "cnn_dma_stream_base_test.sv"
     `include "cnn_dma_responder_sanity_test.sv"
     `include "cnn_dma_control_smoke_test.sv"
-    `include "cnn_dma_s01_no_stall_test.sv"
 
+    `include "cnn_dma_s01_no_stall_test.sv"
+`include "cnn_dma_s02_input_gap_test.sv"
 endpackage
