@@ -35,16 +35,9 @@ typedef enum {
      (1U << CNN_JOINT_RIGHT_ELBOW)    | \
      (1U << CNN_JOINT_RIGHT_WRIST))
 
-/* Previous HDMI view, available through the UART display toggle. */
+/* All non-face COCO joints are available to the body display (indices 5..16). */
 #define CNN_ROBOT_SKELETON_MASK \
-    ((1U << CNN_JOINT_LEFT_SHOULDER)  | \
-     (1U << CNN_JOINT_RIGHT_SHOULDER) | \
-     (1U << CNN_JOINT_LEFT_ELBOW)     | \
-     (1U << CNN_JOINT_RIGHT_ELBOW)    | \
-     (1U << CNN_JOINT_LEFT_WRIST)     | \
-     (1U << CNN_JOINT_RIGHT_WRIST)    | \
-     (1U << CNN_JOINT_LEFT_HIP)       | \
-     (1U << CNN_JOINT_RIGHT_HIP))
+    (0x1FFFFU & ~0x1FU)
 
 typedef enum {
     CNN_OK = 0,
@@ -84,6 +77,7 @@ typedef struct {
     u32 red_marker;
     u32 blue_marker;
     u32 green_marker;
+    u32 yellow_marker;
     cnn_joint_t joint[CNN_JOINT_COUNT];
 } cnn_result_t;
 

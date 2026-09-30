@@ -165,10 +165,13 @@ static void menu_help(void)
     xil_printf("  d : CNN diagnostic dump\r\n");
     xil_printf("  x : stop inference and soft-reset CNN (deferred until the active frame ends)\r\n");
     xil_printf("  o : dump overlay/color registers\r\n");
-    xil_printf("  b : toggle HDMI overlay (robot 6 points / upper body)\r\n");
+    xil_printf("  b : toggle HDMI overlay (robot 6 points / body joints)\r\n");
     xil_printf("  c : force grouped-color overlay test\r\n");
     xil_printf("  n : toggle CNN green-marker detection\r\n");
-    xil_printf("  m : enter red/green/blue detection margins\r\n");
+    xil_printf("  y : toggle CNN yellow-marker detection\r\n");
+    xil_printf("  m : edit RGBY margins, brightness and min count\r\n");
+    xil_printf("  B : toggle all body joints on HDMI\r\n");
+    xil_printf("  J : show/hide one body joint (indices 5..16)\r\n");
     xil_printf("  %c : toggle robot motion recording\r\n",
                CNN_APP_UART_CMD_RECORD);
     xil_printf("  %c : start/stop robot motion replay\r\n",
@@ -245,7 +248,7 @@ static void menu_run(void)
         camera_tracking_app_print_mode(&camera_tracker);
         xil_printf("HDMI overlay: %s\r\n",
                    cnn_bringup_overlay_robot_only() ? "robot 6 points" :
-                                                    "upper body");
+                                                    "body joints");
         break;
     case 'r':
         cnn_bringup_print_last_result(&cnn_ctx);
@@ -294,7 +297,7 @@ static void menu_run(void)
             !cnn_bringup_overlay_robot_only());
         xil_printf("HDMI overlay: %s (next CNN result)\r\n",
                    cnn_bringup_overlay_robot_only() ? "robot 6 points" :
-                                                    "upper body");
+                                                    "body joints");
         break;
     case 'c':
         kpo_test_group_colors();
@@ -307,8 +310,29 @@ static void menu_run(void)
                        cnn_hw_green_detection_enabled()?"ON":"OFF");
         }
         break;
+    case 'y': {
+        u32 mask=cnn_hw_get_color_enable();
+        result=cnn_hw_set_color_enable(mask^CNN_COLOR_ENABLE_YELLOW);
+        if(result==CNN_OK)
+            xil_printf("CNN yellow-marker detection: %s\r\n",
+                (cnn_hw_get_color_enable()&CNN_COLOR_ENABLE_YELLOW)?"ON":"OFF");
+        break;
+    }
     case 'm':
+        if(cnn_continuous_mode) {
+            cnn_continuous_mode=0;
+            xil_printf("CNN continuous mode: OFF for color settings\r\n");
+        }
         cnn_console_start_color();
+        break;
+    case 'B':
+        cnn_bringup_set_skeleton_mask(
+            cnn_bringup_get_skeleton_mask()?0U:CNN_ROBOT_SKELETON_MASK);
+        xil_printf("CNN body skeleton mask=0x%05x\r\n",
+                   (unsigned)cnn_bringup_get_skeleton_mask());
+        break;
+    case 'J':
+        cnn_console_start_joint();
         break;
     case 'j':
         cnn_console_start_camera(&camera_tracker);
@@ -380,7 +404,7 @@ static void cnn_continuous_step(void)
     }
 #ifndef ROBOT_TRACE
     xil_printf("CNN auto #%lu frame=%lu seq=%lu time=%lu.%03lu ms cycles=%lu "
-               "valid=0x%05x R/B/G=%08x/%08x/%08x\r\n",
+               "valid=0x%05x R/B/G/Y=%08x/%08x/%08x/%08x\r\n",
                (unsigned long)cnn_continuous_frames,
                (unsigned long)cnn_ctx.last_result.frame_id,
                (unsigned long)cnn_ctx.last_result.result_seq,
@@ -390,7 +414,8 @@ static void cnn_continuous_step(void)
                (unsigned int)cnn_ctx.last_result.joint_flags,
                (unsigned int)cnn_ctx.last_result.red_marker,
                (unsigned int)cnn_ctx.last_result.blue_marker,
-               (unsigned int)cnn_ctx.last_result.green_marker);
+               (unsigned int)cnn_ctx.last_result.green_marker,
+               (unsigned int)cnn_ctx.last_result.yellow_marker);
 #endif
 }
 

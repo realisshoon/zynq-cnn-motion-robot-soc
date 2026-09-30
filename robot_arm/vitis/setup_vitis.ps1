@@ -20,7 +20,7 @@
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Workspace,
-    [string]$Xsa,                        # 기본값: xsa\cnn_camera_gimbal.xsa
+    [string]$Xsa,                        # 기본값: xsa\cnn_camera_gimbal_rgby_pack77.xsa
     [string]$RepoRoot,                   # 기본값: 이 스크립트의 상위 폴더(robot_arm)
     [string]$VitisBin = "C:\Xilinx\Vitis\2020.2\bin",
     [string]$PlatformName = "cnn_camera_gimbal",
@@ -31,7 +31,7 @@ $ErrorActionPreference = "Stop"
 
 # Windows PowerShell 5.1 에서는 param 기본값 안의 $PSScriptRoot 가 비어 있어서 본문에서 계산한다.
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-if (-not $Xsa) { $Xsa = Join-Path $scriptDir "xsa\cnn_camera_gimbal.xsa" }
+if (-not $Xsa) { $Xsa = Join-Path $scriptDir "xsa\cnn_camera_gimbal_rgby_pack77.xsa" }
 if (-not $RepoRoot) { $RepoRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path }
 function ToTcl([string]$p) { return ($p -replace '\\', '/') }
 
@@ -63,7 +63,7 @@ function Run-Xsct([string]$tclText, [string]$name) {
     $tcl = Join-Path $logs "$name.tcl"
     Set-Content -Path $tcl -Value $tclText -Encoding ascii
     $out = Join-Path $logs "$name.out"; $err = Join-Path $logs "$name.err"
-    $p = Start-Process -FilePath $xsct -ArgumentList "`"$tcl`"" -WorkingDirectory $logs -NoNewWindow -PassThru `
+    $p = Start-Process -FilePath $xsct -ArgumentList "`"$tcl`"" -WorkingDirectory $logs -WindowStyle Hidden -PassThru `
          -RedirectStandardOutput $out -RedirectStandardError $err
     $null = $p.Handle    # Windows PowerShell 5.1: 핸들을 미리 잡아 두지 않으면 종료 후 ExitCode 가 비어 나온다
     if (-not $p.WaitForExit(900000)) { $p.Kill(); throw "xsct 시간 초과($name)" }

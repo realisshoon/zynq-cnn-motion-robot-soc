@@ -54,25 +54,33 @@ void cnn_hw_enable_irq(int enable)
 
 cnn_error_t cnn_hw_set_green_detection(int enable)
 {
-    u32 status = cnn_hw_status();
-    u32 control;
-
-    if (status & (CNN_STATUS_BUSY | CNN_STATUS_ERROR))
-        return CNN_ERR_BUSY;
-
-    control = cnn_hw_read(CNN_REG_COLOR_ENABLE);
+    u32 control = cnn_hw_get_color_enable();
     if (enable)
         control |= CNN_COLOR_ENABLE_GREEN;
     else
         control &= ~CNN_COLOR_ENABLE_GREEN;
-    cnn_hw_write(CNN_REG_COLOR_ENABLE, control);
-    return CNN_OK;
+    return cnn_hw_set_color_enable(control);
 }
 
 int cnn_hw_green_detection_enabled(void)
 {
     return (cnn_hw_read(CNN_REG_COLOR_ENABLE) &
             CNN_COLOR_ENABLE_GREEN) ? 1 : 0;
+}
+
+cnn_error_t cnn_hw_set_color_enable(u32 mask)
+{
+    if (mask & ~CNN_COLOR_ENABLE_ALL)
+        return CNN_ERR_ARGUMENT;
+    if (cnn_hw_status() & (CNN_STATUS_BUSY | CNN_STATUS_ERROR))
+        return CNN_ERR_BUSY;
+    cnn_hw_write(CNN_REG_COLOR_ENABLE, mask);
+    return CNN_OK;
+}
+
+u32 cnn_hw_get_color_enable(void)
+{
+    return cnn_hw_read(CNN_REG_COLOR_ENABLE) & CNN_COLOR_ENABLE_ALL;
 }
 
 cnn_error_t cnn_hw_set_color_margins(u8 red_margin, u8 green_margin,
@@ -104,11 +112,64 @@ void cnn_hw_get_color_margins(u8 *red_margin, u8 *green_margin,
         *blue_margin = (u8)((packed >> 16) & 0xffU);
 }
 
+cnn_error_t cnn_hw_set_yellow_margins(u8 rg_delta_max, u8 blue_gap_min)
+{
+    if (cnn_hw_status() & (CNN_STATUS_BUSY | CNN_STATUS_ERROR))
+        return CNN_ERR_BUSY;
+    cnn_hw_write(CNN_REG_YELLOW_MARGIN,
+                 ((u32)rg_delta_max << 8) | (u32)blue_gap_min);
+    return CNN_OK;
+}
+
+cnn_error_t cnn_hw_set_color_thresholds(u8 red_min, u8 green_min,
+                                        u8 blue_min, u8 yellow_r_min,
+                                        u8 yellow_g_min, u8 yellow_b_max)
+{
+    u32 red, green, blue, yellow;
+    if (cnn_hw_status() & (CNN_STATUS_BUSY | CNN_STATUS_ERROR))
+        return CNN_ERR_BUSY;
+    red = (cnn_hw_read(CNN_REG_RED_THRESHOLD) & 0x00FFFF00U) | red_min;
+    green = (cnn_hw_read(CNN_REG_GREEN_THRESHOLD) & 0x00FF00FFU) |
+            ((u32)green_min << 8);
+    blue = (cnn_hw_read(CNN_REG_BLUE_THRESHOLD) & 0x0000FFFFU) |
+           ((u32)blue_min << 16);
+    yellow = ((u32)yellow_b_max << 16) |
+             ((u32)yellow_g_min << 8) | (u32)yellow_r_min;
+    cnn_hw_write(CNN_REG_RED_THRESHOLD, red);
+    cnn_hw_write(CNN_REG_GREEN_THRESHOLD, green);
+    cnn_hw_write(CNN_REG_BLUE_THRESHOLD, blue);
+    cnn_hw_write(CNN_REG_YELLOW_THRESHOLD, yellow);
+    return CNN_OK;
+}
+
+cnn_error_t cnn_hw_set_color_min_count(u32 count)
+{
+    if (count == 0U || count > 0x3FFFFU)
+        return CNN_ERR_ARGUMENT;
+    if (cnn_hw_status() & (CNN_STATUS_BUSY | CNN_STATUS_ERROR))
+        return CNN_ERR_BUSY;
+    cnn_hw_write(CNN_REG_MIN_COUNT, count);
+    return CNN_OK;
+}
+
 cnn_error_t cnn_hw_initialize_color_defaults(void)
 {
-    return cnn_hw_set_color_margins(CNN_DEFAULT_RED_MARGIN,
-                                    CNN_DEFAULT_GREEN_MARGIN,
-                                    CNN_DEFAULT_BLUE_MARGIN);
+    cnn_error_t e;
+    e = cnn_hw_set_color_thresholds(CNN_DEFAULT_RED_MIN,
+            CNN_DEFAULT_GREEN_MIN, CNN_DEFAULT_BLUE_MIN,
+            CNN_DEFAULT_YELLOW_R_MIN, CNN_DEFAULT_YELLOW_G_MIN,
+            CNN_DEFAULT_YELLOW_B_MAX);
+    if (e != CNN_OK) return e;
+    e = cnn_hw_set_color_margins(CNN_DEFAULT_RED_MARGIN,
+                                 CNN_DEFAULT_GREEN_MARGIN,
+                                 CNN_DEFAULT_BLUE_MARGIN);
+    if (e != CNN_OK) return e;
+    e = cnn_hw_set_yellow_margins(CNN_DEFAULT_YELLOW_RG_DELTA,
+                                   CNN_DEFAULT_YELLOW_BGAP);
+    if (e != CNN_OK) return e;
+    e = cnn_hw_set_color_min_count(CNN_DEFAULT_COLOR_MIN_COUNT);
+    if (e != CNN_OK) return e;
+    return cnn_hw_set_color_enable(CNN_COLOR_ENABLE_ALL);
 }
 
 cnn_error_t cnn_hw_configure(u32 weight_base, u32 fm_a_base,
@@ -164,6 +225,7 @@ cnn_error_t cnn_hw_read_result(cnn_result_t *result)
         result->red_marker = cnn_hw_read(CNN_REG_RED_RESULT);
         result->blue_marker = cnn_hw_read(CNN_REG_BLUE_RESULT);
         result->green_marker = cnn_hw_read(CNN_REG_GREEN_RESULT);
+        result->yellow_marker = cnn_hw_read(CNN_REG_YELLOW_RESULT);
         result->frame_id = cnn_hw_read(CNN_REG_RESULT_FRAME);
         result->cycle_count = cnn_hw_read(CNN_REG_CYCLE_COUNT);
 

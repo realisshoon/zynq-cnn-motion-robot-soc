@@ -51,15 +51,29 @@
 #define CNN_REG_GREEN_RESULT       0x0F8U
 #define CNN_REG_COLOR_ENABLE       0x0FCU
 #define CNN_REG_COLOR_MARGIN       0x100U
+#define CNN_REG_YELLOW_THRESHOLD    0x104U
+#define CNN_REG_YELLOW_MARGIN       0x108U
+#define CNN_REG_YELLOW_RESULT       0x10CU
 
 /* Firmware power-up defaults. Change these values to tune color detection. */
 #define CNN_DEFAULT_RED_MARGIN       50U
 #define CNN_DEFAULT_GREEN_MARGIN     50U
 #define CNN_DEFAULT_BLUE_MARGIN      50U
+#define CNN_DEFAULT_YELLOW_RG_DELTA  40U
+#define CNN_DEFAULT_YELLOW_BGAP      40U
+#define CNN_DEFAULT_RED_MIN          160U
+#define CNN_DEFAULT_GREEN_MIN         96U
+#define CNN_DEFAULT_BLUE_MIN         160U
+#define CNN_DEFAULT_YELLOW_R_MIN     160U
+#define CNN_DEFAULT_YELLOW_G_MIN     160U
+#define CNN_DEFAULT_YELLOW_B_MAX      96U
+#define CNN_DEFAULT_COLOR_MIN_COUNT    8U
 
 #define CNN_COLOR_ENABLE_RED       0x1U
 #define CNN_COLOR_ENABLE_BLUE      0x2U
 #define CNN_COLOR_ENABLE_GREEN     0x4U
+#define CNN_COLOR_ENABLE_YELLOW    0x8U
+#define CNN_COLOR_ENABLE_ALL       0xFU
 
 #define CNN_DEBUG_CONTEXT_MARKER  0xD1000000U
 #define CNN_DEBUG_CONTEXT_MASK    0xFF000000U
@@ -73,9 +87,9 @@
 #define CNN_CONTROL_CLEAR_DONE 0x00000002U
 #define CNN_CONTROL_SOFT_RESET 0x00000004U
 
-#define CNN_EXPECTED_VERSION   0x00040003U
-#define CNN_EXPECTED_FEATURES  0x0000000DU
-#define CNN_EXPECTED_PACK_ID   0xC9854BB2U
+#define CNN_EXPECTED_VERSION   0x00040004U
+#define CNN_EXPECTED_FEATURES  0x0000001DU
+#define CNN_EXPECTED_PACK_ID   0x77D4E3BBU
 
 u32 cnn_hw_read(u32 offset);
 void cnn_hw_write(u32 offset, u32 value);
@@ -88,8 +102,15 @@ void cnn_hw_soft_reset(void);
 void cnn_hw_enable_irq(int enable);
 cnn_error_t cnn_hw_set_green_detection(int enable);
 int cnn_hw_green_detection_enabled(void);
+cnn_error_t cnn_hw_set_color_enable(u32 mask);
+u32 cnn_hw_get_color_enable(void);
 cnn_error_t cnn_hw_set_color_margins(u8 red_margin, u8 green_margin,
                                      u8 blue_margin);
+cnn_error_t cnn_hw_set_yellow_margins(u8 rg_delta_max, u8 blue_gap_min);
+cnn_error_t cnn_hw_set_color_thresholds(u8 red_min, u8 green_min,
+                                        u8 blue_min, u8 yellow_r_min,
+                                        u8 yellow_g_min, u8 yellow_b_max);
+cnn_error_t cnn_hw_set_color_min_count(u32 count);
 void cnn_hw_get_color_margins(u8 *red_margin, u8 *green_margin,
                               u8 *blue_margin);
 cnn_error_t cnn_hw_initialize_color_defaults(void);

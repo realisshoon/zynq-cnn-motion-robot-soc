@@ -25,6 +25,28 @@ static volatile XTime cnn_irq_end_time;
 static volatile u32 cnn_irq_count;
 static XTime cnn_irq_start_time;
 static int cnn_irq_initialized;
+static u32 skeleton_visible_mask = CNN_ROBOT_SKELETON_MASK;
+
+void cnn_bringup_set_skeleton_mask(u32 mask)
+{
+    skeleton_visible_mask = mask & CNN_ROBOT_SKELETON_MASK;
+}
+
+u32 cnn_bringup_get_skeleton_mask(void)
+{
+    return skeleton_visible_mask;
+}
+
+cnn_error_t cnn_bringup_set_skeleton_joint(unsigned int index, int enable)
+{
+    if (index < CNN_JOINT_LEFT_SHOULDER || index >= CNN_JOINT_COUNT)
+        return CNN_ERR_ARGUMENT;
+    if (enable)
+        skeleton_visible_mask |= (1U << index);
+    else
+        skeleton_visible_mask &= ~(1U << index);
+    return CNN_OK;
+}
 
 static void cnn_interrupt_handler(void *callback)
 {
@@ -142,9 +164,7 @@ static void cnn_overlay_publish(const cnn_result_t *result, int verbose)
     display_mask = s_overlay_robot_only ? CNN_ROBOT_INPUT_OVERLAY_MASK :
                                           CNN_ROBOT_SKELETON_MASK;
     kpo_set_enable(1);
-    /* Robot view shows the four CNN joints consumed by the arm plus two
-     * finger markers. The upper-body view restores the earlier display.
-     * Neither mode filters CNN results used by camera tracking or Agent1. */
+    /* Joint visibility affects HDMI only; CNN results and robot input remain intact. */
     kpo_set_body_arm_colors(KPO_COLOR_YELLOW, KPO_COLOR_CYAN);
     kpo_set_radius(5U);
     kpo_set_source_frame_id(result->frame_id);
@@ -152,7 +172,7 @@ static void cnn_overlay_publish(const cnn_result_t *result, int verbose)
     for (i = 0U; i < CNN_JOINT_COUNT; ++i) {
         const cnn_joint_t *joint = &result->joint[i];
 
-        if ((display_mask & (1U << i)) && joint->valid &&
+        if ((display_mask & skeleton_visible_mask & (1U << i)) && joint->valid &&
             joint->x < CNN_DISPLAY_WIDTH &&
             joint->y < CNN_DISPLAY_HEIGHT) {
             kpo_set_joint((int)i, joint->x, joint->y, (u8)joint->score);
@@ -165,18 +185,19 @@ static void cnn_overlay_publish(const cnn_result_t *result, int verbose)
 
     /* Show the green detection result in either joint-display mode. */
     kpo_set_color_results(result->red_marker, result->blue_marker,
-                          result->green_marker);
+                          result->green_marker, result->yellow_marker);
     kpo_set_valid_flags(visible_flags);
     kpo_commit();
 
     if (verbose) {
-        xil_printf("CNN overlay: frame=%lu view=%s joints=0x%05x red=%08x blue=%08x green=%08x commit=%s\r\n",
+        xil_printf("CNN overlay: frame=%lu view=%s joints=0x%05x red=%08x blue=%08x green=%08x yellow=%08x commit=%s\r\n",
                    (unsigned long)result->frame_id,
-                   s_overlay_robot_only ? "robot" : "upper-body",
+                   s_overlay_robot_only ? "robot" : "body-joints",
                    (unsigned int)visible_flags,
                    (unsigned int)result->red_marker,
                    (unsigned int)result->blue_marker,
                    (unsigned int)result->green_marker,
+                   (unsigned int)result->yellow_marker,
                    kpo_commit_pending() ? "pending" : "accepted");
         /* One manual run produces one complete overlay/color diagnostic. */
         kpo_debug_dump();
@@ -248,6 +269,8 @@ static cnn_error_t cnn_bringup_prepare_frame_internal(cnn_bringup_t *ctx,
 
 cnn_error_t cnn_bringup_prepare_frame(cnn_bringup_t *ctx)
 {
+    if(ctx==0 || !ctx->initialized) return CNN_ERR_NOT_INITIALIZED;
+    if(ctx->running) return CNN_ERR_BUSY;
     return cnn_bringup_prepare_frame_internal(ctx,1);
 }
 
