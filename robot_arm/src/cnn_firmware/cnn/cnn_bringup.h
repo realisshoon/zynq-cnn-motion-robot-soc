@@ -22,6 +22,9 @@ typedef struct {
 void cnn_bringup_init(cnn_bringup_t *ctx, XAxiVdma *vdma, u32 frame_buffer_base);
 void cnn_bringup_set_idle_hook(cnn_bringup_t *ctx,
                                void (*hook)(void *context), void *context);
+void cnn_bringup_set_skeleton_mask(u32 mask);
+u32 cnn_bringup_get_skeleton_mask(void);
+cnn_error_t cnn_bringup_set_skeleton_joint(unsigned int index, int enable);
 cnn_error_t cnn_bringup_interrupt_init(XScuGic *interrupt_controller);
 cnn_error_t cnn_bringup_load_weights(cnn_bringup_t *ctx);
 cnn_error_t cnn_bringup_prepare_frame(cnn_bringup_t *ctx);

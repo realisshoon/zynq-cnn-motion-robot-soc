@@ -1,0 +1,11 @@
+--- a/ip_repo/cnn_accelerator_top_debug/src/cnn_accelerator_top.v
++++ b/ip_repo/cnn_accelerator_top_debug/src/cnn_accelerator_top.v
+@@ -454,7 +454,7 @@
+                 12'h0a0: read_mux_data = timeout_cycles;
+                 12'h0a4: read_mux_data = 32'h00040004;
+                 12'h0a8: read_mux_data = 32'h0000001d;
+-                12'h0ac: read_mux_data = 32'hc9854bb2;
++                12'h0ac: read_mux_data = 32'h77d4e3bb;
+                 12'h0b0: read_mux_data = {22'd0,debug_fault_sources_latched};
+                 12'h0b4: read_mux_data = {8'hd1,6'd0,error_pending,busy,
+                                            debug_txn_state,debug_step,

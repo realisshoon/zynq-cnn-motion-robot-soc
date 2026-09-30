@@ -35,6 +35,7 @@
 #define KPO_BODY_COLOR      0x6Cu
 #define KPO_ARM_COLOR       0x70u
 #define KPO_GREEN_MARKER    0x74u
+#define KPO_YELLOW_MARKER   0x78u
 
 #define KPO_STATUS_PENDING  0x00000001u
 #define KPO_CTRL_ENABLE       0x00000001u
@@ -99,6 +100,7 @@ int kpo_init(void)
     KPO_WR(KPO_RED_MARKER,   0u);
     KPO_WR(KPO_BLUE_MARKER,  0u);
     KPO_WR(KPO_GREEN_MARKER, 0u);
+    KPO_WR(KPO_YELLOW_MARKER, 0u);
     KPO_WR(KPO_BODY_COLOR,   KPO_COLOR_YELLOW);
     KPO_WR(KPO_ARM_COLOR,   KPO_COLOR_CYAN);
 
@@ -215,7 +217,7 @@ void kpo_set_body_arm_colors(u32 body_color, u32 arm_color)
 
 
 void kpo_set_color_results(u32 red_marker_word, u32 blue_marker_word,
-                           u32 green_marker_word)
+                           u32 green_marker_word, u32 yellow_marker_word)
 {
     if (!ready) {
         return;
@@ -224,6 +226,7 @@ void kpo_set_color_results(u32 red_marker_word, u32 blue_marker_word,
     KPO_WR(KPO_RED_MARKER,   kpo_sanitize_color_marker(red_marker_word));
     KPO_WR(KPO_BLUE_MARKER,  kpo_sanitize_color_marker(blue_marker_word));
     KPO_WR(KPO_GREEN_MARKER, kpo_sanitize_color_marker(green_marker_word));
+    KPO_WR(KPO_YELLOW_MARKER, kpo_sanitize_color_marker(yellow_marker_word));
 }
 
 
@@ -275,6 +278,7 @@ void kpo_clear(void)
     KPO_WR(KPO_RED_MARKER,   0u);
     KPO_WR(KPO_BLUE_MARKER,  0u);
     KPO_WR(KPO_GREEN_MARKER, 0u);
+    KPO_WR(KPO_YELLOW_MARKER, 0u);
     kpo_commit();
 }
 
@@ -537,6 +541,7 @@ void kpo_debug_dump(void)
     u32 red;
     u32 blue;
     u32 green;
+    u32 yellow;
     int i;
 
     if (!ready) {
@@ -550,6 +555,7 @@ void kpo_debug_dump(void)
     red = KPO_RD(KPO_RED_MARKER);
     blue = KPO_RD(KPO_BLUE_MARKER);
     green = KPO_RD(KPO_GREEN_MARKER);
+    yellow = KPO_RD(KPO_YELLOW_MARKER);
 
     xil_printf("\r\nKPO diagnostic (shadow register bank)\r\n");
     xil_printf("  base/status/ctrl : %08X / %08X / %08X\r\n",
@@ -574,8 +580,9 @@ void kpo_debug_dump(void)
     kpo_print_marker("red ", red);
     kpo_print_marker("blue", blue);
     kpo_print_marker("green", green);
+    kpo_print_marker("yellow", yellow);
 
-    for (i = 5; i <= 12; ++i) {
+    for (i = 5; i <= 16; ++i) {
         u32 word = KPO_RD(KPO_JOINT0 + ((u32)i * KPO_JOINT_STRIDE));
         xil_printf("  joint[%02d] raw=%08X valid=%lu x=%lu y=%lu group=%s\r\n",
                    i,
@@ -616,7 +623,7 @@ void kpo_test_group_colors(void)
     kpo_set_joint(9, 360u, 420u, 127u);
     kpo_set_joint(10, 920u, 420u, 127u);
 
-    kpo_set_color_results(red_marker, blue_marker, 0u);
+    kpo_set_color_results(red_marker, blue_marker, 0u, 0u);
     kpo_set_valid_flags(0x00001FE0u);
     kpo_commit();
 
