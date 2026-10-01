@@ -19,5 +19,6 @@ package cnn_golden_pkg;
     `include "cnn_golden_base_test.sv"
     `include "cnn_g01_e2e_test.sv"
     `include "cnn_g02_checkpoint_test.sv"
+    `include "cnn_g03_threshold_test.sv"
 
 endpackage

@@ -12,7 +12,7 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
     bit [31:0] golden_joint_flags;
 
     int unsigned test_frame_id;
-
+    bit [7:0] joint_threshold;
     string golden_final_hex_path;
     string image_hex_path;
 
@@ -27,7 +27,13 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
             `uvm_fatal(get_type_name(), "Missing +FRAME_ID=<id>")
         end
 
-        `uvm_info(get_type_name(), $sformatf("G01 test frame = %0d", test_frame_id), UVM_LOW)
+        joint_threshold = 8'hD2;
+
+        void'($value$plusargs("JOINT_THRESHOLD=%h", joint_threshold));
+
+        `uvm_info(get_type_name(),
+                  $sformatf("G01 test frame=%0d threshold=0x%02h signed=%0d", test_frame_id,
+                            joint_threshold, $signed(joint_threshold)), UVM_LOW)
 
     endtask
 
@@ -39,7 +45,8 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
         `uvm_info(get_type_name(), "G01 configuration start", UVM_LOW)
 
         // frame_00121 테스트용 설정값
-        axil_write(12'h008, 32'h0000_00D2);  // joint threshold
+        // axil_write(12'h008, 32'h0000_00D2);  // joint threshold
+        axil_write(12'h008, {24'd0, joint_threshold});
         axil_write(12'h060, 32'h0064_64A0);  // red threshold
         axil_write(12'h064, 32'h00A0_6464);  // blue threshold
         // frame_00121 테스트용 설정값
