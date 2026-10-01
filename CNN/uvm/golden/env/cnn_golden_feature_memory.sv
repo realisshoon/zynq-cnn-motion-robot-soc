@@ -153,7 +153,11 @@ class cnn_golden_feature_memory extends uvm_subscriber #(cnn_seq_item);
             `uvm_info(get_type_name(), $sformatf("FEATURE_STAGE_%0d_DONE event triggered",
                                                  stage_id), UVM_MEDIUM)
 
-            stage_id++;
+            if (stage_id == 13) begin
+                stage_id = 0;
+            end else begin
+                stage_id++;
+            end
 
         end
 

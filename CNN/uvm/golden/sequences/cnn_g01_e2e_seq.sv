@@ -13,13 +13,21 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
     int unsigned test_frame_id;
     bit [7:0] joint_threshold;
+
     string golden_final_hex_path;
     string image_hex_path;
+
+    int unsigned expected_result_seq;
 
 
     function new(string name = "cnn_g01_e2e_seq");
         super.new(name);
+
+        // G01/G03에서는 첫 publish이므로 기본 기대값은 1
+        // G04에서는 frame마다 1, 2, 3...으로 직접 설정
+        expected_result_seq = 1;
     endfunction
+
 
     task load_test_config();
 
@@ -37,6 +45,7 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
     endtask
 
+
     task configure_g01();
 
         bit [31:0] status;
@@ -44,24 +53,26 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
         `uvm_info(get_type_name(), "G01 configuration start", UVM_LOW)
 
-        // frame_00121 테스트용 설정값
-        // axil_write(12'h008, 32'h0000_00D2);  // joint threshold
         axil_write(12'h008, {24'd0, joint_threshold});
-        axil_write(12'h060, 32'h0064_64A0);  // red threshold
-        axil_write(12'h064, 32'h00A0_6464);  // blue threshold
-        // frame_00121 테스트용 설정값
-        // axil_write(12'h070, 32'd121);  // frame id
 
-        // G01 테스트 설정값
+        axil_write(12'h060, 32'h0064_64A0);
+
+        axil_write(12'h064, 32'h00A0_6464);
+
         axil_write(12'h070, test_frame_id);
-        axil_write(12'h088, 32'd8);  // marker min count
+
+        axil_write(12'h088, 32'd8);
 
         // DMA memory base
-        axil_write(12'h08C, 32'h1000_0000);  // weight
-        axil_write(12'h090, 32'h1100_0000);  // feature A
-        axil_write(12'h094, 32'h1110_0000);  // feature B
-        axil_write(12'h098, 32'h1120_0000);  // SG descriptor
-        axil_write(12'h09C, 32'h0A00_0000);  // frame
+        axil_write(12'h08C, 32'h1000_0000);
+
+        axil_write(12'h090, 32'h1100_0000);
+
+        axil_write(12'h094, 32'h1110_0000);
+
+        axil_write(12'h098, 32'h1120_0000);
+
+        axil_write(12'h09C, 32'h0A00_0000);
 
         // watchdog timeout
         axil_write(12'h0A0, 32'h05F5_E100);
@@ -119,16 +130,19 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
     task send_image_frame();
 
-        int        fd;
-        int        scan_result;
-        int        beat_idx;
+        int fd;
+        int scan_result;
+        int beat_idx;
 
         bit [63:0] image_data;
-        bit        image_last;
+        bit image_last;
 
-        // frame_00121을 AXI stream용 HEX로 변환한 파일
-        if (!$value$plusargs("IMAGE_HEX=%s", image_hex_path)) begin
-            `uvm_fatal(get_type_name(), "Missing +IMAGE_HEX=<path>")
+        if (image_hex_path == "") begin
+
+            if (!$value$plusargs("IMAGE_HEX=%s", image_hex_path)) begin
+                `uvm_fatal(get_type_name(), "Missing +IMAGE_HEX=<path>")
+            end
+
         end
 
         fd = $fopen(image_hex_path, "r");
@@ -152,7 +166,6 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
             end
 
-            // 한 row의 마지막 beat에서 TLAST
             image_last = ((beat_idx % IMAGE_BEATS_PER_ROW) == (IMAGE_BEATS_PER_ROW - 1));
 
             send_stream(CNN_IMAGE_BEAT, image_data, 8'hFF, image_last);
@@ -169,22 +182,23 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
     task send_weight_op(int op_id);
 
-        int           fd;
-        int           scan_result;
-        int           beat_count;
-        int           last_value;
+        int fd;
+        int scan_result;
+        int beat_count;
+        int last_value;
 
-        bit    [63:0] weight_data;
-        bit           weight_last;
+        bit [63:0] weight_data;
+        bit weight_last;
 
-        string        weight_dir;
-        string        weight_hex_path;
+        string weight_dir;
+        string weight_hex_path;
 
         if (!$value$plusargs("WEIGHT_DIR=%s", weight_dir)) begin
+
             `uvm_fatal(get_type_name(), "Missing +WEIGHT_DIR=<path>")
+
         end
 
-        // OP별 weight stream 파일
         weight_hex_path = $sformatf("%s/op_%02d.hex", weight_dir, op_id);
 
         fd = $fopen(weight_hex_path, "r");
@@ -262,7 +276,6 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
             end
 
-            // 중간에 error가 발생하면 바로 종료
             if (status[2]) begin
 
                 `uvm_fatal(get_type_name(), $sformatf("DUT error during Stage0: status=0x%08h",
@@ -270,7 +283,6 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
             end
 
-            // Stage0 image 처리가 끝날 때까지 대기
             if (status[3]) begin
 
                 `uvm_info(get_type_name(), $sformatf("Stage0 complete: status=0x%08h polls=%0d",
@@ -293,29 +305,32 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
     task send_feature_stage(int src_stage);
 
-        int           fd;
-        int           scan_result;
-        int           beat_count;
-        int           last_value;
+        int fd;
+        int scan_result;
+        int beat_count;
+        int last_value;
 
-        bit    [63:0] feature_data;
-        bit    [ 7:0] feature_keep;
-        bit           feature_last;
+        bit [63:0] feature_data;
+        bit [7:0] feature_keep;
+        bit feature_last;
 
-        string        feature_dir;
-        string        feature_path;
+        string feature_dir;
+        string feature_path;
 
         if (!$value$plusargs("FEATURE_DIR=%s", feature_dir)) begin
+
             `uvm_fatal(get_type_name(), "Missing +FEATURE_DIR=<path>")
+
         end
 
-        // 이전 stage에서 저장한 feature를 다시 입력
         feature_path = $sformatf("%s/stage_%02d.hex", feature_dir, src_stage);
 
         fd = $fopen(feature_path, "r");
 
         if (fd == 0) begin
+
             `uvm_fatal(get_type_name(), $sformatf("Cannot open feature file: %s", feature_path))
+
         end
 
         `uvm_info(get_type_name(), $sformatf("Replaying Stage%0d feature: %s", src_stage,
@@ -370,9 +385,8 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
     task wait_feature_stage_done(int stage_id);
 
         uvm_event stage_done_event;
-        string    event_name;
+        string event_name;
 
-        // feature output이 끝나면 feature memory에서 발생하는 event
         event_name = $sformatf("FEATURE_STAGE_%0d_DONE", stage_id);
 
         stage_done_event = uvm_event_pool::get_global(event_name);
@@ -383,7 +397,6 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
         `uvm_info(get_type_name(), $sformatf("%s observed", event_name), UVM_LOW)
 
-        // 다음 frame에서 다시 사용할 수 있게 reset
         stage_done_event.reset();
 
     endtask
@@ -393,18 +406,15 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
         `uvm_info(get_type_name(), $sformatf("Starting Stage%0d", stage_id), UVM_LOW)
 
-        // DW / PW weight load
         send_weight_op(dw_op);
         send_weight_op(pw_op);
 
         `uvm_info(get_type_name(), $sformatf("Stage%0d weights loaded", stage_id), UVM_LOW)
 
-        // 이전 stage feature 입력
         send_feature_stage(src_stage);
 
         `uvm_info(get_type_name(), $sformatf("Stage%0d feature input sent", stage_id), UVM_LOW)
 
-        // 현재 stage feature output 완료 대기
         wait_feature_stage_done(stage_id);
 
         `uvm_info(get_type_name(), $sformatf("G01 Stage%0d completed", stage_id), UVM_LOW)
@@ -438,7 +448,6 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
         `uvm_info(get_type_name(), "Waiting for final CNN completion", UVM_LOW)
 
-        // 최종 publish 완료까지 STATUS polling
         forever begin
 
             axil_read(12'h004, status, resp);
@@ -451,7 +460,6 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
             end
 
-            // error_pending
             if (status[2]) begin
 
                 `uvm_fatal(get_type_name(),
@@ -459,7 +467,6 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
             end
 
-            // done_pending
             if (status[0]) begin
 
                 `uvm_info(get_type_name(),
@@ -473,7 +480,9 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
             poll_count++;
 
             if (poll_count > 200000) begin
+
                 `uvm_fatal(get_type_name(), "Timeout waiting for final CNN completion")
+
             end
 
         end
@@ -493,7 +502,7 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
         `uvm_info(get_type_name(), "Reading published CNN result registers", UVM_LOW)
 
-        // 최종 joint 결과를 Golden 값과 비교
+        // 최종 joint 결과 비교
         for (joint = 0; joint < 17; joint++) begin
 
             axil_read(12'h018 + (joint * 4), data, resp);
@@ -524,10 +533,12 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
         end
 
 
-        // joint valid flag 비교
+        // joint valid flag
         axil_read(12'h05C, data, resp);
 
-        if (resp != 2'b00) `uvm_fatal(get_type_name(), "Failed to read JOINT_FLAGS")
+        if (resp != 2'b00) begin
+            `uvm_fatal(get_type_name(), "Failed to read JOINT_FLAGS")
+        end
 
         `uvm_info(get_type_name(), $sformatf("G01 RESULT joint_flags = 0x%08h", data), UVM_LOW)
 
@@ -550,34 +561,43 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
         // Color 결과는 현재 readout만 확인
         axil_read(12'h068, data, resp);
 
-        if (resp != 2'b00) `uvm_fatal(get_type_name(), "Failed to read RED_RESULT")
+        if (resp != 2'b00) begin
+            `uvm_fatal(get_type_name(), "Failed to read RED_RESULT")
+        end
 
         `uvm_info(get_type_name(), $sformatf("G01 RESULT red = 0x%08h", data), UVM_LOW)
 
 
         axil_read(12'h06C, data, resp);
 
-        if (resp != 2'b00) `uvm_fatal(get_type_name(), "Failed to read BLUE_RESULT")
+        if (resp != 2'b00) begin
+            `uvm_fatal(get_type_name(), "Failed to read BLUE_RESULT")
+        end
 
         `uvm_info(get_type_name(), $sformatf("G01 RESULT blue = 0x%08h", data), UVM_LOW)
 
 
-        // 첫 frame이므로 result_seq는 1
+        // G01 기본값은 1, G04에서는 frame마다 기대 seq를 변경
         axil_read(12'h074, data, resp);
 
-        if (resp != 2'b00) `uvm_fatal(get_type_name(), "Failed to read RESULT_SEQ")
+        if (resp != 2'b00) begin
+            `uvm_fatal(get_type_name(), "Failed to read RESULT_SEQ")
+        end
 
         `uvm_info(get_type_name(), $sformatf("G01 RESULT result_seq = %0d", data), UVM_LOW)
 
-        if (data != 32'd1) begin
+        if (data != expected_result_seq) begin
 
             mismatch_count++;
 
-            `uvm_error("G01_GOLDEN", $sformatf("RESULT_SEQ FAIL expected=1 actual=%0d", data))
+            `uvm_error("G01_GOLDEN", $sformatf("RESULT_SEQ FAIL expected=%0d actual=%0d",
+                                               expected_result_seq, data))
 
         end else begin
 
-            `uvm_info("G01_GOLDEN", "RESULT_SEQ PASS expected=1 actual=1", UVM_LOW)
+            `uvm_info("G01_GOLDEN", $sformatf(
+                      "RESULT_SEQ PASS expected=%0d actual=%0d", expected_result_seq, data),
+                      UVM_LOW)
 
         end
 
@@ -585,7 +605,9 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
         // 정상 완료 시 error_status는 0
         axil_read(12'h078, data, resp);
 
-        if (resp != 2'b00) `uvm_fatal(get_type_name(), "Failed to read ERROR_STATUS")
+        if (resp != 2'b00) begin
+            `uvm_fatal(get_type_name(), "Failed to read ERROR_STATUS")
+        end
 
         `uvm_info(get_type_name(), $sformatf("G01 RESULT error_status = 0x%08h", data), UVM_LOW)
 
@@ -605,7 +627,9 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
         // 시작할 때 넣은 frame_id가 publish 결과에도 유지되는지 확인
         axil_read(12'h084, data, resp);
 
-        if (resp != 2'b00) `uvm_fatal(get_type_name(), "Failed to read RESULT_FRAME_ID")
+        if (resp != 2'b00) begin
+            `uvm_fatal(get_type_name(), "Failed to read RESULT_FRAME_ID")
+        end
 
         `uvm_info(get_type_name(), $sformatf("G01 RESULT result_frame_id = %0d", data), UVM_LOW)
 
@@ -624,10 +648,12 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
         end
 
 
-        // 최신 RTL에 추가된 green result
+        // green result
         axil_read(12'h0F8, data, resp);
 
-        if (resp != 2'b00) `uvm_fatal(get_type_name(), "Failed to read GREEN_RESULT")
+        if (resp != 2'b00) begin
+            `uvm_fatal(get_type_name(), "Failed to read GREEN_RESULT")
+        end
 
         `uvm_info(get_type_name(), $sformatf("G01 RESULT green = 0x%08h", data), UVM_LOW)
 
@@ -662,10 +688,11 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
         int scan_result;
         int joint;
 
-        // Python 결과에서 만든 Golden HEX
-        if (!$value$plusargs("GOLDEN_FINAL_HEX=%s", golden_final_hex_path)) begin
+        if (golden_final_hex_path == "") begin
 
-            `uvm_fatal(get_type_name(), "Missing +GOLDEN_FINAL_HEX=<path>")
+            if (!$value$plusargs("GOLDEN_FINAL_HEX=%s", golden_final_hex_path)) begin
+                `uvm_fatal(get_type_name(), "Missing +GOLDEN_FINAL_HEX=<path>")
+            end
 
         end
 
@@ -678,7 +705,6 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
         end
 
-        // joint 17개
         for (joint = 0; joint < 17; joint++) begin
 
             scan_result = $fscanf(fd, "%h", golden_joint[joint]);
@@ -691,7 +717,6 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
         end
 
-        // 마지막 한 줄은 joint_flags
         scan_result = $fscanf(fd, "%h", golden_joint_flags);
 
         if (scan_result != 1) begin
@@ -723,7 +748,9 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
         // Stage0 Conv0
         send_weight_op(0);
+
         send_image_frame();
+
         wait_stage0_complete();
 
         `uvm_info(get_type_name(), "G01 Stage0 completed", UVM_LOW)
@@ -743,19 +770,19 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
         // Stage14 Heatmap
         feed_head_stage(14, 27);
 
+
         // Stage15 Offset
-        // OP28 ready가 열릴 때까지 weight stream에서 대기
         feed_head_stage(15, 28);
 
 
         // publish 완료 후 최종 결과 비교
         wait_g01_done();
+
         read_final_results();
 
         `uvm_info(get_type_name(), "G01 full CNN control/data flow and result readout completed",
                   UVM_LOW)
 
     endtask
-
 
 endclass
