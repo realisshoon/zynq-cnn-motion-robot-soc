@@ -133,7 +133,7 @@ void input_pose_cnn_set_async_test(int enabled)
 static int publish_async_test(const StereoDepthResult *result)
 {
     XTime ticks;
-    uint64_t now, gap;
+    uint64_t now;
     uint32_t left_advance, right_advance;
     const Point3D *previous[2], *current[2];
     unsigned index;
@@ -146,13 +146,7 @@ static int publish_async_test(const StereoDepthResult *result)
     XTime_GetTime(&ticks);
     now = (ticks / COUNTS_PER_SECOND) * 1000000U +
         (ticks % COUNTS_PER_SECOND) * 1000000U / COUNTS_PER_SECOND;
-    if (now < result->left_received_us || now < result->right_received_us ||
-        now - result->left_received_us > STEREO_LINK_ASYNC_MAX_AGE_US ||
-        now - result->right_received_us > STEREO_LINK_ASYNC_MAX_AGE_US) return 0;
-    gap = result->left_received_us > result->right_received_us
-        ? result->left_received_us - result->right_received_us
-        : result->right_received_us - result->left_received_us;
-    if (gap > STEREO_LINK_ASYNC_MAX_GAP_US) return 0;
+    if (now < result->left_received_us || now < result->right_received_us) return 0;
     current[0] = &result->async_measured_pose.elbow;
     current[1] = &result->async_measured_pose.wrist;
     for (index = 0; index < 2; ++index)

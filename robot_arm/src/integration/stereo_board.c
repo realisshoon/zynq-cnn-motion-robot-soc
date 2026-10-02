@@ -188,7 +188,8 @@ void stereo_board_service(void)
             ++s_stats.rx_frames;
 #ifdef ROBOT_STEREO_RIGHT
             if (local_time_us() >= received.received_us &&
-                local_time_us() - received.received_us <= STEREO_LINK_MAX_AGE_US)
+                (s_link.async_test_enabled ||
+                 local_time_us() - received.received_us <= STEREO_LINK_MAX_AGE_US))
                 (void)stereo_link_push(&s_link, 0, &s_decoded, received.received_us);
             else ++s_stats.expired_frames;
 #endif
@@ -208,36 +209,40 @@ void stereo_board_service(void)
     }
 #endif
     now = local_time_us();
-    if (s_link.pairs && now - s_depth_time > (s_link.async_test_enabled
-        ? STEREO_LINK_ASYNC_MAX_AGE_US : STEREO_LINK_MAX_AGE_US)) {
+    if (!s_link.async_test_enabled && s_link.pairs &&
+        now - s_depth_time > STEREO_LINK_MAX_AGE_US) {
         s_depth_ready = 0;
         input_pose_cnn_discard_stereo_pending();
     }
     if (now - s_report_time >= 1000000U) {
         unsigned index;
-        int fresh = s_link.pairs && now - s_depth_time <= (s_link.async_test_enabled
-            ? STEREO_LINK_ASYNC_MAX_AGE_US : STEREO_LINK_MAX_AGE_US);
+        int fresh = s_link.pairs && now >= s_depth_time &&
+            now - s_depth_time <= STEREO_LINK_MAX_AGE_US;
+        int available = s_link.pairs && (s_link.async_test_enabled || fresh);
         long depth_mm[3] = {0, 0, 0};
         const unsigned points[3] = {10, 17, 19};
         s_report_time = now;
         for (index = 0; index < 3; ++index) {
             double depth = s_depth.point[points[index]].z_mm;
-            if (fresh && s_depth.point_status[points[index]] == STEREO_OK &&
+            if (available && s_depth.point_status[points[index]] == STEREO_OK &&
                 depth > 0.0 && depth < 2147483647.0) depth_mm[index] = (long)depth;
         }
         xil_printf("[ST] tx=%lu drop=%lu rx=%lu crc=%lu overflow=%lu hw=%lu pairs=%lu "
                    "L=%lu R=%lu fresh=%u sync=%u control=%d Zmm(wrist,red,green)=%ld,%ld,%ld "
-                   "async_test=%u async_status=%d accept=%lu reject=%lu; receipt timing NOT exposure sync\r\n",
+                   "async_test=%u async_status=%d accept=%lu reject=%lu "
+                   "qL=%u qR=%u qdrop=%lu time_gate=%s; receipt timing NOT exposure sync\r\n",
             (unsigned long)s_stats.tx_frames, (unsigned long)s_stats.tx_dropped,
             (unsigned long)s_stats.rx_frames, (unsigned long)s_parser.crc_errors,
             (unsigned long)s_rx_overflows, (unsigned long)s_rx_hw_errors,
             (unsigned long)s_link.pairs, (unsigned long)s_depth.left_frame_id,
             (unsigned long)s_depth.right_frame_id, (unsigned)fresh,
-            fresh ? (unsigned)s_depth.time_verified : 0U,
-            fresh ? (int)s_depth.control_status : (int)STEREO_POSE_UNVERIFIED,
+            available ? (unsigned)s_depth.time_verified : 0U,
+            available ? (int)s_depth.control_status : (int)STEREO_POSE_UNVERIFIED,
             depth_mm[0], depth_mm[1], depth_mm[2], (unsigned)s_link.async_test_enabled,
-            fresh ? (int)s_depth.async_status : (int)STEREO_POSE_UNVERIFIED,
-            (unsigned long)s_stats.async_accepted, (unsigned long)s_stats.async_rejected);
+            available ? (int)s_depth.async_status : (int)STEREO_POSE_UNVERIFIED,
+            (unsigned long)s_stats.async_accepted, (unsigned long)s_stats.async_rejected,
+            s_link.count[0], s_link.count[1], (unsigned long)s_link.queue_overflows,
+            s_link.async_test_enabled ? "OFF_FIFO" : "STRICT");
     }
 }
 

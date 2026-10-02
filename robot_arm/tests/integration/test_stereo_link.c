@@ -48,6 +48,76 @@ static StereoCoordinateFrame make_frame(unsigned side, uint32_t sequence, uint64
     return frame;
 }
 
+static void test_pixel_filter(void)
+{
+    StereoLink link;
+    StereoCalibration calibration = rail_calibration();
+    StereoCoordinateFrame left = make_frame(0, 1, 1000000);
+    StereoCoordinateFrame right = make_frame(1, 1, 1000000);
+    StereoDepthResult result;
+    float expected = 560.0f + 12.0f * (1.0f - expf(-0.5f));
+    assert(stereo_link_init(&link, &calibration));
+    stereo_link_set_async_test(&link, 1);
+    left.metadata.exposure_time_verified = right.metadata.exposure_time_verified = 0;
+    assert(stereo_link_push(&link, 0, &left, 1000000));
+    assert(stereo_link_push(&link, 1, &right, 1000000));
+    assert(stereo_link_take(&link, &result));
+    left.sequence = right.sequence = 2;
+    left.joint[10].y = 572;
+    assert(stereo_link_push(&link, 0, &left, 1050000));
+    assert(link.queue[0][0].frame.joint[10].y == 572);
+    assert(fabsf(link.queue[0][0].filtered[10].y - expected) < 0.001f);
+    assert(!stereo_link_push(&link, 0, &left, 1060000));
+    assert(stereo_link_push(&link, 1, &right, 1050000));
+    assert(stereo_link_take(&link, &result));
+    assert(fabsf(result.image_pose.wrist.y - expected) < 0.001f);
+    assert(result.point_status[10] == STEREO_OK && result.async_status == STEREO_POSE_OK);
+    assert(result.point[10].left_reprojection_error_px < 3.0);
+    left.sequence = 3;
+    left.joint[10].valid = 0;
+    assert(stereo_link_push(&link, 0, &left, 1100000));
+    assert(!link.queue[0][0].filtered[10].valid);
+    left.sequence = 4;
+    left.joint[10].valid = 1;
+    left.joint[10].y = 578;
+    assert(stereo_link_push(&link, 0, &left, 1150000));
+    assert(link.queue[0][1].filtered[10].y == 578);
+    left.sequence = 5;
+    left.joint[10].y = 650;
+    assert(stereo_link_push(&link, 0, &left, 1200000));
+    assert(link.queue[0][2].filtered[10].y == 650);
+    left.sequence = 6;
+    left.joint[10].y = 640;
+    assert(stereo_link_push(&link, 0, &left, 2000000));
+    assert(link.queue[0][3].filtered[10].y == 640);
+    left.session_id = 99;
+    left.sequence = 1;
+    left.joint[10].y = 630;
+    assert(stereo_link_push(&link, 0, &left, 2050000));
+    assert(link.count[0] == 1 && link.count[1] == 0);
+    assert(link.queue[0][0].filtered[10].y == 630);
+    stereo_link_set_async_test(&link, 1);
+    left.sequence = 2;
+    left.joint[10].y = 620;
+    assert(stereo_link_push(&link, 0, &left, 2100000));
+    assert(link.queue[0][0].filtered[10].y == 620);
+}
+
+static void test_reprojection_options(void)
+{
+    StereoCalibration calibration = rail_calibration();
+    StereoGeometryContext geometry;
+    StereoGeometryOptions options = stereo_geometry_default_options();
+    StereoPoint3D point;
+    assert(options.max_reprojection_error_px == 15.0);
+    assert(stereo_geometry_init(&geometry, &calibration, NULL) == STEREO_OK);
+    assert(stereo_reconstruct_point(&geometry, 840, 560, 640, 580, &point) == STEREO_OK);
+    assert(stereo_reconstruct_point(&geometry, 840, 560, 640, 600, &point) == STEREO_LOW_QUALITY);
+    options.max_reprojection_error_px = 2.0;
+    assert(stereo_geometry_init(&geometry, &calibration, &options) == STEREO_OK);
+    assert(stereo_reconstruct_point(&geometry, 840, 560, 640, 580, &point) == STEREO_LOW_QUALITY);
+}
+
 int main(void)
 {
     StereoLink link;
@@ -61,6 +131,8 @@ int main(void)
     cnn_result_t local;
     float dt;
     unsigned index;
+    test_pixel_filter();
+    test_reprojection_options();
     assert(stereo_link_init(&link, &calibration));
     assert(stereo_link_push(&link, 0, &left, 1000000));
     assert(stereo_link_push(&link, 1, &right, 1001000));

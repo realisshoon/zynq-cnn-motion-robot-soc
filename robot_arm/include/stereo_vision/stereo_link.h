@@ -7,12 +7,14 @@
 #define STEREO_LINK_POINTS (STEREO_UART_JOINTS + STEREO_UART_MARKERS)
 #define STEREO_LINK_MAX_AGE_US 250000U
 #define STEREO_LINK_MAX_SKEW_US 1000U
-#define STEREO_LINK_ASYNC_MAX_GAP_US 50000U
-#define STEREO_LINK_ASYNC_MAX_AGE_US 100000U
+#define STEREO_LINK_PIXEL_TAU_US 100000U
+#define STEREO_LINK_FILTER_RESET_US 500000U
+#define STEREO_LINK_PIXEL_RESET_PX 30.0f
 
 typedef struct {
     StereoCoordinateFrame frame;
     uint64_t received_us;
+    Point2D filtered[STEREO_LINK_POINTS];
 } StereoLinkEntry;
 
 typedef struct {
@@ -41,8 +43,12 @@ typedef struct {
     uint64_t last_exposure[2];
     uint32_t clock_epoch[2];
     uint8_t have_sequence[2], have_exposure[2];
+    Point2D filtered[2][STEREO_LINK_POINTS];
+    uint64_t filter_time[2];
+    uint8_t have_filter_time[2], filter_verified[2];
     StereoDepthResult latest;
     uint32_t pairs, unsynchronized_pairs, rejected_frames, expired_frames, overwritten_results;
+    uint32_t queue_overflows;
     uint8_t ready;
     uint8_t async_test_enabled;
 } StereoLink;
