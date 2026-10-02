@@ -1,0 +1,226 @@
+# UART 참고 문서 (콘솔 명령 + TRACE 로그)
+
+현재 코드(`dev/integration`, 커밋 `b4a6952` 이후) 기준. UART는 더 이상 자세 입력에 쓰이지
+않는다(그건 CNN 결과에서 온다 — `docs/cnn_integration.md` 참고) — **CNN 브링업 콘솔 명령
+입력**과 **디버그 로그(TRACE) 출력**, 두 용도로만 공유해서 쓴다.
+
+## 1. 연결 설정
+
+| 항목 | 값 |
+|---|---|
+| 포트 | PS UART1 (보드 USB-UART) |
+| 형식 | 8N1 |
+| Baud (ROBOT_TRACE 켠 빌드) | **921600** |
+| Baud (ROBOT_TRACE 끈 빌드) | 115200 |
+
+TRACE는 `ROBOT_TRACE` 컴파일 심볼로 켜진다(`setup_vitis.ps1` 기본 빌드는 항상 켬).
+터미널/PC 스크립트도 baud를 맞춰서 열어야 한다.
+
+RX(터미널→보드)는 콘솔 명령 전용이고, TX(보드→터미널)는 `xil_printf` 콘솔 출력과
+TRACE 로그 줄이 같은 스트림에 섞여 나온다.
+
+## 2. 콘솔 명령 (터미널에서 키 입력)
+
+한 글자를 누르면 즉시 실행된다(Enter 불필요, `m`/`j` 하위 메뉴는 예외 — 3절 참고).
+`?`를 누르면 이 표와 같은 도움말이 그대로 출력된다.
+
+| 키 | 동작 |
+|---|---|
+| `p` | CNN identity(하드웨어 식별) 조회 |
+| `w` | SD에서 가중치 로드+검증 (추론 유휴 상태에서만) |
+| `g` | 이미지 SG(scatter-gather) descriptor 생성/검증 (추론 유휴 상태에서만) |
+| `s` | 완료 IRQ 기반으로 1프레임만 실행 (바쁘면 거부) |
+| `1` | 캡처 저장 폴더를 `0:/CALIB/`로 선택 (체커보드용, 부팅 기본값) |
+| `2` | 캡처 저장 폴더를 `0:/JIG/`로 선택 (마커 지그 검증용) |
+| `C` | 완료된 카메라 프레임 1장을 선택한 폴더의 `CAP0001.PPM` 등으로 저장 (폴더별 자동 번호) |
+| `L` | JIG 사진 삭제 명령 지원/대기 상태 확인. 파일 변경 없음 |
+| `D` | 선택된 폴더와 관계없이 `JIG/CAP0001.PPM`~`CAP9999.PPM` 일반 파일 전체 삭제. 성공 후 JIG 번호를 0001로 초기화 |
+| `a` | 연속(IRQ 구동) 추론 시작/정지 토글 |
+| `t` | CNN 상태 + 마지막 처리 시간 출력 |
+| `r` | 마지막 CNN 결과 출력 |
+| `d` | CNN 진단 덤프 |
+| `x` | 추론 정지 + CNN soft-reset (진행 중 프레임은 끝난 뒤 처리) |
+| `o` | 오버레이/컬러 레지스터 덤프 |
+| `b` | HDMI 오버레이 전환 (로봇 6점 / 상반신) |
+| `c` | 그룹 컬러 오버레이 강제 테스트 |
+| `n` | CNN 초록 마커 검출 on/off |
+| `m` | R/G/B 검출 margin 입력 하위메뉴 진입 (3절) |
+| `j` | 카메라 추적(deadband/filter/속도/서보) 설정 하위메뉴 진입 (3절) |
+| `q` | **전체 UART 출력** mute/재개 (CNN·로봇 제어 자체는 계속 동작) |
+| `z` | **로봇 TRACE만** mute/재개 (CNN 로그는 그대로 나옴) |
+| `E` | 로봇 PWM 활성화: LIVE, 정지/기준 명령 일치 시에만 허용; LEFT 송신 보드는 거부 |
+| `X` | 로봇 PWM 해제. 토크가 사라지므로 팔을 지지할 것; 소문자 `x`와 다름 |
+| `V` | 로봇 PWM 상태 조회. 소문자 `v`의 카메라 상태와 다름 |
+| `A` | RIGHT PWM ON·LIVE에서 비동기 양안 절대좌표 시험 활성화. 실제 노출 동기화 아님 |
+| `S` | 새 비동기 시험 입력 차단. 마지막 승인 목표까지 이동 후 유지; 토크 해제 아님 |
+| `T` | 비동기 양안 시험 상태 조회 |
+| `u` | 카메라 추적 + 카메라 PWM 출력 토글 |
+| `f` | FIXED: 추적은 끄고 PWM은 현재 pulse로 고정 유지 |
+| `v` | 카메라 추적기/PWM 상태 출력 |
+| `i` | 카메라 pan 방향 반전 토글 |
+| `k` | 카메라 tilt 방향 반전 토글 |
+| `h` | 카메라 pan/tilt 즉시 중앙 정렬 |
+| `?` | 도움말 |
+
+`E/X/V`는 2026-10-02 런타임 PWM 제어가 포함된 새 BOOT.BIN에서 지원한다.
+Stereo 빌드는 부팅 OFF이며 활성화 시 최초 홈/마지막 HAL 명령의 펄스를 인가한다.
+소프트웨어 누적 이동은 활성화 거부로 보호하지만 실제 위치/처짐은 피드백이 없어 검증하지 못한다.
+스테레오 노출 동기화 gate는 그대로 유지한다. 상세 안전 조건과 PC 입력법은
+[양안 시험 운영 안내](stereo_async_trial.md)를 따른다.
+PC 모니터에서는 `r E`, `r X`, `r V` + Enter이며 E/X는 `--allow-motion-commands`가 필요하다.
+
+`C`는 진행 중인 CNN 프레임이 끝나면 연속 추론을 잠시 멈추고, VDMA 쓰기 채널을
+계속 실행하면서 다른 버퍼로 잠시 park하여 완료된 버퍼를 복사하고, circular 모드로 복원한 뒤 PPM(P6, 1280×720)으로 저장한다.
+기존 연속 추론이 켜져 있었다면 저장 후 자동으로 재개한다. SD 쓰기가 끝날 때까지
+메인 루프가 동기적으로 대기하므로 로봇 제어 틱도 지연될 수 있다. 로봇 서보 전원을
+분리하고 카메라 캘리브레이션용으로 사용할 것. 파일의 픽셀은 현재 PL/DDR 채널
+배치(G-B-R)를 PPM 표준 R-G-B 순서로 바꿔 기록한다.
+
+캡처 폴더 선택은 콘솔 기본 화면에서 `1` 또는 `2`를 누른다(Enter 불필요).
+숫자 입력 하위 메뉴(`m`/`j`/`J`) 안에서는 해당 메뉴의 입력으로 처리된다.
+선택만으로는 촬영하지 않으며, `C`로 저장할 때 폴더가 없으면 자동 생성한다.
+`?` 또는 `t`로 현재 폴더를 확인할 수 있다. 촬영 대기 중에는 폴더 변경을 거부한다.
+재부팅하면 선택은 `CALIB`으로 돌아가며 각 폴더에서 0001부터 빈 번호를 다시 찾는다.
+기존 파일은 덮어쓰지 않는다. 폴더 전환 시 각 폴더의 번호를 따로 이어 간다.
+예: `1` → `C` → `C`는 `CALIB/CAP0001.PPM`, `CALIB/CAP0002.PPM`,
+이어서 `2` → `C`는 `JIG/CAP0001.PPM`(해당 번호가 비어 있을 때)로 저장한다.
+SD 루트에 있던 이전 캡처는 그대로 두며 자동 이동하지 않는다.
+좌우 보드의 폴더 선택과 번호는 독립적이다. 양쪽에 같은 폴더를 선택하고 실제 파일 쌍을 기록한다.
+체커보드 `CALIB` 사진은 각 카메라 mono 보정과 좌우 stereo 보정에 공통 사용한다.
+
+`D`는 되돌릴 수 없는 삭제 명령이다. 촬영 대기/추론 fault/stop 중에는 거부하고,
+진행 중 CNN 프레임이 끝난 뒤 SD 삭제를 수행한다. VDMA 설정은 변경하지 않는다.
+`CALIB`, 부트/가중치 파일, JIG 내 다른 이름의 파일/하위 폴더와 PC 백업은 삭제하지 않는다.
+성공 응답은 `Frame capture: JIG deleted N files; next CAP0001.PPM`이다.
+실패는 `Frame capture: JIG delete failed after N files ...`로 부분 삭제 건수를 알린다.
+SD 작업 동안 메인 루프 제어 틱이 지연될 수 있으므로 캡처와 같은 카메라 검증 환경에서 사용한다.
+PC에서는 `capture_stereo_uart.py --left COM3 --right COM4 --delete-jig` 또는
+촬영 대기창의 `delete-jig`로 양쪽 지원 확인/삭제/결과 기록을 실행한다.
+이 기능은 새 펌웨어를 양쪽 SD에 적용해야 사용할 수 있다.
+
+### 촬영 시 VDMA 오류 진단 (2026-10-01 수정)
+
+HDMI가 정상이어도 이전 펌웨어는 부팅 중 남은 VDMA 오류 비트를 보고
+`VDMA configuration/error rejected`로 즉시 거부할 수 있었다. 이 문구만으로
+실제 원인을 확정할 수는 없다. 수정 펌웨어는 다음처럼 구분한다.
+
+- 매 촬영 시 `Frame capture: info S2MM SR=0x... CR=0x... stores=3 flush=1`을 기록한다.
+- 실행 중인 채널의 과거 프레임/라인 크기 오류는 관측된 비트만 한 번 clear하고
+  새 프레임이 실제로 들어오는지 확인한다. 과거 frame IRQ는 clear한 뒤 새 assertion을
+  두 번 확인하며, 버퍼 번호가 바뀌어야 한다는 조건은 사용하지 않는다.
+- **촬영 중 VDMA를 정지하지 않는다.** 현재 쓰기 버퍼를 관측하고 새 프레임 두 번을
+  확인한 뒤, 다른 버퍼에 S2MM을 park한다. 새 프레임 두 번과 park 대상 도달을 확인하면
+  보호된 원래 버퍼를 앱 DDR에 복사한다. 이후 circular 모드와 이전 park reference를
+  복구한다. MM2S 설정, S2MM RUN/STOP 및 FrameCntEn은 변경하지 않는다.
+- circular 복구 후와 SD sync 후에 각각 새 프레임이 들어오는지 확인한다. 파일 쓰기가
+  끝났더라도 영상 진행 검증이 실패하면 `saved`를 보내지 않고 실패 파일을 제거한다.
+  오류/timeout 경로에서도 park 설정을 복구하며 강제 stop/start/reset은 하지 않는다.
+- 이 경로는 현재 빌드의 circular/free-running, IRQFrameCount=1을 요구한다.
+- 정지된 채널, 버스/주소 오류, 단독 internal 오류는 clear하거나 강제 재시작하지 않는다.
+  clear되지 않는 오류나 재발 오류도 저장을 거부한다. BSP 오류 마스크에서 빠진
+  EOLLate(bit 15)도 검사한다.
+- `info` 줄은 성공 응답이 아니다. 업데이트된 `capture_stereo_uart.py`는 이를 UART 로그에
+  보관하고 최종 `saved`/오류 응답까지 기다린다. 펌웨어와 PC 스크립트를 함께 갱신한다.
+- 실패 시 세션의 `left_uart.log`, `right_uart.log`에 있는 SR/CR 값을 확인한다.
+  파일이 저장되려면 **양쪽 모두 `saved`**가 나와야 한다.
+
+실물 관측(14:07 세션): 양쪽의 과거 오류 `0x90` clear 성공, 오른쪽 `CAP0003.PPM`
+저장 성공. 왼쪽은 수동 정지 중 포인터 변경 `(1 -> 0)`을 거부하던 조건 때문에 실패했다.
+이 실패 쌍의 오른쪽 파일은 stereo 보정 쌍으로 사용하지 않는다.
+
+실물 관측(14:21~14:26): 첫 촬영은 파일 저장 성공 후 영상이 멈추고, 다음 촬영은
+`SR=0x00011000` 또는 `0x00015000`으로 timeout했다. 사용자가 처음에는 영상이 정상이라고
+보고했으나 이후 정지 화면임을 확인했다. 양쪽 재부팅으로 영상이 복구되었고,
+첫 쌍 저장 성공 → 영상 정지 → 두 번째 쌍 실패가 재현됐다. 따라서 오류 비트가 없거나
+재시작 API가 성공했다는 것만으로 실제 프레임 진행을 보장할 수 없다.
+중간에 만든 선행 검사 제거/자동 정지 버전은 SD에 배포하지 않았다.
+
+회귀 검증: 과거/치명 오류, live parking과 연속 촬영, 같은 버퍼 반복과 입력 없음의 구분,
+park 실패/미도달, 복사 중 오류, circular 복구 후 영상 정지를 모의 검증한다.
+테스트에서 DMA stop/start 또는 FrameCntEn 사용은 즉시 실패한다.
+**live parking 방식은 실제 보드에서 연속 촬영과 HDMI 움직임을 다시 검증해야 한다.**
+
+**바쁠 때 거부되는 명령**: CNN이 fault-latched 상태면 `x`(soft-reset) 외엔 전부 거부된다.
+추론 중(`running`/연속모드/`s` 대기/정지처리 중)이면 `w`/`g`/`s`도 거부되고, 메시지에
+현재 상태(`running/auto/single/stopping`)가 같이 찍힌다.
+
+**부팅 시 자동 실행**: `cnn_app_init()` 끝에서 자동으로 `w`(가중치 로드) → 연속모드
+`a` ON까지 수행한다(SD CSV 로깅은 자동 시작에서 비활성). 가중치 로드가 실패하면
+자동 시작만 중단되고 콘솔 메뉴는 그대로 남는다.
+
+## 3. 하위 메뉴 (`m`, `j`)
+
+`m`/`j`를 누르면 필드를 하나씩 순서대로 물어본다. 각 필드에서:
+- 숫자를 입력하고 **Enter** → 그 값으로 설정(범위 밖이면 즉시 취소하고 메뉴 종료)
+- 아무것도 안 치고 **Enter만** → 현재 값 유지
+- **Backspace**(0x08 또는 0x7F) → 마지막 입력 숫자 한 글자 지움
+
+마지막 필드까지 입력하면 한꺼번에 적용된다(`j`는 pulse 범위/center 값 유효성도 같이
+검사, 안 맞으면 "설정 변경 없음"으로 전체 취소).
+
+- `m` 필드 13개: red/green/blue margin, yellow R-G 최대차/RG-B 최소차,
+  red/green/blue 최소 밝기, yellow R/G 최소·B 최대 밝기(앞 11개 모두 0..255),
+  최소 검출 taps(1..262143), color enable mask(0..15: R=1,B=2,G=4,Y=8).
+  마지막 필드 완료 후 한꺼번에 적용한다. m 진입 시 연속 추론은 중단되며 완료 후 a로 재개한다.
+  로컬 모니터에서는 r m → r value 30 또는 r enter를 각 필드에 입력한다.
+- `j` 필드 18개: target X/Y, deadband X/Y, IIR shift, jump rejection, pan/tilt
+  pixels-per-pulse-us, max target change, search step/confirm frames, motor slew,
+  servo min/max us, pan/tilt center us, pan/tilt invert
+
+## 4. TRACE 로그 포맷
+
+`ROBOT_TRACE` 빌드에서만 나온다. 한 줄이 한 레코드, 쉼표로 구분, 줄끝은 `\r\n`.
+`#`으로 시작하는 줄은 컬럼 정의(스키마) — 부팅 직후와 이후 10초마다 다시 보낸다.
+실수는 고정소수점 텍스트(각도 1자리, 그리퍼/CNN 통계 등 2자리, Point3D 3자리)이고
+`%f`를 안 쓴다. 값이 없는 필드는 빈 칸으로 남는다(예: 타겟이 없는 프레임의 A1 각도 5개).
+
+| 태그 | 주기 | 의미 |
+|---|---|---|
+| `A1` | 프레임마다(agent1_run 직후) | Agent1 출력: fid,t_ms,dur_us,dt_ms,pv,vm,rc,ov,er,ep,wp,wr,grip |
+| `P3` | A1 바로 뒤 | Agent1 내부 3D 점 6개(어깨L/R,팔꿈치,손목,손가락1/2): fid,pm,fl,age_ms,x,y,z×6 |
+| `A2` | agent2_run 직후 | fid,t_ms,dur_us,st,fg,unwrap된 타겟4,매핑된 명령5 |
+| `TK` | 제어 틱마다(20ms) | tick,t_ms,dur_us,출력5,PWM5,rem,w,err |
+| `SM` | 1초마다 | 파이프라인 누적 통계(아래 표) |
+| `EV` | 상태 바뀔 때만 | t_ms,code,arg — 이벤트(BOOT, A1_LOST/BACK, A2_REJECT/BACK, SERVO_ERR, TICK_OVERRUN, UART_ERR, TRACE_DROP, TRACE_ON) |
+| `CN` | CNN 프레임 완료마다 | fid,t_ms,seq,irq,elapsed_us,flags,overwritten |
+| `CE` | CNN 오류마다 | fid,t_ms,error |
+| `CAM` | CNN 프레임 완료마다 | fid,t_ms,state,pan_us,tilt_us,pan_target_us,tilt_target_us |
+| `IN` | Agent1에 넘긴 프레임마다 | fid,t_ms,6점(x,y,valid)×6 — CNN 결과를 HumanPose2D로 바꾼 직후 값 |
+| `CS` | 1초마다 | CNN 누적 통계: t_ms,irq,ok,error,timeout,last_us,max_us,overwritten |
+
+전체 컬럼 이름은 부팅 시 나오는 `#A1,...`/`#P3,...` 등 스키마 줄이 원본이다(코드:
+`trace.c`의 `k_schema[]`) — 이 표는 요약이니 정확한 필드 순서가 필요하면 실제 수신한
+스키마 줄을 봐라.
+
+**A2의 `st` 값**: `N`=새 목표 승인, `S`=직전과 동일(재계획 생략), `R`=안전검사 거부,
+`V`=validate 거부, `-`=이번 프레임 실행 없음. `fg`는 거부 사유 플래그(hex) —
+`FOREARM_SAFETY_CHECK_*`(`forearm_safety_check.h`).
+
+**SM 필드 순서**: `t_ms,fr(frames_in),tv(targets_valid),acc(commands_accepted),
+rej(commands_rejected),rt(retargets),tk(ticks),sw(servo_writes),se(servo_errors),
+ovr(tick_overruns),crc,fmt,rng(UART 패킷 오류 — 지금은 항상 0, 자세 입력이 UART가
+아니라서),ow(overwritten),drop(trace_dropped),hi(링버퍼 최대 사용 바이트)`.
+
+## 5. 출력 끄고 켜기
+
+- `q`: **모든** UART 출력(콘솔 print + TRACE 전부) 끔/켬. CNN 추론과 로봇 제어 자체는
+  계속 동작 — 화면만 조용해진다. 다시 켜면 스키마를 다시 보낸다.
+- `z`: **로봇 TRACE만**(`A1/P3/A2/TK/SM/EV`) 끔/켬. `CN/CE/CAM/IN/CS`(CNN 쪽)는
+  영향 없음 — CNN 브링업하면서 로봇 로그만 조용히 하고 싶을 때 쓴다.
+- 코드 레벨: `trace_set_output_enabled()`(전체) / `trace_set_robot_output_enabled()`
+  (로봇 태그만) — `line_begin()`이 태그로 `robot` 플래그를 판정한다(`trace.c:226`).
+
+## 6. 세션 읽는 법 (실전 팁)
+
+1. 부팅 직후 `#`로 시작하는 스키마 줄 11개 + `EV,0,BOOT,<baud>`가 나온다. 이게 없으면
+   ROBOT_TRACE가 아예 안 켜진 빌드다.
+2. `CNN automatic startup: w -> camera FIXED -> a` 배너 이후 `CNN command PASS`가
+   나오면 가중치 로드 성공, 이어서 `CNN continuous mode: ON (automatic boot)`이 뜬다.
+3. 로봇 쪽만 보고 싶으면 `z`로 로봇 TRACE만 켠 채로 CNN 태그(`CN/CE/CAM/IN/CS`)는
+   계속 보이는 상태 유지 가능.
+4. `EV,...,TRACE_DROP,...`이 보이면 링버퍼(8192B)가 넘쳐서 줄이 통째로 버려진 것 —
+   출력량이 UART 대역폭보다 많다는 뜻. `SM`의 `hi` 필드로 최근 1초간 최대 사용량을
+   확인할 수 있다.
+5. `A2`의 `st=R`이 반복되면 `fg` hex 값으로 어떤 안전검사에 걸렸는지 확인
+   (`FOREARM_SAFETY_CHECK_SELF_COLLISION`=0x2, `_TABLE_COLLISION`=0x4,
+   `_INVALID_COMMAND`=0x1).

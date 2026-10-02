@@ -31,6 +31,14 @@ typedef struct {
     uint8_t valid;
 } HumanPose2D;
 
+typedef struct {
+    Point3D finger1, finger2;
+    Point3D elbow, wrist;
+    Point3D shoulder_l, shoulder_r;
+    uint32_t frame_id;
+    uint8_t valid;
+} HumanPose3D;
+
 /* Legacy six-axis human target. Existing Agent2/integration still consumes
  * this type; do not reinterpret HumanForearmTarget as this structure. */
 typedef struct {

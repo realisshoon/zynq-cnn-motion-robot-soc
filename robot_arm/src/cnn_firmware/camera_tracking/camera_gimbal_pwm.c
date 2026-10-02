@@ -20,10 +20,7 @@
 #elif defined(XPAR_SERVO_PWM_CAMERA_0_BASEADDR)
 #define CAMERA_GIMBAL_PWM_BASE XPAR_SERVO_PWM_CAMERA_0_BASEADDR
 #else
-/* The generated hardware address map fixes the camera PWM at this address.
- * The fallback keeps this isolated application buildable before BSP refresh.
- */
-#define CAMERA_GIMBAL_PWM_BASE 0x43C90000U
+#define CAMERA_GIMBAL_PWM_BASE 0U
 #endif
 
 static u16 clamp_u16(u16 value, u16 low, u16 high)
@@ -37,6 +34,7 @@ static u16 clamp_u16(u16 value, u16 low, u16 high)
 
 static void pwm_write(const camera_gimbal_pwm_t *gimbal, u32 offset, u32 value)
 {
+    if (gimbal->base_address == 0) return;
     Xil_Out32(gimbal->base_address + offset, value);
 }
 
@@ -75,7 +73,7 @@ int camera_gimbal_pwm_init(camera_gimbal_pwm_t *gimbal, UINTPTR base_address)
     gimbal->base_address = base_address;
     gimbal->slew_step_us = 10U;
     XTime_GetTime((XTime *)&gimbal->last_service_ticks);
-    gimbal->enabled = 1U;
+    gimbal->enabled = base_address != 0;
     gimbal->initialized = 1U;
 
     for (axis = 0U; axis < CAMERA_GIMBAL_AXIS_COUNT; ++axis) {
@@ -86,6 +84,10 @@ int camera_gimbal_pwm_init(camera_gimbal_pwm_t *gimbal, UINTPTR base_address)
         gimbal->target_pulse_us[axis] = 1500U;
     }
 
+    if (base_address == 0) {
+        xil_printf("camera gimbal PWM: absent from XSA; no MMIO, physically fix cameras\r\n");
+        return XST_SUCCESS;
+    }
     /* Only channels 0/1 leave the new camera PWM instance. */
     pwm_write(gimbal, PWM_CH2_OFFSET, 0U);
     pwm_write(gimbal, PWM_CH3_OFFSET, 0U);
@@ -105,6 +107,10 @@ void camera_gimbal_pwm_set_enable(camera_gimbal_pwm_t *gimbal, int enabled)
 
     if (gimbal == 0 || !gimbal->initialized)
         return;
+    if (gimbal->base_address == 0) {
+        gimbal->enabled = 0;
+        return;
+    }
 
     if (enabled) {
         /* Restore the retained software pulse values before restarting. */
@@ -129,7 +135,7 @@ void camera_gimbal_pwm_set_enable(camera_gimbal_pwm_t *gimbal, int enabled)
 
 u32 camera_gimbal_pwm_control_readback(const camera_gimbal_pwm_t *gimbal)
 {
-    if (gimbal == 0 || !gimbal->initialized)
+    if (gimbal == 0 || !gimbal->initialized || gimbal->base_address == 0)
         return 0U;
     return Xil_In32(gimbal->base_address + PWM_CONTROL_OFFSET);
 }

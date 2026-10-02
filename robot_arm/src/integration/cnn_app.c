@@ -15,9 +15,11 @@
 #include "integration/cnn_app.h"
 #include "integration/platform_vitis.h"
 #include "integration/trace.h"
+#include "integration/stereo_board.h"
 #include "input_pose_cnn.h"
 #include "cnn_console.h"
 #include "cnn_app_event.h"
+#include "frame_capture_sd.h"
 #include "../cnn_firmware/cam_gpio/cam_gpio.h"
 #include "../cnn_firmware/iic_sccb_cfg/iic_sccb_cfg.h"
 #include "../cnn_firmware/ov5640/OV5640.h"
@@ -52,6 +54,25 @@ static camera_tracking_app_t camera_tracker;
 static int cnn_stopping;
 /* timeout/HW fault/비정상 DONE 이후 x로 복구하기 전까지 유지된다. */
 static int cnn_fault_latched;
+static int frame_capture_requested;
+static int frame_capture_delete_jig;
+static int frame_capture_resume_auto;
+static FrameCaptureSdFolder frame_capture_folder = FRAME_CAPTURE_FOLDER_CALIB;
+
+void cnn_app_report_pwm_result(unsigned enabled, const char *result, const char *mode)
+{
+    xil_printf("[PWM] enabled=%u result=%s mode=%s arm=RIGHT_CH0_CH4; "
+               "no position feedback; stereo exposure gate unchanged\r\n",
+               enabled, result, mode);
+}
+
+void cnn_app_report_async_result(unsigned enabled, unsigned pwm_enabled,
+                                const char *result, const char *mode)
+{
+    xil_printf("[ST] async_test=%u pwm=%u result=%s mode=%s; EXPERIMENTAL binocular "
+               "control, exposure synchronization NOT verified\r\n",
+               enabled, pwm_enabled, result, mode);
+}
 
 void cnn_app_report_control_result(CnnAppEvent event,
                                    int accepted,
@@ -172,12 +193,24 @@ static void menu_help(void)
     xil_printf("  m : edit RGBY margins, brightness and min count\r\n");
     xil_printf("  B : toggle all body joints on HDMI\r\n");
     xil_printf("  J : show/hide one body joint (indices 5..16)\r\n");
+    xil_printf("  1 : select SD CALIB folder (checkerboard; boot default)\r\n");
+    xil_printf("  2 : select SD JIG folder (marker validation)\r\n");
+    xil_printf("  L : probe JIG photo deletion support (no deletion)\r\n");
+    xil_printf("  D : delete all JIG/CAPnnnn.PPM photos; restart JIG numbering\r\n");
+    xil_printf("  C : save one completed frame in %s/CAPnnnn.PPM\r\n",
+               frame_capture_sd_folder_path(frame_capture_folder));
     xil_printf("  %c : toggle robot motion recording\r\n",
                CNN_APP_UART_CMD_RECORD);
     xil_printf("  %c : start/stop robot motion replay\r\n",
                CNN_APP_UART_CMD_PLAY);
     camera_tracking_app_print_help();
     xil_printf("  ? : help\r\n");
+    xil_printf("  E : enable robot PWM (LIVE, stationary approved command only; arm may move)\r\n");
+    xil_printf("  X : disable robot PWM (torque released; support the arm)\r\n");
+    xil_printf("  V : print robot PWM state (not camera PWM)\r\n");
+    xil_printf("  A : enable EXPERIMENTAL asynchronous binocular control (RIGHT, PWM ON, LIVE)\r\n");
+    xil_printf("  S : disable asynchronous test inputs; last approved goal still completes\r\n");
+    xil_printf("  T : print asynchronous test mode (not exposure synchronization)\r\n");
 }
 
 static void menu_run(void)
@@ -242,6 +275,9 @@ static void menu_run(void)
         break;
     case 't':
         cnn_bringup_print_status(&cnn_ctx);
+        xil_printf("Frame capture: folder=%s, pending=%d\r\n",
+                   frame_capture_sd_folder_path(frame_capture_folder),
+                   frame_capture_requested);
         xil_printf("CNN app state: running=%d auto=%d single=%d stopping=%d "
                    "fault=%d\r\n",cnn_ctx.running,cnn_continuous_mode,
                    cnn_single_pending,cnn_stopping,cnn_fault_latched);
@@ -257,6 +293,7 @@ static void menu_run(void)
         cnn_diag_dump();
         break;
     case 'x':
+        frame_capture_requested=0;
         cnn_continuous_mode=0;
         cnn_single_pending=0;
         if(cnn_ctx.running) {
@@ -334,6 +371,48 @@ static void menu_run(void)
     case 'J':
         cnn_console_start_joint();
         break;
+    case '1':
+    case '2':
+        if(frame_capture_requested) {
+            xil_printf("Frame capture: folder change rejected; wait for pending capture\r\n");
+        }
+        else {
+            frame_capture_folder=(c=='1') ? FRAME_CAPTURE_FOLDER_CALIB :
+                                           FRAME_CAPTURE_FOLDER_JIG;
+            xil_printf("Frame capture: folder=%s; press 'C' to save\r\n",
+                       frame_capture_sd_folder_path(frame_capture_folder));
+        }
+        break;
+    case 'L':
+        if(frame_capture_requested || cnn_fault_latched || cnn_stopping) {
+            xil_printf("Frame capture: JIG delete rejected; capture/fault/stop pending\r\n");
+        }
+        else {
+            xil_printf("Frame capture: JIG delete ready\r\n");
+        }
+        break;
+    case 'D':
+    case 'C':
+        if(frame_capture_requested) {
+            xil_printf("Frame capture: already pending\r\n");
+        }
+        else if(cnn_fault_latched || cnn_stopping) {
+            xil_printf("Frame capture: CNN fault/stop pending; press 'x' first\r\n");
+        }
+        else {
+            frame_capture_resume_auto=cnn_continuous_mode;
+            cnn_continuous_mode=0;
+            frame_capture_requested=1;
+            frame_capture_delete_jig=(c=='D');
+            if(frame_capture_delete_jig) {
+                xil_printf("Frame capture: JIG delete pending after active CNN frame\r\n");
+            }
+            else {
+                xil_printf("Frame capture: pending in %s after active CNN frame\r\n",
+                           frame_capture_sd_folder_path(frame_capture_folder));
+            }
+        }
+        break;
     case 'j':
         cnn_console_start_camera(&camera_tracker);
         break;
@@ -382,7 +461,11 @@ static void cnn_continuous_step(void)
     }
 
     camera_tracking_app_on_result(&camera_tracker,&cnn_ctx.last_result);
+#if defined(ROBOT_STEREO_LEFT) || defined(ROBOT_STEREO_RIGHT)
+    (void)stereo_board_on_result(&cnn_ctx.last_result,NULL);
+#else
     (void)input_pose_cnn_publish(&cnn_ctx.last_result);
+#endif
     TRACE_CN(cnn_ctx.last_result.frame_id,cnn_ctx.last_result.result_seq,
              cnn_bringup_irq_count(),cnn_ctx.last_elapsed_us,
              cnn_ctx.last_result.joint_flags,input_pose_cnn_overwritten());
@@ -481,8 +564,11 @@ static int initialize_camera_capture(void)
     }
 
     video_mode=VMODE_1280x720;
-    run_vdma_frame_buffer(&vdma,VDMA_ID,video_mode.width,video_mode.height,
-                          FRAME_BUFFER_ADDR,0,0,BOTH);
+    if (run_vdma_frame_buffer(&vdma,VDMA_ID,video_mode.width,video_mode.height,
+                             FRAME_BUFFER_ADDR,0,0,BOTH) != XST_SUCCESS) {
+        xil_printf("Camera VDMA initialization failed. Stopping.\r\n");
+        return 0;
+    }
 
     mipi_rx_enable();
     gamma_init();
@@ -577,4 +663,20 @@ void cnn_app_service(void)
     menu_run();
     camera_tracking_app_service(&camera_tracker);
     cnn_continuous_step();
+    if(frame_capture_requested && (cnn_fault_latched || cnn_stopping)) {
+        frame_capture_requested=0;
+        xil_printf("Frame capture: cancelled after CNN fault/stop\r\n");
+        return;
+    }
+    if(frame_capture_requested && !cnn_ctx.running && !cnn_single_pending &&
+       !(cnn_hw_status()&CNN_STATUS_BUSY)) {
+        FrameCaptureSdResult result;
+        frame_capture_requested=0;
+        result=frame_capture_delete_jig ? frame_capture_sd_delete_jig() :
+               frame_capture_sd_save(&vdma,FRAME_BUFFER_ADDR,frame_capture_folder);
+        if(result!=FRAME_CAPTURE_SD_VDMA_ERROR && frame_capture_resume_auto) {
+            cnn_continuous_mode=1;
+            xil_printf("CNN continuous mode: resumed after frame capture\r\n");
+        }
+    }
 }

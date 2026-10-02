@@ -181,6 +181,8 @@ const char *camera_tracking_app_mode_string(const camera_tracking_app_t *app)
 {
     if (app == 0 || !app->initialized)
         return "UNINITIALIZED";
+    if (app->gimbal.base_address == 0)
+        return "FIXED(NO PWM IP)";
     if (app->tracker.enabled)
         return app->gimbal.enabled ? "TRACKING" : "TRACKING(PWM OFF)";
     return app->gimbal.enabled ? "FIXED" : "OFF";
@@ -264,6 +266,10 @@ int camera_tracking_app_handle_key(camera_tracking_app_t *app, char key)
 
     switch (key) {
     case 'u':
+        if (app->gimbal.base_address == 0) {
+            xil_printf("camera tracking rejected: no camera PWM IP in this XSA\r\n");
+            return 1;
+        }
         torso_tracker_set_enable(&app->tracker, !app->tracker.enabled);
         if (app->tracker.enabled) {
             camera_gimbal_pwm_set_enable(&app->gimbal, 1);
@@ -300,6 +306,10 @@ int camera_tracking_app_handle_key(camera_tracking_app_t *app, char key)
                    app->tracker.config.tilt_invert);
         return 1;
     case 'h':
+        if (app->gimbal.base_address == 0) {
+            xil_printf("camera center rejected: no camera PWM IP in this XSA\r\n");
+            return 1;
+        }
         camera_gimbal_pwm_center(&app->gimbal);
         app->tracker.filter_valid = 0U;
         xil_printf("camera gimbal centered immediately\r\n");

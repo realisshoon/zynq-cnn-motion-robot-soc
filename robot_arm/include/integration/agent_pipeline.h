@@ -86,9 +86,12 @@ typedef struct {
  */
 int agent_pipeline_init(AgentPipelineContext *ctx);
 int agent_pipeline_init_mode(AgentPipelineContext *ctx, int enable_robot_pwm);
+int agent_pipeline_set_output_enabled(AgentPipelineContext *ctx, int enabled);
 
 /* HumanPose2D -> HumanForearmTarget. Agent1이 valid 타겟을 냈으면 1. */
 int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec);
+int agent1_run_stereo(AgentPipelineContext *ctx, const HumanPose2D *image_pose,
+                      const HumanPose3D *measured_pose, float dt_sec);
 
 /* validate -> 대표각 정규화 -> 범위 밖 축 HOLD -> 안전검사 -> set_target. 승인했으면 1. */
 int agent2_run(AgentPipelineContext *ctx);
