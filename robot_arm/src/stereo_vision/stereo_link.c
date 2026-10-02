@@ -1,6 +1,7 @@
 #include "stereo_vision/stereo_link.h"
 
 #include <string.h>
+#include <math.h>
 
 static uint64_t distance_us(uint64_t first, uint64_t second)
 {
@@ -57,7 +58,9 @@ static void expire_entries(StereoLink *link, uint64_t now)
         index = 0;
         while (index < link->count[side]) {
             uint64_t received = link->queue[side][index].received_us;
-            if (now >= received && now - received > STEREO_LINK_MAX_AGE_US) {
+            if ((!link->async_test_enabled ||
+                 link->queue[side][index].frame.metadata.exposure_time_verified) &&
+                now >= received && now - received > STEREO_LINK_MAX_AGE_US) {
                 remove_entry(link, side, index);
                 ++link->expired_frames;
             } else ++index;
@@ -65,10 +68,52 @@ static void expire_entries(StereoLink *link, uint64_t now)
     }
 }
 
-static void reconstruct_pair(StereoLink *link, const StereoCoordinateFrame *left,
-                             const StereoCoordinateFrame *right, int synchronized,
-                             uint64_t left_received, uint64_t right_received)
+static void filter_entry(StereoLink *link, unsigned side, StereoLinkEntry *entry)
 {
+    const StereoCoordinateFrame *frame = &entry->frame;
+    uint8_t verified = frame->metadata.exposure_time_verified;
+    uint64_t time = verified ? frame->metadata.exposure_time_us : entry->received_us;
+    uint64_t elapsed = time > link->filter_time[side] ? time - link->filter_time[side] : 0;
+    int reset = !link->have_filter_time[side] || verified != link->filter_verified[side] ||
+        !elapsed || elapsed > STEREO_LINK_FILTER_RESET_US;
+    float alpha = reset ? 1.0f : 1.0f - expf(-(float)elapsed / STEREO_LINK_PIXEL_TAU_US);
+    unsigned index;
+    for (index = 0; index < STEREO_LINK_POINTS; ++index) {
+        Point2D point = index < STEREO_UART_JOINTS ? joint_point(frame, index)
+            : marker_point(frame->markers[index - STEREO_UART_JOINTS]);
+        Point2D previous = link->filtered[side][index];
+        float delta_x = point.x - previous.x, delta_y = point.y - previous.y;
+        if (point.valid && previous.valid && !reset &&
+            delta_x * delta_x + delta_y * delta_y <=
+                STEREO_LINK_PIXEL_RESET_PX * STEREO_LINK_PIXEL_RESET_PX) {
+            point.x = previous.x + alpha * delta_x;
+            point.y = previous.y + alpha * delta_y;
+        }
+        entry->filtered[index] = link->filtered[side][index] = point;
+    }
+    link->filter_time[side] = time;
+    link->filter_verified[side] = verified;
+    link->have_filter_time[side] = 1U;
+}
+
+static HumanPose2D filtered_pose(const StereoLinkEntry *entry)
+{
+    HumanPose2D pose = stereo_coordinate_pose(&entry->frame);
+    pose.shoulder_l = entry->filtered[5];
+    pose.shoulder_r = entry->filtered[6];
+    pose.elbow = entry->filtered[8];
+    pose.wrist = entry->filtered[10];
+    pose.finger1 = entry->filtered[STEREO_UART_JOINTS];
+    pose.finger2 = entry->filtered[STEREO_UART_JOINTS + 2];
+    pose.valid = pose.elbow.valid && pose.wrist.valid;
+    return pose;
+}
+
+static void reconstruct_pair(StereoLink *link, const StereoLinkEntry *left_entry,
+                             const StereoLinkEntry *right_entry, int synchronized)
+{
+    const StereoCoordinateFrame *left = &left_entry->frame;
+    const StereoCoordinateFrame *right = &right_entry->frame;
     StereoDepthResult *result = &link->latest;
     HumanPose2D right_pose;
     unsigned index;
@@ -76,8 +121,8 @@ static void reconstruct_pair(StereoLink *link, const StereoCoordinateFrame *left
     memset(result, 0, sizeof(*result));
     result->left_frame_id = left->frame_id;
     result->right_frame_id = right->frame_id;
-    result->left_received_us = left_received;
-    result->right_received_us = right_received;
+    result->left_received_us = left_entry->received_us;
+    result->right_received_us = right_entry->received_us;
     result->left_session_id = left->session_id;
     result->right_session_id = right->session_id;
     result->left_sequence = left->sequence;
@@ -87,25 +132,22 @@ static void reconstruct_pair(StereoLink *link, const StereoCoordinateFrame *left
     result->left_metadata = left->metadata;
     result->right_metadata = right->metadata;
     for (index = 0; index < STEREO_LINK_POINTS; ++index) {
-        Point2D left_point = index < STEREO_UART_JOINTS ? joint_point(left, index)
-            : marker_point(left->markers[index - STEREO_UART_JOINTS]);
-        Point2D right_point = index < STEREO_UART_JOINTS ? joint_point(right, index)
-            : marker_point(right->markers[index - STEREO_UART_JOINTS]);
+        Point2D left_point = left_entry->filtered[index];
+        Point2D right_point = right_entry->filtered[index];
         result->point_status[index] = STEREO_INVALID_ARGUMENT;
         if (left_point.valid && right_point.valid)
             result->point_status[index] = stereo_reconstruct_point(&link->geometry,
                 left_point.x, left_point.y, right_point.x, right_point.y, &result->point[index]);
     }
-    result->image_pose = stereo_coordinate_pose(left);
-    right_pose = stereo_coordinate_pose(right);
+    result->image_pose = filtered_pose(left_entry);
+    right_pose = filtered_pose(right_entry);
     result->control_status = stereo_pose_reconstruct(&link->geometry,
         &result->image_pose, &right_pose, &left->metadata, &right->metadata,
         STEREO_LINK_MAX_SKEW_US, &result->measured_pose, &result->diagnostics);
     if (!synchronized) {
         result->control_status = STEREO_POSE_UNVERIFIED;
         memset(&result->measured_pose, 0, sizeof(result->measured_pose));
-        if (link->async_test_enabled &&
-            distance_us(left_received, right_received) <= STEREO_LINK_ASYNC_MAX_GAP_US) {
+        if (link->async_test_enabled) {
             result->async_test = 1U;
             result->async_status = stereo_pose_reconstruct_async_test(&link->geometry,
                 &result->image_pose, &right_pose, &result->async_measured_pose,
@@ -137,10 +179,11 @@ static void match_pair(StereoLink *link)
                 if (gap > STEREO_LINK_MAX_SKEW_US) continue;
             } else {
                 gap = distance_us(left->received_us, right->received_us);
-                if (gap > STEREO_LINK_MAX_AGE_US) continue;
+                if (!link->async_test_enabled && gap > STEREO_LINK_MAX_AGE_US) continue;
             }
-            if (!found || (synchronized && !selected_synchronized) ||
-                (synchronized == selected_synchronized && gap < best)) {
+            if (!found || (!link->async_test_enabled &&
+                ((synchronized && !selected_synchronized) ||
+                 (synchronized == selected_synchronized && gap < best)))) {
                 found = 1;
                 selected_left = left_index;
                 selected_right = right_index;
@@ -149,10 +192,8 @@ static void match_pair(StereoLink *link)
             }
         }
     if (found) {
-        reconstruct_pair(link, &link->queue[0][selected_left].frame,
-                         &link->queue[1][selected_right].frame, selected_synchronized,
-                         link->queue[0][selected_left].received_us,
-                         link->queue[1][selected_right].received_us);
+        reconstruct_pair(link, &link->queue[0][selected_left],
+                         &link->queue[1][selected_right], selected_synchronized);
         remove_entry(link, 0, selected_left);
         remove_entry(link, 1, selected_right);
     }
@@ -174,6 +215,8 @@ int stereo_link_push(StereoLink *link, unsigned side,
         if (link->have_sequence[side]) {
             link->count[0] = link->count[1] = 0;
             link->ready = 0;
+            memset(link->filtered, 0, sizeof(link->filtered));
+            memset(link->have_filter_time, 0, sizeof(link->have_filter_time));
         }
         link->have_exposure[side] = 0;
     }
@@ -193,18 +236,22 @@ int stereo_link_push(StereoLink *link, unsigned side,
     link->sequence[side] = frame->sequence;
     if (link->count[side] == STEREO_LINK_QUEUE) {
         remove_entry(link, side, 0);
-        ++link->expired_frames;
+        if (link->async_test_enabled) ++link->queue_overflows;
+        else ++link->expired_frames;
     }
     link->queue[side][link->count[side]].frame = *frame;
     link->queue[side][link->count[side]].received_us = received_us;
+    filter_entry(link, side, &link->queue[side][link->count[side]]);
     ++link->count[side];
-    match_pair(link);
+    if (!link->async_test_enabled) match_pair(link);
     return 1;
 }
 
 int stereo_link_take(StereoLink *link, StereoDepthResult *result)
 {
-    if (link == NULL || result == NULL || !link->ready) return 0;
+    if (link == NULL || result == NULL) return 0;
+    if (link->async_test_enabled && !link->ready) match_pair(link);
+    if (!link->ready) return 0;
     *result = link->latest;
     link->ready = 0;
     return 1;
@@ -217,4 +264,6 @@ void stereo_link_set_async_test(StereoLink *link, int enabled)
     link->count[0] = link->count[1] = 0;
     link->ready = 0U;
     memset(&link->latest, 0, sizeof(link->latest));
+    memset(link->filtered, 0, sizeof(link->filtered));
+    memset(link->have_filter_time, 0, sizeof(link->have_filter_time));
 }

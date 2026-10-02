@@ -57,7 +57,7 @@
 
 /* Firmware power-up defaults. Change these values to tune color detection. */
 #define CNN_DEFAULT_RED_MARGIN       50U
-#define CNN_DEFAULT_GREEN_MARGIN     50U
+#define CNN_DEFAULT_GREEN_MARGIN     30U
 #define CNN_DEFAULT_BLUE_MARGIN      50U
 #define CNN_DEFAULT_YELLOW_RG_DELTA  40U
 #define CNN_DEFAULT_YELLOW_BGAP      40U

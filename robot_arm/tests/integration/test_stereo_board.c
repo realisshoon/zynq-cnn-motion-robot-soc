@@ -175,6 +175,24 @@ int main(void)
         stereo_board_stats(&stats);
         assert(stats.expired_frames > 0 && stats.pairs == 2);
         assert(!input_pose_ready());
+        assert(stereo_board_set_async_test(1));
+        remote.sequence = 4;
+        remote.frame_id = 557;
+        assert(stereo_uart_encode(&remote, packet));
+        inject(packet, sizeof(packet));
+        local.frame_id = 3;
+        assert(stereo_board_on_result(&local, NULL));
+        now += 1000000;
+        stereo_board_service();
+        now += 1000000;
+        stereo_board_service();
+        assert(stereo_board_take_depth(&depth));
+        assert(depth.left_frame_id == 557 && depth.right_frame_id == 3);
+        assert(depth.async_test && !depth.time_verified);
+        stereo_board_stats(&stats);
+        assert(stats.pairs == 3);
+        assert(stereo_board_set_async_test(0));
+        assert(!stereo_board_take_depth(&depth));
     }
 #endif
     puts("test_stereo_board: PASS");

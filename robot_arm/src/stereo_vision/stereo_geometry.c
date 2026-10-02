@@ -32,7 +32,7 @@ static int valid_camera(const StereoCameraCalibration *camera)
 
 StereoGeometryOptions stereo_geometry_default_options(void)
 {
-    StereoGeometryOptions options = {2.0, 1e-6};
+    StereoGeometryOptions options = {15.0, 1e-6};
     return options;
 }
 

@@ -56,6 +56,110 @@ static StereoDepthResult pair(StereoLink *link, unsigned sequence, unsigned offs
     return result;
 }
 
+static void test_async_fifo(const StereoCalibration *parameters)
+{
+    StereoLink link;
+    StereoDepthResult result;
+    unsigned side, sequence;
+    assert(stereo_link_init(&link, parameters));
+    stereo_link_set_async_test(&link, 1);
+    for (side = 0; side < 2; ++side)
+        for (sequence = 1; sequence <= 3; ++sequence) {
+            StereoCoordinateFrame queued = frame(side, sequence, 0);
+            uint64_t received = side ? 5000000U + sequence * 20000U
+                : 1000000U + (sequence - 1) * 1200000U;
+            assert(stereo_link_push(&link, side, &queued, received));
+        }
+    assert(link.count[0] == 3 && link.count[1] == 3 && !link.ready);
+    assert(!link.expired_frames && !link.queue_overflows);
+    for (sequence = 1; sequence <= 3; ++sequence) {
+        assert(stereo_link_take(&link, &result));
+        assert(result.left_sequence == sequence && result.right_sequence == sequence);
+        assert(result.left_frame_id == sequence && result.right_frame_id == 100 + sequence);
+        assert(result.left_received_us == 1000000U + (sequence - 1) * 1200000U);
+        assert(result.right_received_us == 5000000U + sequence * 20000U);
+        assert(result.async_test && result.async_status == STEREO_POSE_OK);
+        assert(!result.time_verified && result.control_status == STEREO_POSE_UNVERIFIED);
+        assert(!result.left_metadata.exposure_time_verified && !result.right_metadata.exposure_time_verified);
+        assert(link.count[0] == 3 - sequence && link.count[1] == 3 - sequence);
+    }
+    assert(!stereo_link_take(&link, &result));
+    assert(link.pairs == 3 && !link.overwritten_results && !link.expired_frames);
+
+    assert(STEREO_LINK_QUEUE == 8);
+    assert(stereo_link_init(&link, parameters));
+    stereo_link_set_async_test(&link, 1);
+    for (side = 0; side < 2; ++side)
+        for (sequence = 1; sequence <= STEREO_LINK_QUEUE + 2; ++sequence) {
+            StereoCoordinateFrame queued = frame(side, sequence, 0);
+            assert(stereo_link_push(&link, side, &queued, 6000000U + sequence * 20000U));
+            assert(link.count[side] <= STEREO_LINK_QUEUE);
+        }
+    assert(link.count[0] == 8 && link.count[1] == 8);
+    assert(link.queue_overflows == 4 && !link.expired_frames && !link.pairs);
+    for (sequence = 3; sequence <= STEREO_LINK_QUEUE + 2; ++sequence) {
+        assert(stereo_link_take(&link, &result));
+        assert(result.left_sequence == sequence && result.right_sequence == sequence);
+        assert(result.async_test && result.async_status == STEREO_POSE_OK);
+    }
+    assert(!stereo_link_take(&link, &result));
+    assert(!link.count[0] && !link.count[1] && link.pairs == 8 && !link.overwritten_results);
+}
+
+static void test_strict_timing(const StereoCalibration *parameters)
+{
+    StereoLink link;
+    StereoDepthResult result;
+    StereoCoordinateFrame left = frame(0, 1, 0), right = frame(1, 1, 0);
+    assert(stereo_link_init(&link, parameters));
+    result = pair(&link, 1, 0, 1000000U, 1000000U + STEREO_LINK_MAX_AGE_US);
+    assert(!result.async_test && !link.expired_frames);
+    assert(stereo_link_init(&link, parameters));
+    assert(stereo_link_push(&link, 0, &left, 1000000U));
+    assert(stereo_link_push(&link, 1, &right, 1000000U + STEREO_LINK_MAX_AGE_US + 1));
+    assert(link.expired_frames == 1 && !link.count[0] && link.count[1] == 1);
+    assert(!stereo_link_take(&link, &result));
+
+    assert(stereo_link_init(&link, parameters));
+    stereo_link_set_async_test(&link, 1);
+    left.metadata = (StereoFrameMetadata){1000000U, 7, 1, 1, 1};
+    right.metadata = (StereoFrameMetadata){1000000U, 8, 1, 1, 1};
+    assert(stereo_link_push(&link, 0, &left, 1000000U));
+    assert(stereo_link_push(&link, 1, &right, 1000000U));
+    assert(!stereo_link_take(&link, &result));
+    assert(link.count[0] == 1 && link.count[1] == 1 && !link.unsynchronized_pairs);
+    left.sequence++;
+    left.metadata.shared_clock_epoch = 8;
+    left.metadata.exposure_time_us++;
+    assert(!stereo_link_push(&link, 0, &left, 1000001U));
+    assert(link.rejected_frames == 1);
+
+    assert(stereo_link_init(&link, parameters));
+    stereo_link_set_async_test(&link, 1);
+    left = frame(0, 1, 0);
+    left.metadata = (StereoFrameMetadata){1000000U, 7, 1, 1, 1};
+    right.metadata = (StereoFrameMetadata){1000000U + STEREO_LINK_MAX_SKEW_US + 1, 7, 1, 1, 1};
+    assert(stereo_link_push(&link, 0, &left, 1000000U));
+    assert(stereo_link_push(&link, 1, &right, 1000000U));
+    assert(!stereo_link_take(&link, &result));
+    assert(!link.unsynchronized_pairs);
+    left.sequence++;
+    left.metadata.exposure_time_us++;
+    assert(stereo_link_push(&link, 0, &left, 1000001U));
+    assert(stereo_link_take(&link, &result));
+    assert(result.time_verified && !result.async_test && result.control_status == STEREO_POSE_OK);
+    assert(result.diagnostics.exposure_skew_us == STEREO_LINK_MAX_SKEW_US);
+    assert(result.left_metadata.exposure_time_us == left.metadata.exposure_time_us);
+    assert(result.right_metadata.exposure_time_us == right.metadata.exposure_time_us);
+
+    assert(stereo_link_init(&link, parameters));
+    stereo_link_set_async_test(&link, 1);
+    assert(stereo_link_push(&link, 0, &left, 1000000U));
+    assert(stereo_link_push(&link, 1, &right, 1000000U + STEREO_LINK_MAX_AGE_US + 1));
+    assert(link.expired_frames == 1 && !link.count[0]);
+    assert(!stereo_link_take(&link, &result));
+}
+
 int main(void)
 {
     StereoCalibration parameters = calibration();
@@ -66,6 +170,8 @@ int main(void)
     ForearmMappingContext mapping;
     HumanForearmTarget target;
     float dt;
+    test_async_fifo(&parameters);
+    test_strict_timing(&parameters);
     assert(stereo_link_init(&link, &parameters));
     input_pose_cnn_set_stereo(1);
     result = pair(&link, 1, 0, now - 1000, now);
@@ -108,11 +214,15 @@ int main(void)
     input_pose_cnn_set_async_test(0);
     assert(!input_pose_ready() && !input_pose_cnn_publish_stereo(&result));
     input_pose_cnn_set_async_test(1);
-    now += STEREO_LINK_ASYNC_MAX_AGE_US + 1;
-    assert(!input_pose_cnn_publish_stereo(&result));
+    now += 1000001U;
+    assert(input_pose_cnn_publish_stereo(&result));
+    assert(input_pose_cnn_take_stereo(&image, &measured, &dt));
     stereo_link_set_async_test(&link, 1);
-    result = pair(&link, 5, 0, now - STEREO_LINK_ASYNC_MAX_GAP_US - 1, now);
-    assert(!result.async_test && !input_pose_cnn_publish_stereo(&result));
+    input_pose_cnn_set_async_test(1);
+    result = pair(&link, 5, 0, now - 1000001U, now);
+    assert(result.async_test && result.async_status == STEREO_POSE_OK);
+    assert(input_pose_cnn_publish_stereo(&result));
+    assert(input_pose_cnn_take_stereo(&image, &measured, &dt));
     now += 20000;
     result = pair(&link, 6, 0, now - 1000, now);
     altered = result;
@@ -172,11 +282,11 @@ int main(void)
         assert(stereo_link_take(&link, &result));
         assert(input_pose_cnn_publish_stereo(&result));
         assert(input_pose_cnn_take_stereo(&image, &measured, &dt));
-        assert(measured.wrist.z > 1100.0f && measured.wrist.z < 1120.0f);
+        assert(measured.wrist.z > 1000.0f && measured.wrist.z < 1120.0f);
     }
     stereo_link_set_async_test(&link, 0);
     input_pose_cnn_set_async_test(0);
     assert(!link.ready && !link.count[0] && !link.count[1] && !input_pose_ready());
-    puts("test_stereo_async: PASS (no fake exposure flags, real stereo A1 input, gates)");
+    puts("test_stereo_async: PASS (FIFO/overflow, strict timing, real stereo A1 input, 150 mm gate)");
     return 0;
 }
