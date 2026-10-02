@@ -285,8 +285,8 @@ int forearm_mapping_update_stereo(ForearmMappingContext *ctx, const HumanPose2D 
     span = fmaxf(pm_distance_2d(pose->elbow.value, pose->wrist.value),
                   PM_MIN_SHOULDER_WIDTH_PX);
     memset(&fresh, 0, sizeof(fresh));
-    if (fm_calculate_angles_in_frame(ctx, filter_dt, pm_vec3(1.0f, 0.0f, 0.0f),
-                                     pm_vec3(0.0f, 1.0f, 0.0f), pm_vec3(0.0f, 0.0f, 1.0f),
+    if (fm_calculate_angles_in_frame(ctx, filter_dt, pm_vec3(-1.0f, 0.0f, 0.0f),
+                                     pm_vec3(0.0f, 1.0f, 0.0f), pm_vec3(0.0f, 0.0f, -1.0f),
                                      &fresh) != 0) return hold_or_invalid(ctx, out);
     if (pm_fingers_both_fresh(pose) &&
         measured_point_valid(measured_pose->finger1) && measured_point_valid(measured_pose->finger2)) {

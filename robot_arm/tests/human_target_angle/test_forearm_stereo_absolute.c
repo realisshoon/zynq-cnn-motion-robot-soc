@@ -42,10 +42,10 @@ static StereoFixture fixture(float yaw_deg, float elevation_deg,
     float elevation = elevation_deg * PM_DEG_TO_RAD;
     float pitch = wrist_pitch_deg * PM_DEG_TO_RAD;
     float roll = wrist_roll_deg * PM_DEG_TO_RAD;
-    Vec3 forward = pm_vec3(sinf(yaw) * cosf(elevation), sinf(elevation),
-                           cosf(yaw) * cosf(elevation));
-    Vec3 up = pm_vec3(-sinf(yaw) * sinf(elevation), cosf(elevation),
-                      -cosf(yaw) * sinf(elevation));
+    Vec3 forward = pm_vec3(-sinf(yaw) * cosf(elevation), sinf(elevation),
+                           -cosf(yaw) * cosf(elevation));
+    Vec3 up = pm_vec3(sinf(yaw) * sinf(elevation), cosf(elevation),
+                      cosf(yaw) * sinf(elevation));
     Vec3 normal = pm_vadd(pm_vscale(up, cosf(roll)),
                           pm_vscale(pm_vcross(forward, up), sinf(roll)));
     Vec3 lateral = pm_vcross(normal, forward);
@@ -165,12 +165,12 @@ static void test_depth_and_translation(void)
     assert(forearm_mapping_init(&context) == 0);
     assert(update(&context, &input, 0.05f, &target) == 1);
     near(target.elbow_roll_deg, 90.0f, 0.001f);
-    input.measured.wrist.z += 250.0f;
+    input.measured.wrist.z -= 250.0f;
     input.measured.finger1.valid = input.measured.finger2.valid = 0U;
     assert(forearm_mapping_init(&context) == 0);
     assert(update(&context, &input, 0.05f, &target) == 1);
     near(target.elbow_roll_deg, 45.0f, 0.001f);
-    near(context.pose.wrist_3d.z, 1250.0f, 0.001f);
+    near(context.pose.wrist_3d.z, 750.0f, 0.001f);
     for (index = 0; index < sizeof(points) / sizeof(points[0]); ++index) {
         points[index]->x += 500.0f;
         points[index]->y -= 100.0f;
@@ -286,6 +286,35 @@ static void test_invalid_and_duplicate(void)
                                          POSE_ARM_RIGHT, 0.05f, &target) == -1);
 }
 
+static void test_person_axes_and_recorded_pose(void)
+{
+    ForearmMappingContext context;
+    HumanForearmTarget target;
+    StereoFixture input = fixture(30.0f, 0.0f, 0.0f, 0.0f);
+    assert(input.measured.wrist.x < input.measured.elbow.x);
+    assert(input.measured.wrist.z < input.measured.elbow.z);
+    assert(forearm_mapping_init(&context) == 0);
+    assert(update(&context, &input, 0.05f, &target) == 1);
+    near(target.elbow_roll_deg, 30.0f, 0.001f);
+    input = fixture(-30.0f, 0.0f, 0.0f, 0.0f);
+    assert(input.measured.wrist.x > input.measured.elbow.x);
+    assert(forearm_mapping_init(&context) == 0);
+    assert(update(&context, &input, 0.05f, &target) == 1);
+    near(target.elbow_roll_deg, -30.0f, 0.001f);
+    input.measured.elbow = pm_vec3(-236.007f, -282.937f, 1553.784f);
+    input.measured.wrist = pm_vec3(-315.109f, -23.009f, 1217.803f);
+    input.measured.finger1.valid = input.measured.finger2.valid = 0U;
+    input.image.elbow = project(input.measured.elbow);
+    input.image.wrist = project(input.measured.wrist);
+    assert(forearm_mapping_init(&context) == 0);
+    assert(update(&context, &input, 0.05f, &target) == 1);
+    near(target.elbow_roll_deg, 13.2482f, 0.001f);
+    near(target.elbow_pitch_deg, 36.9816f, 0.001f);
+    point_near(context.pose.elbow_3d, input.measured.elbow);
+    point_near(context.pose.wrist_3d, input.measured.wrist);
+    assert(!target.wrist_valid && !context.pose.body_frame_valid);
+}
+
 static void test_stage_and_mono_mode_isolation(void)
 {
     ForearmMappingContext stereo_context, mono_context;
@@ -326,7 +355,8 @@ int main(void)
     test_continuity_and_poles();
     test_hand_missing_and_degenerate();
     test_invalid_and_duplicate();
+    test_person_axes_and_recorded_pose();
     test_stage_and_mono_mode_isolation();
-    puts("test_forearm_stereo_absolute: PASS (7 groups)");
+    puts("test_forearm_stereo_absolute: PASS (8 groups, person right/up/forward axes)");
     return 0;
 }
