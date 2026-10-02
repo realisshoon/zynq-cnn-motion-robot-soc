@@ -20,6 +20,18 @@ int cnn_app_control_event_post_uart(char command)
         next = CNN_APP_EVENT_RECORD_TOGGLE;
     } else if (command == CNN_APP_UART_CMD_PLAY) {
         next = CNN_APP_EVENT_PLAY_TOGGLE;
+    } else if (command == CNN_APP_UART_CMD_PWM_ENABLE) {
+        next = CNN_APP_EVENT_PWM_ENABLE;
+    } else if (command == CNN_APP_UART_CMD_PWM_DISABLE) {
+        next = CNN_APP_EVENT_PWM_DISABLE;
+    } else if (command == CNN_APP_UART_CMD_PWM_STATUS) {
+        next = CNN_APP_EVENT_PWM_STATUS;
+    } else if (command == CNN_APP_UART_CMD_ASYNC_ENABLE) {
+        next = CNN_APP_EVENT_ASYNC_ENABLE;
+    } else if (command == CNN_APP_UART_CMD_ASYNC_DISABLE) {
+        next = CNN_APP_EVENT_ASYNC_DISABLE;
+    } else if (command == CNN_APP_UART_CMD_ASYNC_STATUS) {
+        next = CNN_APP_EVENT_ASYNC_STATUS;
     } else {
         return 0;
     }

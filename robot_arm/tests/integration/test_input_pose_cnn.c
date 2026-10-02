@@ -29,7 +29,7 @@ int main(void)
     result.joint[CNN_JOINT_RIGHT_ELBOW] = (cnn_joint_t){400U, 350U, 50, 1U};
     result.joint[CNN_JOINT_RIGHT_WRIST] = (cnn_joint_t){500U, 450U, 50, 1U};
     result.red_marker = marker(520U, 470U, 1);
-    result.blue_marker = marker(550U, 480U, 1);
+    result.green_marker = marker(550U, 480U, 1); /* finger2는 초록 마커(2026-09-30) */
     fake_time = 1000000U;
     assert(input_pose_cnn_publish(&result));
     assert(!input_pose_cnn_publish(&result));
@@ -45,7 +45,7 @@ int main(void)
 
     result.frame_id = 13U;
     result.joint[CNN_JOINT_RIGHT_WRIST].x = 1280U;
-    result.blue_marker = marker(550U, 720U, 1);
+    result.green_marker = marker(550U, 720U, 1); /* 범위 밖(y>=720)이라 invalid로 남아야 한다 */
     fake_time = 1020000U;
     assert(input_pose_cnn_publish(&result));
     result.frame_id = 14U;

@@ -38,7 +38,7 @@
 #include "xuartps_hw.h"
 
 /* ---- 설정값 (XSA가 만든 xparameters.h 기준) ---- */
-#define PLATFORM_UART_DEVICE_ID   XPAR_XUARTPS_0_DEVICE_ID              /* PS UART1 (USB-UART) */
+#define PLATFORM_UART_DEVICE_ID   XPAR_PS7_UART_1_DEVICE_ID              /* PS UART1 (USB-UART) */
 /* [TRACE] trace를 켠 빌드는 921600, 끈 빌드는 115200이다. PC 스크립트도 같은 속도로 열어야 한다(--baud). */
 #ifdef ROBOT_TRACE
 #define PLATFORM_UART_BAUD        ROBOT_TRACE_UART_BAUD
@@ -126,6 +126,8 @@ int platform_init(void)
     /* UART 초기화가 실패하면 서보를 켜기 전에 끝낸다(RTL reset 상태라 PWM 출력은 꺼져 있다). */
     uart_cfg = XUartPs_LookupConfig(PLATFORM_UART_DEVICE_ID);
     if (uart_cfg == NULL ||
+        uart_cfg->BaseAddress != 0xE0001000U ||
+        STDIN_BASEADDRESS != 0xE0001000U || STDOUT_BASEADDRESS != 0xE0001000U ||
         XUartPs_CfgInitialize(&s_uart, uart_cfg, uart_cfg->BaseAddress) != XST_SUCCESS ||
         XUartPs_SetBaudRate(&s_uart, PLATFORM_UART_BAUD) != XST_SUCCESS) {
         xil_printf("[platform] UART init failed\r\n");

@@ -38,6 +38,18 @@ add_library(human_target_angle STATIC
 )
 configure_robot_target(human_target_angle)
 
+add_library(stereo_vision STATIC
+    src/stereo_vision/stereo_geometry.c
+    src/stereo_vision/stereo_calibration.c
+    src/stereo_vision/stereo_pose.c
+    src/stereo_vision/stereo_uart_protocol.c
+    src/stereo_vision/stereo_link.c
+)
+configure_robot_target(stereo_vision)
+if(UNIX OR MINGW)
+    target_link_libraries(stereo_vision PUBLIC m)
+endif()
+
 # pose_mapping_internal.h는 Agent1 내부 전용 헤더다.
 target_include_directories(human_target_angle
     PRIVATE
@@ -86,12 +98,12 @@ target_include_directories(test_uart_agent1_pc
 option(AGENT1_ONLY "Build Agent1 tests without Agent2/3 application dependencies" OFF)
 if(AGENT1_ONLY)
     enable_testing()
-    foreach(name pose_mapping body_frame forearm pose_csv pose_visual)
+    foreach(name pose_mapping body_frame forearm pose_csv pose_visual forearm_stereo_absolute)
         add_executable(test_${name} tests/human_target_angle/test_${name}.c)
         configure_robot_target(test_${name})
         target_link_libraries(test_${name} PRIVATE human_target_angle uart_pose_protocol_pc)
     endforeach()
-    foreach(name pose_mapping body_frame forearm)
+    foreach(name pose_mapping body_frame forearm forearm_stereo_absolute)
         add_test(NAME ${name} COMMAND test_${name})
     endforeach()
     add_test(NAME forearm_uart COMMAND test_forearm ${CMAKE_CURRENT_SOURCE_DIR}/etc/uart_pose_stream.bin)
@@ -161,6 +173,10 @@ target_link_libraries(robot_arm_2d_control
 include(CTest)
 
 if(BUILD_TESTING)
+    add_executable(test_forearm_stereo_absolute tests/human_target_angle/test_forearm_stereo_absolute.c)
+    configure_robot_target(test_forearm_stereo_absolute)
+    target_link_libraries(test_forearm_stereo_absolute PRIVATE human_target_angle)
+    add_test(NAME forearm_stereo_absolute COMMAND test_forearm_stereo_absolute)
     # Agent 1
     add_executable(test_pose_mapping
         tests/human_target_angle/test_pose_mapping.c

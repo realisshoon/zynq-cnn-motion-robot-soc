@@ -12,6 +12,11 @@ int agent1_forearm_stage_run(const HumanPose2D *pose, PoseArmSide side, float dt
     return forearm_mapping_update(&g_forearm, pose, side, dt, &g_output);
 }
 const HumanForearmTarget *agent1_forearm_stage_output(void) { return &g_output; }
+int agent1_forearm_stage_run_stereo(const HumanPose2D *image_pose,
+                                   const HumanPose3D *measured_pose, PoseArmSide side, float dt)
+{
+    return forearm_mapping_update_stereo(&g_forearm, image_pose, measured_pose, side, dt, &g_output);
+}
 int agent1_forearm_stage_start_roll_zero_calibration(void)
 {
     return pose_mapping_start_roll_zero_calibration(&g_forearm.pose);

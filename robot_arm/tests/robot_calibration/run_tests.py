@@ -38,14 +38,49 @@ def main():
                                     "src/integration/cnn_app_event.c",
                                     "src/record_replay/motion_record_replay.c"])
     cases = []
+    for role in ("LEFT", "RIGHT"):
+        cases.append((f"test_robot_pwm_uart_{role.lower()}",
+            [source for source in pipeline if source not in (
+                "src/output_controller/servo_hal.c", "src/drivers/servo_pwm_driver.c")] +
+            ["tests/integration/test_robot_pwm_uart.c"],
+            [f"-DROBOT_STEREO_{role}", "-Isrc/cnn_firmware",
+             "-Itests/integration/stubs", "-ffunction-sections", "-fdata-sections",
+             "-Wl,--gc-sections"], []))
+    stereo = [f"src/stereo_vision/{name}.c" for name in
+              ("stereo_geometry", "stereo_calibration", "stereo_pose", "stereo_uart_protocol", "stereo_link")]
+    cases += [
+        ("test_stereo_protocol", stereo + ["tests/integration/test_stereo_protocol.c"], [], []),
+        ("test_stereo_link", stereo + forearm_a1 + ["src/integration/input_pose_cnn.c",
+         "tests/integration/test_stereo_link.c"], ["-Itests/integration/stubs"], []),
+        ("test_stereo_async", stereo + forearm_a1 + ["src/integration/input_pose_cnn.c",
+         "tests/integration/test_stereo_async.c"], ["-Itests/integration/stubs"], []),
+    ]
+    for role in ("LEFT", "RIGHT"):
+        cases.append((f"test_stereo_board_{role.lower()}", stereo +
+            ["src/integration/stereo_board.c", "src/integration/input_pose_cnn.c",
+             "tests/integration/test_stereo_board.c"],
+            [f"-DROBOT_STEREO_{role}", "-Isrc/cnn_firmware",
+             "-Itests/integration/stereo_stubs", "-Itests/integration/stubs"], []))
+    cases.append(("test_camera_missing_pwm", [
+        "src/cnn_firmware/camera_tracking/camera_gimbal_pwm.c",
+        "src/cnn_firmware/camera_tracking/torso_tracker.c",
+        "src/cnn_firmware/camera_tracking/camera_tracking_app.c",
+        "tests/integration/test_camera_missing_pwm.c"],
+        ["-Itests/integration/stereo_stubs", "-Itests/integration/stubs",
+         "-Isrc/cnn_firmware/camera_tracking"], []))
     for name in ("test_pose_mapping", "test_body_frame"):
         cases.append((name, a1 + [f"tests/human_target_angle/{name}.c"], [], []))
+    cases.append(("test_forearm_stereo_absolute", forearm_a1 +
+        ["src/human_target_angle/agent1_forearm_stage.c",
+         "tests/human_target_angle/test_forearm_stereo_absolute.c"], [], []))
     cases += [
         ("test_input_pose_cnn", ["src/integration/input_pose_cnn.c",
          "tests/integration/test_input_pose_cnn.c"],
          ["-Itests/integration/stubs"], []),
         ("test_cnn_app_event", ["src/integration/cnn_app_event.c",
          "tests/integration/test_cnn_app_event.c"], [], []),
+        ("test_frame_capture_paths", ["tests/integration/test_frame_capture_paths.c"],
+         ["-Itests/integration/capture_stubs", "-Itests/integration/stubs"], []),
         ("test_cnn_trace", ["src/integration/trace.c",
          "tests/integration/test_cnn_trace.c"],
          ["-DROBOT_TRACE", "-ffunction-sections", "-fdata-sections", "-Wl,--gc-sections"], []),

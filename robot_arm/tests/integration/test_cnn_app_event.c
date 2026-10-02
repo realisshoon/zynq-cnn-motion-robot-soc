@@ -23,6 +23,27 @@ int main(void)
     assert(event == CNN_APP_EVENT_PLAY_TOGGLE);
     assert(!cnn_app_take_control_event(&event));
 
+    assert(cnn_app_control_event_post_uart(CNN_APP_UART_CMD_PWM_ENABLE));
+    assert(cnn_app_take_control_event(&event));
+    assert(event == CNN_APP_EVENT_PWM_ENABLE);
+    assert(cnn_app_control_event_post_uart(CNN_APP_UART_CMD_PWM_DISABLE));
+    assert(cnn_app_take_control_event(&event));
+    assert(event == CNN_APP_EVENT_PWM_DISABLE);
+    assert(cnn_app_control_event_post_uart(CNN_APP_UART_CMD_PWM_STATUS));
+    assert(cnn_app_take_control_event(&event));
+    assert(event == CNN_APP_EVENT_PWM_STATUS);
+    assert(cnn_app_control_event_post_uart(CNN_APP_UART_CMD_ASYNC_ENABLE));
+    assert(cnn_app_take_control_event(&event));
+    assert(event == CNN_APP_EVENT_ASYNC_ENABLE);
+    assert(cnn_app_control_event_post_uart(CNN_APP_UART_CMD_ASYNC_DISABLE));
+    assert(cnn_app_take_control_event(&event));
+    assert(event == CNN_APP_EVENT_ASYNC_DISABLE);
+    assert(cnn_app_control_event_post_uart(CNN_APP_UART_CMD_ASYNC_STATUS));
+    assert(cnn_app_take_control_event(&event));
+    assert(event == CNN_APP_EVENT_ASYNC_STATUS);
+    assert(!cnn_app_control_event_post_uart('e'));
+    assert(!cnn_app_control_event_post_uart('v'));
+
     puts("test_cnn_app_event: PASS");
     return 0;
 }

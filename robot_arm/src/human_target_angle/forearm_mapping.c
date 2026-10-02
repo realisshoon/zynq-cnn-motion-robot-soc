@@ -17,13 +17,13 @@ int forearm_mapping_init(ForearmMappingContext *ctx)
     return pose_mapping_init(&ctx->pose);
 }
 
-int fm_calculate_angles(ForearmMappingContext *ctx, float dt,
-                        HumanForearmTarget *out)
+static int fm_calculate_angles_in_frame(ForearmMappingContext *ctx, float dt,
+                                         Vec3 body_x, Vec3 body_y, Vec3 body_z,
+                                         HumanForearmTarget *out)
 {
-    Vec3 f, h, r, body_x, body_y, body_z;
+    Vec3 f, h, r;
     float fx, fy, fz, horizontal, yaw, pitch, yr, pr;
-    if (!ctx || !out || pm_get_stable_body_frame(&ctx->pose,
-                                                &body_x, &body_y, &body_z) != 0) return -1;
+    if (!ctx || !out) return -1;
     f = pm_vsub(ctx->pose.wrist_3d, ctx->pose.elbow_3d);
     if (pm_vnormalize(&f) != 0) return -1;
     fx = pm_vdot(f, body_x);
@@ -66,6 +66,15 @@ int fm_calculate_angles(ForearmMappingContext *ctx, float dt,
     out->elbow_pitch_deg = pm_clampf(ctx->elbow_pitch_deg, -90.0f, 90.0f);
     out->elbow_roll_observable = !ctx->elbow_roll_singular;
     return 0;
+}
+
+int fm_calculate_angles(ForearmMappingContext *ctx, float dt,
+                        HumanForearmTarget *out)
+{
+    Vec3 body_x, body_y, body_z;
+    if (!ctx || !out || pm_get_stable_body_frame(&ctx->pose,
+                                                &body_x, &body_y, &body_z) != 0) return -1;
+    return fm_calculate_angles_in_frame(ctx, dt, body_x, body_y, body_z, out);
 }
 
 static int fm_calculate_hand_impl(ForearmMappingContext *ctx, float span,
@@ -128,6 +137,7 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
     memset(out, 0, sizeof(*out));
     if (!ctx || !pose || !ctx->pose.initialized ||
         (side != POSE_ARM_LEFT && side != POSE_ARM_RIGHT)) return -1;
+    if (ctx->stereo_input_active) forearm_mapping_init(ctx);
     p = &ctx->pose;
     if (p->last_arm_side_valid && p->last_arm_side != side) {
         forearm_mapping_init(ctx);
@@ -210,6 +220,95 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
     }
     fresh.valid = 1U;
     p->target_age_sec = 0.0f;
+    ctx->last_target = fresh;
+    ctx->last_target_valid = 1U;
+    *out = fresh;
+    return 1;
+}
+
+static int measured_point_valid(Point3D point)
+{
+    return point.valid && isfinite(point.x) && isfinite(point.y) &&
+           isfinite(point.z) && point.z > 0.0f;
+}
+
+int forearm_mapping_update_stereo(ForearmMappingContext *ctx, const HumanPose2D *image_pose,
+                                  const HumanPose3D *measured_pose, PoseArmSide side,
+                                  float dt, HumanForearmTarget *out)
+{
+    PoseMappingContext *pose;
+    HumanForearmTarget fresh;
+    HumanPose2D finite_pose;
+    float filter_dt, span;
+    uint8_t hand_updated = 0U, gripper_fresh = 0U;
+    if (out == NULL) return -1;
+    memset(out, 0, sizeof(*out));
+    if (ctx == NULL || image_pose == NULL || measured_pose == NULL || !ctx->pose.initialized ||
+        (side != POSE_ARM_LEFT && side != POSE_ARM_RIGHT)) return -1;
+    if (!ctx->stereo_input_active ||
+        (ctx->pose.last_arm_side_valid && ctx->pose.last_arm_side != side)) {
+        forearm_mapping_init(ctx);
+        ctx->stereo_input_active = 1U;
+    }
+    pose = &ctx->pose;
+    if (pose->last_frame_id_valid && pose->last_frame_id == image_pose->frame_id)
+        return hold_or_invalid(ctx, out);
+    pose->last_frame_id = image_pose->frame_id;
+    pose->last_frame_id_valid = 1U;
+    pose->last_arm_side = side;
+    pose->last_arm_side_valid = 1U;
+    if (!isfinite(dt) || dt <= 0.0f) dt = 1.0f / PM_DEFAULT_FPS;
+    filter_dt = pm_sanitize_filter_dt(dt);
+    if (ctx->last_target_valid) pose->target_age_sec += dt;
+    if (!image_pose->valid || !measured_pose->valid ||
+        measured_pose->frame_id != image_pose->frame_id ||
+        !measured_point_valid(measured_pose->elbow) || !measured_point_valid(measured_pose->wrist))
+        return hold_or_invalid(ctx, out);
+    finite_pose = *image_pose;
+    {
+        Point2D *points[] = {&finite_pose.shoulder_l, &finite_pose.shoulder_r, &finite_pose.elbow,
+                            &finite_pose.wrist, &finite_pose.finger1, &finite_pose.finger2};
+        unsigned index;
+        for (index = 0; index < sizeof(points) / sizeof(points[0]); ++index)
+            if (!isfinite(points[index]->x) || !isfinite(points[index]->y)) points[index]->valid = 0;
+    }
+    pm_update_all_landmarks(pose, &finite_pose, filter_dt);
+    if (!pose->elbow.fresh || !pose->wrist.fresh) return hold_or_invalid(ctx, out);
+    pose->shoulder_l_3d = measured_point_valid(measured_pose->shoulder_l)
+        ? measured_pose->shoulder_l : (Point3D){0};
+    pose->shoulder_r_3d = measured_point_valid(measured_pose->shoulder_r)
+        ? measured_pose->shoulder_r : (Point3D){0};
+    pose->elbow_3d = measured_pose->elbow;
+    pose->wrist_3d = measured_pose->wrist;
+    pose->major_pose3d_valid = 1U;
+    pose->finger_pose3d_valid = 0U;
+    span = fmaxf(pm_distance_2d(pose->elbow.value, pose->wrist.value),
+                  PM_MIN_SHOULDER_WIDTH_PX);
+    memset(&fresh, 0, sizeof(fresh));
+    if (fm_calculate_angles_in_frame(ctx, filter_dt, pm_vec3(1.0f, 0.0f, 0.0f),
+                                     pm_vec3(0.0f, 1.0f, 0.0f), pm_vec3(0.0f, 0.0f, 1.0f),
+                                     &fresh) != 0) return hold_or_invalid(ctx, out);
+    if (pm_fingers_both_fresh(pose) &&
+        measured_point_valid(measured_pose->finger1) && measured_point_valid(measured_pose->finger2)) {
+        pose->finger1_3d = measured_pose->finger1;
+        pose->finger2_3d = measured_pose->finger2;
+        pose->finger_parent_wrist = pose->wrist_3d;
+        pose->finger_pose3d_valid = 1U;
+        if (pm_update_gripper_from_2d(pose, span, &fresh.gripper_norm) == 0) gripper_fresh = 1U;
+        if (fm_calculate_hand_impl(ctx, span, dt, filter_dt, 1U, &fresh) == 0) hand_updated = 1U;
+    }
+    if (!hand_updated) {
+        if (ctx->last_target_valid) {
+            fresh.wrist_pitch_deg = ctx->last_target.wrist_pitch_deg;
+            fresh.wrist_roll_deg = ctx->last_target.wrist_roll_deg;
+            fresh.wrist_valid = ctx->last_target.wrist_valid;
+        }
+        if (!gripper_fresh) fresh.gripper_norm = ctx->last_target_valid
+            ? ctx->last_target.gripper_norm : 1.0f;
+    }
+    fresh.frame_id = image_pose->frame_id;
+    fresh.valid = 1U;
+    pose->target_age_sec = 0.0f;
     ctx->last_target = fresh;
     ctx->last_target_valid = 1U;
     *out = fresh;

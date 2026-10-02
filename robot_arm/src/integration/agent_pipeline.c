@@ -118,6 +118,55 @@ int agent_pipeline_init(AgentPipelineContext *ctx)
     return agent_pipeline_init_mode(ctx, 1);
 }
 
+int agent_pipeline_set_output_enabled(AgentPipelineContext *ctx, int enabled)
+{
+    const ForearmJointCommand *reference;
+    ForearmJointCommand clamped;
+    ServoPwmCommand pwm;
+    unsigned axis;
+    float positions[FOREARM_MOTION_JOINT_COUNT];
+
+    if (ctx == NULL) return 0;
+    if (!enabled) {
+        if (!servo_hal_disable()) {
+            ctx->servo_errors++;
+            return 0;
+        }
+        ctx->output_enabled = 0U;
+        return 1;
+    }
+    if (ctx->output_enabled) return 1;
+    reference = ctx->applied_command_valid ? &ctx->applied_command : &k_home_pose;
+    clamped = *reference;
+    forearm_motion_control_apply_limits(&clamped);
+    if (!reference->valid || !same_command(&clamped, reference) ||
+        !forearm_safety_check_apply(reference, NULL) ||
+        !same_command(&ctx->output, reference) || !ctx->agent3_command_valid ||
+        !same_command(&ctx->agent3_command, reference) || !ctx->motion.has_target ||
+        ctx->motion.gripper != reference->gripper_norm) return 0;
+    positions[0] = reference->elbow_roll_deg;
+    positions[1] = reference->elbow_pitch_deg;
+    positions[2] = reference->wrist_pitch_deg;
+    positions[3] = reference->wrist_roll_deg;
+    for (axis = 0; axis < FOREARM_MOTION_JOINT_COUNT; ++axis) {
+        if (ctx->motion.axes[axis].v != 0.0 ||
+            ctx->motion.axes[axis].q != positions[axis] ||
+            ctx->motion.axes[axis].q != ctx->motion.axes[axis].target) return 0;
+    }
+    if (!output_control_update(reference, &pwm)) return 0;
+    if (!servo_hal_apply(&pwm) || !servo_hal_enable()) {
+        servo_hal_disable();
+        ctx->servo_errors++;
+        return 0;
+    }
+    ctx->pwm = pwm;
+    ctx->applied_command = *reference;
+    ctx->applied_command_valid = 1U;
+    ctx->output_enabled = 1U;
+    ctx->servo_writes++;
+    return 1;
+}
+
 int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec)
 {
     int rc;
@@ -139,6 +188,26 @@ int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec)
 
     if (!agent1_forearm_stage_output()->valid) return 0;
 
+    ctx->target = *agent1_forearm_stage_output();
+    ctx->target_ready = 1U;
+    ctx->targets_valid++;
+    return 1;
+}
+
+int agent1_run_stereo(AgentPipelineContext *ctx, const HumanPose2D *image_pose,
+                      const HumanPose3D *measured_pose, float dt_sec)
+{
+    int rc;
+    if (ctx == NULL || image_pose == NULL || measured_pose == NULL) return 0;
+    ctx->pose = *image_pose;
+    ctx->dt_sec = dt_sec;
+    ctx->frames_in++;
+    ctx->target_ready = 0U;
+    rc = agent1_forearm_stage_run_stereo(image_pose, measured_pose,
+                                        AGENT_PIPELINE_ACTIVE_ARM, dt_sec);
+    TRACE_SET_A1_RC(ctx, rc);
+    (void)rc;
+    if (!agent1_forearm_stage_output()->valid) return 0;
     ctx->target = *agent1_forearm_stage_output();
     ctx->target_ready = 1U;
     ctx->targets_valid++;
