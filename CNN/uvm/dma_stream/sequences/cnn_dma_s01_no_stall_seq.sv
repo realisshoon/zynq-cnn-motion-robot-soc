@@ -48,6 +48,18 @@ class cnn_dma_s01_no_stall_seq extends cnn_dma_stream_base_seq;
         // DUT START
         axil_write(12'h000, 32'h0000_0001);
 
+        // Weight DMA가 실제로 arm될 때까지 기다림
+        //
+        // WEIGHT DMA LENGTH
+        // 0x4041_0028 = 0x0000_03C0
+        //
+        // 0x3C0 = 960 bytes
+        wait_dma_write_commit(vif, 32'h4041_0028, 32'h0000_03C0);
+
+        `uvm_info(get_type_name(),
+                  "Weight DMA control completed. Starting Weight AXIS stream.",
+                  UVM_LOW)
+
         // STEP 2
         // Conv0 Weight
         //
@@ -66,6 +78,17 @@ class cnn_dma_s01_no_stall_seq extends cnn_dma_stream_base_seq;
 
         `uvm_info(get_type_name(),
                   "S01 Weight stream completed: 120 beats / 960 bytes", UVM_LOW)
+
+        // IMAGE DMA SG start까지 기다림
+        //
+        // SG base = 0x1120_0000
+        // taildesc = base + 9152
+        //          = 0x1120_23C0
+        wait_dma_write_commit(vif, 32'h4040_0010, 32'h1120_23C0);
+
+        `uvm_info(get_type_name(),
+                  "Image DMA control completed. Starting Image AXIS stream.",
+                  UVM_LOW)
 
         // STEP 3
         // IMAGE DMA Stream

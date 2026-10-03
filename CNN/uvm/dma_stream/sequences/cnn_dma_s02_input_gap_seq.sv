@@ -90,6 +90,8 @@ class cnn_dma_s02_input_gap_seq extends cnn_dma_stream_base_seq;
         // DUT START
         axil_write(12'h000, 32'h0000_0001);
 
+        wait_dma_write_commit(vif, 32'h4041_0028, 32'h0000_03C0);
+
         // STEP 2
         // WEIGHT Stream
         //
@@ -122,6 +124,8 @@ class cnn_dma_s02_input_gap_seq extends cnn_dma_stream_base_seq;
                              "beats=%0d gap_events=%0d gap_cycles=%0d"},
                                 WEIGHT_BEATS, weight_gap_events,
                                 weight_gap_cycles_total), UVM_LOW)
+
+        wait_dma_write_commit(vif, 32'h4040_0010, 32'h1120_23C0);
 
         // STEP 3
         // IMAGE Stream
