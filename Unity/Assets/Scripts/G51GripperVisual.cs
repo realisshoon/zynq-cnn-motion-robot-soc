@@ -32,6 +32,10 @@ public sealed class G51GripperVisual : MonoBehaviour
     public Transform leftLinkBar;
     public Transform rightLinkBar;
 
+    [Header("Visual solver frame (optional)")]
+    [Tooltip("Use when the visible linkage is mounted away from this control Transform.")]
+    public Transform visualRoot;
+
     [Header("Motion - visual placeholder; tune against real hardware")]
     [Tooltip("gripper_norm=0 at the visual model. Not a measured servo angle.")]
     public float closedDriveDeg = -28f;
@@ -50,6 +54,8 @@ public sealed class G51GripperVisual : MonoBehaviour
     [SerializeField] private float leftBranchSign = 1f;
     [SerializeField] private float rightBranchSign = -1f;
     [SerializeField, Range(0f, 1f)] private float previewOpen = 0.5f;
+
+    private Transform SolverFrame => visualRoot != null ? visualRoot : transform;
 
     /// <summary>
     /// Call once after Builder creates the neutral linkage geometry.
@@ -102,8 +108,8 @@ public sealed class G51GripperVisual : MonoBehaviour
     private float LocalDistance(Transform a, Transform b)
     {
         if (a == null || b == null) return 0f;
-        Vector3 la = transform.InverseTransformPoint(a.position);
-        Vector3 lb = transform.InverseTransformPoint(b.position);
+        Vector3 la = SolverFrame.InverseTransformPoint(a.position);
+        Vector3 lb = SolverFrame.InverseTransformPoint(b.position);
         return Vector2.Distance(new Vector2(la.x, la.y), new Vector2(lb.x, lb.y));
     }
 
@@ -111,9 +117,9 @@ public sealed class G51GripperVisual : MonoBehaviour
     {
         if (jaw == null || pin == null || anchor == null) return 0f;
 
-        Vector3 b3 = transform.InverseTransformPoint(jaw.position);
-        Vector3 p3 = transform.InverseTransformPoint(pin.position);
-        Vector3 q3 = transform.InverseTransformPoint(anchor.position);
+        Vector3 b3 = SolverFrame.InverseTransformPoint(jaw.position);
+        Vector3 p3 = SolverFrame.InverseTransformPoint(pin.position);
+        Vector3 q3 = SolverFrame.InverseTransformPoint(anchor.position);
         Vector2 d = new Vector2(p3.x - b3.x, p3.y - b3.y);
         Vector2 q = new Vector2(q3.x - b3.x, q3.y - b3.y);
         float cross = d.x * q.y - d.y * q.x;
@@ -130,8 +136,8 @@ public sealed class G51GripperVisual : MonoBehaviour
         if (jaw == null || jawAnchor == null || drivePin == null || linkLength <= 0.0001f)
             return false;
 
-        Vector3 b3 = transform.InverseTransformPoint(jaw.position);
-        Vector3 p3 = transform.InverseTransformPoint(drivePin.position);
+        Vector3 b3 = SolverFrame.InverseTransformPoint(jaw.position);
+        Vector3 p3 = SolverFrame.InverseTransformPoint(drivePin.position);
         Vector2 b = new Vector2(b3.x, b3.y);
         Vector2 p = new Vector2(p3.x, p3.y);
         Vector2 bp = p - b;
@@ -184,6 +190,11 @@ public sealed class G51GripperVisual : MonoBehaviour
 
         bar.position = (a.position + b.position) * 0.5f;
         bar.rotation = Quaternion.FromToRotation(Vector3.up, delta.normalized);
-        bar.localScale = new Vector3(linkThickness, length, linkDepth);
+        float localLength = visualRoot != null && bar.parent != null
+            ? Vector3.Distance(
+                bar.parent.InverseTransformPoint(a.position),
+                bar.parent.InverseTransformPoint(b.position))
+            : length;
+        bar.localScale = new Vector3(linkThickness, localLength, linkDepth);
     }
 }
