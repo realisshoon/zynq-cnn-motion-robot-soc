@@ -18,4 +18,6 @@ CNN/uvm/pkg/cnn_base_pkg.sv
 
 CNN/uvm/dma_stream/cnn_dma_stream_pkg.sv
 
+CNN/uvm/dma_stream/checkers/cnn_dma_stream_assertions.sv
+
 CNN/uvm/tb_top.sv
