@@ -28,6 +28,8 @@ class cnn_dma_stream_cfg extends uvm_object;
     // DMA error
     bit inject_dma_error;
 
+    mailbox #(cnn_dma_gap_event_item) gap_cov_mbox;
+
     function new(string name = "cnn_dma_stream_cfg");
         super.new(name);
         image_gap_enable     = 0;
@@ -46,6 +48,9 @@ class cnn_dma_stream_cfg extends uvm_object;
         dma_complete_latency = 0;
 
         inject_dma_error     = 0;
+
+        gap_cov_mbox = new();
+        
     endfunction
 
 endclass

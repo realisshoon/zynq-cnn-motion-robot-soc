@@ -128,6 +128,22 @@ class cnn_dma_stream_base_seq extends cnn_base_sequence;
 
     endtask
 
+    task record_gap_event(cnn_dma_gap_stream_e stream, int unsigned gap_cycles);
+
+        cnn_dma_gap_event_item ev;
+
+
+        ev            = cnn_dma_gap_event_item::type_id::create("gap_event");
+
+
+        ev.stream     = stream;
+        ev.gap_cycles = gap_cycles;
+
+
+        cfg.gap_cov_mbox.put(ev);
+
+    endtask
+
     task body();
         // intentionally empty
         // S01 ~ S08 scenario sequences derive from this class

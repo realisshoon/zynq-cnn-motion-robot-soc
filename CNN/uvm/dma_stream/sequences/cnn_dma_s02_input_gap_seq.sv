@@ -105,10 +105,13 @@ class cnn_dma_s02_input_gap_seq extends cnn_dma_stream_base_seq;
 
                 gap_cycles = get_gap_cycles(beat);
 
+                // 실제 intentional gap 발생
                 repeat (gap_cycles) @(posedge vif.clk);
 
-                weight_gap_events++;
+                // 실제 완료된 gap을 Coverage에 전달
+                record_gap_event(DMA_GAP_WEIGHT, gap_cycles);
 
+                weight_gap_events++;
                 weight_gap_cycles_total += gap_cycles;
 
             end
@@ -154,6 +157,8 @@ class cnn_dma_s02_input_gap_seq extends cnn_dma_stream_base_seq;
 
                     repeat (gap_cycles) @(posedge vif.clk);
 
+                    // 실제 완료된 gap을 Coverage에 전달
+                    record_gap_event(DMA_GAP_IMAGE, gap_cycles);
 
                     image_gap_events++;
 
