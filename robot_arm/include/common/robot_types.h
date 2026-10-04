@@ -18,6 +18,14 @@ typedef struct {
     uint8_t valid;
 } Point3D;
 
+/* Optional same-camera gripper observation. source: 0=use ordinary pose
+ * landmarks, 1=left camera, 2=right camera. Never mix cameras within a triplet. */
+typedef struct {
+    Point2D wrist, finger1, finger2;
+    uint8_t source;
+    float reference_span_px; /* elbow-to-wrist length in the selected camera */
+} HumanGripper2D;
+
 /* Pose detector output consumed by the human target angle module. */
 typedef struct {
     Point2D finger1; /* thumb tip */
@@ -29,6 +37,7 @@ typedef struct {
 
     uint32_t frame_id;
     uint8_t valid;
+    HumanGripper2D gripper_2d;
 } HumanPose2D;
 
 typedef struct {
@@ -66,12 +75,15 @@ typedef struct {
  * valid covers major geometry only. wrist_valid records whether a wrist angle
  * has ever been reconstructed for this target; hand_fresh marks a current
  * frame observation. A valid major target may have wrist_valid=0.
+ * gripper_valid records whether a 2D gripper observation has been accepted;
+ * it remains valid during a dropout so the last gripper target can be held.
  * A fresh 2D gripper observation may update while wrist angles are held. */
 typedef struct {
     float elbow_roll_deg, elbow_pitch_deg;
     float wrist_pitch_deg, wrist_roll_deg, gripper_norm;
     uint32_t frame_id;
     uint8_t valid, elbow_roll_observable, hand_fresh, wrist_valid;
+    uint8_t gripper_valid;
 } HumanForearmTarget;
 
 /* Active five-axis calibrated robot command: Agent2 -> Agent3.

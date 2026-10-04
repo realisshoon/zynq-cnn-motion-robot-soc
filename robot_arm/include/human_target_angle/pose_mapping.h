@@ -159,6 +159,8 @@ typedef struct {
     /* Continuous gripper command and independent hysteretic OPEN/CLOSE state.
      * Recent valid ratios reject an isolated one-frame finger spike. */
     float gripper_finger_span_px;
+    HumanGripper2D gripper_input;
+    uint8_t gripper_last_source;
     float gripper_hand_span_px;
     float gripper_open_ratio;
     float gripper_ratio_used;

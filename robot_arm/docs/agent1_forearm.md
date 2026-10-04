@@ -91,7 +91,8 @@ major dropout/재구성 실패/BodyFrame 실패: 실제 dt 누적 0.35초까지 
 측정이 유효하면 gripper는 별도로 갱신하고, 그 측정이 무효이면 이전값을 유지한다.
 손 초기값은 0/0/OPEN이며 hand_fresh=0이다. 첫 60프레임이 지나도 손목
 각도를 복원하지 못했다면 major target은 valid=1, wrist_valid=0으로 낸다.
-Agent2는 이때 로봇 손목과 그리퍼의 현재 위치를 유지하고 팔꿈치만 움직인다.
+Agent2는 이때 로봇 손목을 유지한다. gripper는 별도의 `gripper_valid`가 1이면
+2D 목표를 따르고, 최초 유효 관측 전에는 로봇의 기존 명령을 유지한다.
 활성 팔 전환은 같은 frame_id여도 history와 roll zero 초기화.
 비유한 좌표는 새 경로에서 missing 취급해 EMA state 오염을 방지한다.
 
@@ -134,6 +135,7 @@ After: include/common/robot_types.h에 다음 공용 HUMAN 타입:
         float wrist_pitch_deg, wrist_roll_deg, gripper_norm;
         uint32_t frame_id;
         uint8_t valid, elbow_roll_observable, hand_fresh, wrist_valid;
+        uint8_t gripper_valid;
     } HumanForearmTarget;
 
 valid=major geometry 유효이며 robot safety 승인이 아니다.
@@ -141,6 +143,7 @@ frame_id=마지막 fresh major ID, HOLD는 이전 ID.
 elbow_roll_observable=이번 방위각 관측 성공, duplicate/major HOLD/특이점에서는 0.
 hand_fresh=이번 손 갱신 성공, duplicate/HOLD/손 missing에서는 0.
 wrist_valid=손목 각도를 한 번이라도 복원했는지; 이전 각도를 유지할 때도 1.
+gripper_valid=2D gripper 비율을 한 번이라도 계산했는지; 누락 시 마지막 목표를 유지할 때도 1.
 return fresh=1, HOLD/duplicate=0, invalid=-1. 자료형 간 cast/alias 없음.
 
 ## 8. Modified Files

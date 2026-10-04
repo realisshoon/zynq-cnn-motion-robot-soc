@@ -10,6 +10,10 @@ unsigned input_pose_cnn_overwritten(void);
 void input_pose_cnn_set_stereo(int enabled);
 void input_pose_cnn_set_async_test(int enabled);
 int input_pose_cnn_publish_stereo(const StereoDepthResult *result);
+const char *input_pose_cnn_admission_reason(void);
+const char *input_pose_cnn_tracking_state(void);
+unsigned input_pose_cnn_reacquire_count(void);
+uint32_t input_pose_cnn_filter_epoch(void);
 int input_pose_cnn_take_stereo(HumanPose2D *image_pose, HumanPose3D *measured_pose, float *dt_sec);
 void input_pose_cnn_discard_stereo_pending(void);
 

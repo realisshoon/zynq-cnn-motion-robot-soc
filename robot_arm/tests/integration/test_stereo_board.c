@@ -6,6 +6,7 @@
 #include "xtime_l.h"
 
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -17,9 +18,18 @@ static uint8_t rx_bytes[10000], tx_bytes[10000];
 static unsigned rx_count, rx_read, tx_count, tx_budget;
 static uint32_t irq_status;
 static XTime now = 1000000;
+static char last_report[2048];
 
 void XTime_GetTime(XTime *time) { *time = now; }
-int xil_printf(const char *format, ...) { (void)format; return 0; }
+int xil_printf(const char *format, ...)
+{
+    va_list arguments;
+    va_start(arguments, format);
+    if (strncmp(format, "[ST]", 4) == 0)
+        vsnprintf(last_report, sizeof(last_report), format, arguments);
+    va_end(arguments);
+    return 0;
+}
 XScuGic *platform_vitis_gic(void) { return &fake_gic; }
 XUartPs_Config *XUartPs_LookupConfig(u16 device) { return device < 2 ? &configs[device] : NULL; }
 int XUartPs_CfgInitialize(XUartPs *uart, XUartPs_Config *config, UINTPTR address)
@@ -186,11 +196,51 @@ int main(void)
         stereo_board_service();
         now += 1000000;
         stereo_board_service();
+        assert(!stereo_board_take_depth(&depth));
+        stereo_board_stats(&stats);
+        assert(stats.pairs == 2 && stats.expired_frames >= 3);
+        assert(strstr(last_report, "time_gate=RECEIPT_LATEST") != NULL);
+        assert(strstr(last_report, "fresh=0 sync=0") != NULL);
+        assert(strstr(last_report, "stale=") != NULL && strstr(last_report, "gap=") != NULL);
+        assert(strstr(last_report, "skip=") != NULL && strstr(last_report, "marker_bad=") != NULL);
+        for (index = 0; index < 3; ++index) {
+            now += 20000;
+            remote.sequence = 5 + index;
+            remote.frame_id = 558 + index;
+            assert(stereo_uart_encode(&remote, packet));
+            inject(packet, sizeof(packet));
+            local.frame_id = 4 + index;
+            assert(stereo_board_on_result(&local, NULL));
+        }
+        stereo_board_service();
         assert(stereo_board_take_depth(&depth));
-        assert(depth.left_frame_id == 557 && depth.right_frame_id == 3);
+        assert(depth.left_frame_id == 560 && depth.right_frame_id == 6);
         assert(depth.async_test && !depth.time_verified);
         stereo_board_stats(&stats);
         assert(stats.pairs == 3);
+        now += 20000;
+        remote.sequence = 8;
+        remote.frame_id = 561;
+        assert(stereo_uart_encode(&remote, packet));
+        inject(packet, sizeof(packet));
+        local.frame_id = 7;
+        assert(stereo_board_on_result(&local, NULL));
+        stereo_board_service();
+        now += STEREO_LINK_MAX_AGE_US + 1U;
+        assert(!stereo_board_take_depth(&depth));
+        stereo_board_service();
+        assert(!input_pose_ready());
+        remote.sequence = 9;
+        remote.frame_id = 562;
+        assert(stereo_uart_encode(&remote, packet));
+        inject(packet, sizeof(packet));
+        now += STEREO_LINK_MAX_RECEIVE_GAP_US + 1U;
+        local.frame_id = 8;
+        assert(stereo_board_on_result(&local, NULL));
+        stereo_board_service();
+        assert(!stereo_board_take_depth(&depth));
+        stereo_board_stats(&stats);
+        assert(stats.pairs == 4);
         assert(stereo_board_set_async_test(0));
         assert(!stereo_board_take_depth(&depth));
     }

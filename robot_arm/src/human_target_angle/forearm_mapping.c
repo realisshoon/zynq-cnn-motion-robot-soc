@@ -172,7 +172,7 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
     if (pm_update_stable_body_frame(p, filter_dt) != 0 ||
         fm_calculate_angles(ctx, filter_dt, &fresh) != 0)
         return hold_or_invalid(ctx, out);
-    if (pm_fingers_both_fresh(p) &&
+    if (pm_gripper_all_fresh(p) &&
         pm_update_gripper_from_2d(p, span, &fresh.gripper_norm) == 0)
         gripper_fresh = 1U;
     if (pm_fingers_both_fresh(p)) {
@@ -211,6 +211,7 @@ int forearm_mapping_update(ForearmMappingContext *ctx, const HumanPose2D *pose,
             ? ctx->last_target.gripper_norm : 1.0f;
     }
     fresh.frame_id = pose->frame_id;
+    fresh.gripper_valid = p->gripper_initialized;
     /* At 60 frames, major angles may start even without a hand solution.
      * Agent2 holds wrist/gripper at the current robot command until then. */
     if (!ctx->last_target_valid && !hand_updated &&
@@ -257,6 +258,8 @@ int forearm_mapping_update_stereo(ForearmMappingContext *ctx, const HumanPose2D 
     pose->last_frame_id_valid = 1U;
     pose->last_arm_side = side;
     pose->last_arm_side_valid = 1U;
+    pose->gripper_last_hold = 1U;
+    pose->gripper_hold_reason = PM_GRIPPER_HOLD_MISSING;
     if (!isfinite(dt) || dt <= 0.0f) dt = 1.0f / PM_DEFAULT_FPS;
     filter_dt = pm_sanitize_filter_dt(dt);
     if (ctx->last_target_valid) pose->target_age_sec += dt;
@@ -288,13 +291,17 @@ int forearm_mapping_update_stereo(ForearmMappingContext *ctx, const HumanPose2D 
     if (fm_calculate_angles_in_frame(ctx, filter_dt, pm_vec3(-1.0f, 0.0f, 0.0f),
                                      pm_vec3(0.0f, 1.0f, 0.0f), pm_vec3(0.0f, 0.0f, -1.0f),
                                      &fresh) != 0) return hold_or_invalid(ctx, out);
+    /* Closing fingers can make their 3D hand plane degenerate or fail depth
+     * validation. A complete 2D observation still measures their separation. */
+    if (pm_gripper_all_fresh(pose) &&
+        pm_update_gripper_from_2d(pose, span, &fresh.gripper_norm) == 0)
+        gripper_fresh = 1U;
     if (pm_fingers_both_fresh(pose) &&
         measured_point_valid(measured_pose->finger1) && measured_point_valid(measured_pose->finger2)) {
         pose->finger1_3d = measured_pose->finger1;
         pose->finger2_3d = measured_pose->finger2;
         pose->finger_parent_wrist = pose->wrist_3d;
         pose->finger_pose3d_valid = 1U;
-        if (pm_update_gripper_from_2d(pose, span, &fresh.gripper_norm) == 0) gripper_fresh = 1U;
         if (fm_calculate_hand_impl(ctx, span, dt, filter_dt, 1U, &fresh) == 0) hand_updated = 1U;
     }
     if (!hand_updated) {
@@ -307,6 +314,7 @@ int forearm_mapping_update_stereo(ForearmMappingContext *ctx, const HumanPose2D 
             ? ctx->last_target.gripper_norm : 1.0f;
     }
     fresh.frame_id = image_pose->frame_id;
+    fresh.gripper_valid = pose->gripper_initialized;
     fresh.valid = 1U;
     pose->target_age_sec = 0.0f;
     ctx->last_target = fresh;

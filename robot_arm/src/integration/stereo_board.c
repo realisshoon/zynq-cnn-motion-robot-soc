@@ -1,4 +1,5 @@
 #include "integration/stereo_board.h"
+#include "integration/trace.h"
 
 #include <string.h>
 
@@ -187,20 +188,29 @@ void stereo_board_service(void)
         if (stereo_uart_parser_push(&s_parser, received.byte, &s_decoded)) {
             ++s_stats.rx_frames;
 #ifdef ROBOT_STEREO_RIGHT
-            if (local_time_us() >= received.received_us &&
-                (s_link.async_test_enabled ||
-                 local_time_us() - received.received_us <= STEREO_LINK_MAX_AGE_US))
+            now = local_time_us();
+            if (now >= received.received_us &&
+                now - received.received_us <= STEREO_LINK_MAX_AGE_US)
                 (void)stereo_link_push(&s_link, 0, &s_decoded, received.received_us);
-            else ++s_stats.expired_frames;
+            else {
+                ++s_stats.expired_frames;
+                ++s_link.stale_frames;
+            }
 #endif
         }
     }
     service_tx();
 #ifdef ROBOT_STEREO_RIGHT
-    if (stereo_link_take(&s_link, &s_depth)) {
+    if (stereo_link_take_at(&s_link, &s_depth, local_time_us())) {
+        int accepted;
         s_depth_ready = 1;
-        s_depth_time = local_time_us();
-        if (input_pose_cnn_publish_stereo(&s_depth)) {
+        s_depth_time = s_depth.left_received_us < s_depth.right_received_us
+            ? s_depth.left_received_us : s_depth.right_received_us;
+        accepted = input_pose_cnn_publish_stereo(&s_depth);
+        TRACE_PG(s_link.pairs, &s_depth, accepted, input_pose_cnn_admission_reason());
+        TRACE_RQ(s_link.pairs, &s_depth, input_pose_cnn_tracking_state(),
+            input_pose_cnn_reacquire_count(), input_pose_cnn_filter_epoch(), local_time_us());
+        if (accepted) {
             if (!s_depth.time_verified) ++s_stats.async_accepted;
         } else if (s_link.async_test_enabled && !s_depth.time_verified) {
             ++s_stats.async_rejected;
@@ -209,8 +219,8 @@ void stereo_board_service(void)
     }
 #endif
     now = local_time_us();
-    if (!s_link.async_test_enabled && s_link.pairs &&
-        now - s_depth_time > STEREO_LINK_MAX_AGE_US) {
+    if (s_link.pairs && (now < s_depth_time ||
+        now - s_depth_time > STEREO_LINK_MAX_AGE_US)) {
         s_depth_ready = 0;
         input_pose_cnn_discard_stereo_pending();
     }
@@ -218,7 +228,7 @@ void stereo_board_service(void)
         unsigned index;
         int fresh = s_link.pairs && now >= s_depth_time &&
             now - s_depth_time <= STEREO_LINK_MAX_AGE_US;
-        int available = s_link.pairs && (s_link.async_test_enabled || fresh);
+        int available = fresh;
         long depth_mm[3] = {0, 0, 0};
         const unsigned points[3] = {10, 17, 19};
         s_report_time = now;
@@ -230,7 +240,9 @@ void stereo_board_service(void)
         xil_printf("[ST] tx=%lu drop=%lu rx=%lu crc=%lu overflow=%lu hw=%lu pairs=%lu "
                    "L=%lu R=%lu fresh=%u sync=%u control=%d Zmm(wrist,red,green)=%ld,%ld,%ld "
                    "async_test=%u async_status=%d accept=%lu reject=%lu "
-                   "qL=%u qR=%u qdrop=%lu time_gate=%s; receipt timing NOT exposure sync\r\n",
+                   "qL=%u qR=%u qdrop=%lu stale=%lu gap=%lu skip=%lu "
+                   "marker_bad=%lu jump_bad=%lu reacquire=%lu "
+                   "time_gate=%s; receipt timing NOT exposure sync\r\n",
             (unsigned long)s_stats.tx_frames, (unsigned long)s_stats.tx_dropped,
             (unsigned long)s_stats.rx_frames, (unsigned long)s_parser.crc_errors,
             (unsigned long)s_rx_overflows, (unsigned long)s_rx_hw_errors,
@@ -242,7 +254,10 @@ void stereo_board_service(void)
             available ? (int)s_depth.async_status : (int)STEREO_POSE_UNVERIFIED,
             (unsigned long)s_stats.async_accepted, (unsigned long)s_stats.async_rejected,
             s_link.count[0], s_link.count[1], (unsigned long)s_link.queue_overflows,
-            s_link.async_test_enabled ? "OFF_FIFO" : "STRICT");
+            (unsigned long)s_link.stale_frames, (unsigned long)s_link.receive_gap_rejects,
+            (unsigned long)s_link.skipped_frames, (unsigned long)s_link.marker_rejects,
+            (unsigned long)s_link.jump_rejects, (unsigned long)s_link.reacquired_points,
+            s_link.async_test_enabled ? "RECEIPT_LATEST" : "STRICT");
     }
 }
 
@@ -271,6 +286,7 @@ int stereo_board_on_result(const cnn_result_t *result, const StereoFrameMetadata
     for (index = 0; index < STEREO_UART_MARKERS; ++index)
         if ((frame.markers[index] & 0x7FFU) >= 1280 || ((frame.markers[index] >> 11) & 0x3FFU) >= 720)
             frame.markers[index] &= ~0x80000000U;
+    TRACE_RAW(&frame);
 #ifdef ROBOT_STEREO_LEFT
     if (s_pending_ready) ++s_stats.tx_dropped;
     if (!stereo_uart_encode(&frame, s_pending)) return 0;
@@ -284,7 +300,13 @@ int stereo_board_on_result(const cnn_result_t *result, const StereoFrameMetadata
 
 int stereo_board_take_depth(StereoDepthResult *result)
 {
+    uint64_t now;
     if (result == NULL || !s_depth_ready) return 0;
+    now = local_time_us();
+    if (now < s_depth_time || now - s_depth_time > STEREO_LINK_MAX_AGE_US) {
+        s_depth_ready = 0;
+        return 0;
+    }
     *result = s_depth;
     s_depth_ready = 0;
     return 1;

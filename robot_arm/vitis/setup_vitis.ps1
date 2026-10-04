@@ -88,8 +88,10 @@ function Run-Xsct([string]$tclText, [string]$name) {
 $ws = ToTcl $Workspace; $repo = ToTcl $RepoRoot; $xsaT = ToTcl $Xsa
 $roleSymbols = ""
 if ($StereoRole -ne "Mono") {
+    $oneEuroEnabled = if ($StereoRole -eq "Right") { 1 } else { 0 }
     $roleSymbols = "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_$($StereoRole.ToUpperInvariant())`n" +
-                   "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_UART_BAUD=$StereoBaud"
+                   "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_UART_BAUD=$StereoBaud`n" +
+                   "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_ONE_EURO_ENABLE=$oneEuroEnabled"
 }
 $pwmSymbol = if ($StereoRole -eq "Mono" -or $EnableStereoRobotPwm) {
     "app config -name $AppName -add define-compiler-symbols ROBOT_ARM_PWM_ENABLE"

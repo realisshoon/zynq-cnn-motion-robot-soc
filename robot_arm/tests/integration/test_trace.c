@@ -232,7 +232,8 @@ static HumanForearmTarget safe_target(void)
         .elbow_roll_deg = 10.0f, .elbow_pitch_deg = -20.0f,
         .wrist_pitch_deg = 30.0f, .wrist_roll_deg = -40.0f,
         .gripper_norm = 0.5f, .valid = 1U,
-        .elbow_roll_observable = 1U, .hand_fresh = 1U, .wrist_valid = 1U
+        .elbow_roll_observable = 1U, .hand_fresh = 1U, .wrist_valid = 1U,
+        .gripper_valid = 1U
     };
     return target;
 }
@@ -526,13 +527,11 @@ static void test_a2(void)
     assert(agent2_run(&ctx) == 1);
     trace_a2(&ctx);
 
-    /* R 포맷/이벤트 경계 주입: [20,160] 안에서는 테이블 충돌이 불가능하다.
-     * 범위 밖 명령으로 테이블 충돌 사유 재계산만 검사한다. 파이프라인에
-     * 정상 입력을 넣어 거부된 것으로 취급하지 않는다. elbow_pitch=-13이면
-     * wrist.z=-5.399로 테이블(-5cm) 아래다(직접 실행으로 확인). */
+    /* R 포맷/이벤트 경계 주입: 범위 밖 명령으로 충돌 사유 재계산을 검사한다.
+     * 파이프라인에 정상 입력을 넣어 거부된 것으로 취급하지 않는다. */
     ctx.pose.frame_id = 102U;
     exp_cmd = (ForearmJointCommand){
-        .elbow_roll_deg = 90.0f, .elbow_pitch_deg = -13.0f,
+        .elbow_roll_deg = 90.0f, .elbow_pitch_deg = -39.0f,
         .wrist_pitch_deg = 90.0f, .wrist_roll_deg = 90.0f,
         .gripper_norm = 0.5f, .valid = 0U
     };
@@ -838,13 +837,84 @@ static void test_pipeline_flow(void)
     printf("  pipeline flow OK (프레임 %u, 틱 %u, 최대 링 사용량 %u B)\n", frames, ticks, (unsigned)s_hi);
 }
 
-int main(void)
+static void test_paired_pixel_records(void)
+{
+    StereoCoordinateFrame frame;
+    StereoDepthResult depth;
+    Point2D left[STEREO_LINK_POINTS], right[STEREO_LINK_POINTS];
+    char line[TRACE_LINE_MAX];
+    unsigned index;
+    reset_all();
+    memset(&frame, 0, sizeof(frame));
+    memset(&depth, 0, sizeof(depth));
+    frame.session_id = UINT32_MAX;
+    frame.sequence = UINT32_MAX;
+    frame.frame_id = UINT32_MAX;
+    for (index = 0U; index < STEREO_UART_JOINTS; ++index) {
+        frame.joint[index].x = UINT16_MAX;
+        frame.joint[index].y = UINT16_MAX;
+        frame.joint[index].score = -128;
+        frame.joint[index].valid = 0U;
+    }
+    frame.markers[0] = frame.markers[2] = UINT32_MAX;
+    depth.left_session_id = 10U;
+    depth.right_session_id = 20U;
+    depth.left_sequence = 7U;
+    depth.right_sequence = 19U;
+    depth.left_frame_id = 507U;
+    depth.right_frame_id = 9019U;
+    depth.left_received_us = 1000000U;
+    depth.right_received_us = 1000700U;
+    depth.control_status = STEREO_POSE_UNVERIFIED;
+    for (index = 0U; index < STEREO_LINK_POINTS; ++index) {
+        left[index] = (Point2D){100.5f, 200.5f, 1U};
+        right[index] = (Point2D){80.5f, 210.5f, 1U};
+    }
+    drain();
+    trace_set_robot_output_enabled(0);
+    trace_cnn_coordinates(&frame);
+    trace_stereo_pair(42U, &depth, left, right);
+    trace_stereo_admission(42U, &depth, 0, "JUMP_HOLD");
+    trace_stereo_tracking(42U, &depth, "REACQUIRE", 2U, 7U, 1000900U);
+    drain();
+    assert(s_dropped == 0U);
+    assert(count_lines("RAW,") == 1U && count_lines("PAIR,") == 1U);
+    assert(count_lines("PIX,") == 2U && count_lines("PG,") == 1U);
+    assert(get_line("RAW,", 0U, line, sizeof(line)));
+    assert(field_count(line) == 27U && field_num(line, 2U) == UINT32_MAX);
+    assert(field_num(line, 7U) == -128.0 && field_num(line, 8U) == 0.0);
+    assert(get_line("PAIR,", 0U, line, sizeof(line)));
+    assert(field_count(line) == 17U);
+    assert(field_num(line, 2U) == 20.0 && field_num(line, 3U) == 42.0);
+    assert(field_num(line, 6U) == 507.0 && field_num(line, 8U) == 9019.0);
+    assert(field_num(line, 9U) == 0.0 && field_num(line, 10U) == 700.0);
+    assert(get_line("PIX,", 0U, line, sizeof(line)));
+    assert(field_count(line) == 25U && field_is(line, 3U, "L"));
+    assert(field_num(line, 4U) == 10.0 && field_num(line, 7U) == 100.5);
+    assert(get_line("PIX,", 1U, line, sizeof(line)) && field_is(line, 3U, "R"));
+    assert(field_num(line, 4U) == 20.0 && field_num(line, 7U) == 80.5);
+    assert(get_line("PG,", 0U, line, sizeof(line)) && field_is(line, 4U, "JUMP_HOLD"));
+    assert(get_line("RQ,", 0U, line, sizeof(line)));
+    assert(field_count(line) == 9U && field_is(line, 3U, "REACQUIRE"));
+    assert(field_num(line, 4U) == 2.0 && field_num(line, 5U) == 7.0);
+    assert(field_num(line, 6U) == 900.0 && field_num(line, 7U) == 200.0);
+    assert(field_num(line, 8U) == 700.0);
+    check_all_lines_match_schema();
+    puts("  paired RAW/PIX records OK (session identities, unequal frame IDs, robot-mute independent)");
+}
+
+int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
+    if (argc == 2 && strcmp(argv[1], "--pixel-only") == 0) {
+        test_paired_pixel_records();
+        return 0;
+    }
     printf("test_trace:\n");
     test_formatter();
     test_ring();
     test_boot();
+    test_paired_pixel_records();
     test_tick_sm_ev();
     test_a1_p3();
     test_a2();

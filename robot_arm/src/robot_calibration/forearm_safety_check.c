@@ -6,22 +6,19 @@
 #define DEG_TO_RAD 0.01745329251994329577f
 
 /*
- * *** 사용자가 사진으로 준 실측값(2026-09-22): 두 구간이 24cm/10cm ***.
- * 어느 쪽이 "팔꿈치-손목(전완)"이고 어느 쪽이 "손목-그리퍼(손)"인지는
- * 사진만으로 확정할 수 없어서, 일반적으로 전완이 손보다 긴 점을 근거로
- * 24cm=전완, 10cm=손으로 가정했다. *** 이 가정은 사용자 확인이 필요하다 ***
- * (반대라면 아래 두 상수만 바꾸면 된다. FK 형태 자체는 안 바뀐다).
+ * 사용자 확인 실측값(2026-10-04): 팔꿈치-손목(전완) 16cm,
+ * 손목-그리퍼 끝(손) 20cm. 이전 사진 기반 24cm/10cm 가정을 대체한다.
  */
-#define LINK_ELBOW_WRIST_CM 24.0f
-#define LINK_WRIST_TIP_CM 10.0f
+#define LINK_ELBOW_WRIST_CM 16.0f
+#define LINK_WRIST_TIP_CM 20.0f
 
 /*
- * 사용자 확인(2026-09-22): 팔꿈치(원점)가 테이블면보다 +5cm 위에 있다.
+ * 사용자 확인(2026-10-04): 팔꿈치(원점)가 테이블면보다 +10cm 위에 있다.
  * 좌표계가 원점=팔꿈치, +Z=위(테이블에서 멀어지는 방향)이므로 테이블면은
- * z=-5cm. 링크 두께(팔 굵기)는 여전히 모델에 없다 -- 중심선만 검사하므로
+ * z=-10cm. 링크 두께(팔 굵기)는 여전히 모델에 없다 -- 중심선만 검사하므로
  * 실제로는 이보다 일찍 접촉할 수 있다.
  */
-#define TABLE_SURFACE_Z_CM -5.0f
+#define TABLE_SURFACE_Z_CM -10.0f
 
 /* 기존 6축 safety_check.c와 같은 개념의 여유(기계적 간섭 방지, 토크/하중
  * 보호 아님). */
@@ -41,8 +38,7 @@ static int command_is_finite(const ForearmJointCommand *c)
            isfinite(c->gripper_norm);
 }
 
-/* safety_check.c의 것과 동일한 순수 기하 helper. 기존 legacy 경로를 전혀
- * 건드리지 않기 위해 export 대신 그대로 복제했다(코드량이 작다). */
+/* 전완 FK/안전검사 내부에서 사용하는 순수 기하 helper. */
 static RobotPoint3D sub(RobotPoint3D a, RobotPoint3D b)
 {
     RobotPoint3D r = {a.x_cm-b.x_cm, a.y_cm-b.y_cm, a.z_cm-b.z_cm};

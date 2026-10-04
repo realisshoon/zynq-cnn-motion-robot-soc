@@ -44,6 +44,8 @@ add_library(stereo_vision STATIC
     src/stereo_vision/stereo_pose.c
     src/stereo_vision/stereo_uart_protocol.c
     src/stereo_vision/stereo_link.c
+    src/stereo_vision/stereo_one_euro.c
+    src/stereo_vision/stereo_pose_filter.c
 )
 configure_robot_target(stereo_vision)
 if(UNIX OR MINGW)
@@ -173,6 +175,12 @@ target_link_libraries(robot_arm_2d_control
 include(CTest)
 
 if(BUILD_TESTING)
+    foreach(name stereo_one_euro stereo_pose_filter)
+        add_executable(test_${name} tests/integration/test_${name}.c)
+        configure_robot_target(test_${name})
+        target_link_libraries(test_${name} PRIVATE stereo_vision)
+        add_test(NAME ${name} COMMAND test_${name})
+    endforeach()
     add_executable(test_forearm_stereo_absolute tests/human_target_angle/test_forearm_stereo_absolute.c)
     configure_robot_target(test_forearm_stereo_absolute)
     target_link_libraries(test_forearm_stereo_absolute PRIVATE human_target_angle)

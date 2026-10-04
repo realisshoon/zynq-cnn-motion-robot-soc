@@ -270,6 +270,16 @@ Vitis 빌드에서는 컴파일 심볼 `SERVO_PWM_DRIVER_USE_XILINX`가 켜져 �
 
 ### 빠른 시작 (저장소 루트에서)
 
+현재 양안 구성은 `-StereoRole Left` / `-StereoRole Right`를 사용한다. RIGHT는
+운영 소스에 통합된 3D One Euro를 기본 적용하며 외부 하네스/빌드 훅이 필요 없다.
+PWM과 비동기 추종은 OFF로 부팅한다. [One Euro 계약](docs/stereo_one_euro.md)과
+[양안 UART/구동 안내](docs/stereo_async_trial.md)를 먼저 확인한다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws_left -StereoRole Left
+powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws_right -StereoRole Right
+```
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws
 ```

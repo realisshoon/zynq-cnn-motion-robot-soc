@@ -57,6 +57,11 @@ static const char *const k_schema[] = {
     ,"#IN,fid,t_ms,slx,sly,slv,srx,sry,srv,ex,ey,ev,wx,wy,wv,f1x,f1y,f1v,f2x,f2y,f2v"
     ,"#CS,t_ms,irq,ok,error,timeout,last_us,max_us,overwritten"
     ,"#CE,fid,t_ms,error"
+    ,"#RAW,t_ms,sid,seq,fid,slx,sly,sls,slv,srx,sry,srs,srv,ex,ey,es,ev,wx,wy,ws,wv,redx,redy,redv,greenx,greeny,greenv"
+    ,"#PAIR,t_ms,rsid,pair,lsid,lseq,lfid,rseq,rfid,sync,gap_us,control,async,es,ws,red_s,green_s"
+    ,"#PIX,rsid,pair,side,sid,seq,fid,slx,sly,slv,srx,sry,srv,ex,ey,ev,wx,wy,wv,redx,redy,redv,greenx,greeny,greenv"
+    ,"#PG,rsid,pair,accepted,reason"
+    ,"#RQ,rsid,pair,state,candidates,filter_epoch,l_age_us,r_age_us,gap_us"
 };
 #define TRACE_SCHEMA_COUNT ((unsigned)(sizeof(k_schema) / sizeof(k_schema[0])))
 
@@ -637,6 +642,130 @@ void trace_input(const HumanPose2D *pose)
         f_u32(&l, points[i]->valid);
     }
     line_end(&l);
+}
+
+void trace_cnn_coordinates(const StereoCoordinateFrame *frame)
+{
+    static const unsigned joints[] = {5U, 6U, 8U, 10U};
+    static const unsigned markers[] = {0U, 2U};
+    TraceLine line;
+    unsigned index;
+    if (frame == NULL) return;
+    line_begin(&line, "RAW");
+    f_u32(&line, ms_update(platform_trace_time_us()));
+    f_u32(&line, frame->session_id);
+    f_u32(&line, frame->sequence);
+    f_u32(&line, frame->frame_id);
+    for (index = 0U; index < sizeof(joints) / sizeof(joints[0]); ++index) {
+        const StereoCoordinateJoint *joint = &frame->joint[joints[index]];
+        f_u32(&line, joint->x);
+        f_u32(&line, joint->y);
+        f_i32(&line, joint->score);
+        f_u32(&line, joint->valid);
+    }
+    for (index = 0U; index < sizeof(markers) / sizeof(markers[0]); ++index) {
+        uint32_t marker = frame->markers[markers[index]];
+        f_u32(&line, marker & 0x7FFU);
+        f_u32(&line, (marker >> 11) & 0x3FFU);
+        f_u32(&line, marker >> 31);
+    }
+    line_end(&line);
+}
+
+static void trace_pair_pixels(uint32_t pair_id, const StereoDepthResult *depth,
+                              unsigned side, const Point2D *points)
+{
+    static const unsigned selected[] = {5U, 6U, 8U, 10U, 17U, 19U};
+    TraceLine line;
+    unsigned index;
+    line_begin(&line, "PIX");
+    f_u32(&line, depth->right_session_id);
+    f_u32(&line, pair_id);
+    f_str(&line, side ? "R" : "L");
+    f_u32(&line, side ? depth->right_session_id : depth->left_session_id);
+    f_u32(&line, side ? depth->right_sequence : depth->left_sequence);
+    f_u32(&line, side ? depth->right_frame_id : depth->left_frame_id);
+    for (index = 0U; index < sizeof(selected) / sizeof(selected[0]); ++index) {
+        const Point2D *point = &points[selected[index]];
+        f_fx(&line, point->x, 1U);
+        f_fx(&line, point->y, 1U);
+        f_u32(&line, point->valid);
+    }
+    line_end(&line);
+}
+
+void trace_stereo_pair(uint32_t pair_id, const StereoDepthResult *depth,
+                       const Point2D *left_points, const Point2D *right_points)
+{
+    static const unsigned selected[] = {8U, 10U, 17U, 19U};
+    TraceLine line;
+    unsigned index;
+    uint64_t gap;
+    if (depth == NULL || left_points == NULL || right_points == NULL) return;
+    gap = depth->left_received_us > depth->right_received_us
+        ? depth->left_received_us - depth->right_received_us
+        : depth->right_received_us - depth->left_received_us;
+    line_begin(&line, "PAIR");
+    f_u32(&line, ms_update(platform_trace_time_us()));
+    f_u32(&line, depth->right_session_id);
+    f_u32(&line, pair_id);
+    f_u32(&line, depth->left_session_id);
+    f_u32(&line, depth->left_sequence);
+    f_u32(&line, depth->left_frame_id);
+    f_u32(&line, depth->right_sequence);
+    f_u32(&line, depth->right_frame_id);
+    f_u32(&line, depth->time_verified);
+    f_u32(&line, gap > UINT32_MAX ? UINT32_MAX : (uint32_t)gap);
+    f_i32(&line, depth->control_status);
+    f_i32(&line, depth->async_status);
+    for (index = 0U; index < sizeof(selected) / sizeof(selected[0]); ++index)
+        f_i32(&line, depth->point_status[selected[index]]);
+    line_end(&line);
+    trace_pair_pixels(pair_id, depth, 0U, left_points);
+    trace_pair_pixels(pair_id, depth, 1U, right_points);
+}
+
+void trace_stereo_admission(uint32_t pair_id, const StereoDepthResult *depth,
+                            int accepted, const char *reason)
+{
+    TraceLine line;
+    if (depth == NULL || reason == NULL) return;
+    line_begin(&line, "PG");
+    f_u32(&line, depth->right_session_id);
+    f_u32(&line, pair_id);
+    f_u32(&line, accepted ? 1U : 0U);
+    f_str(&line, reason);
+    line_end(&line);
+}
+
+static uint32_t receipt_age(uint64_t now_us, uint64_t received_us)
+{
+    uint64_t age;
+    if (received_us > now_us) return UINT32_MAX;
+    age = now_us - received_us;
+    return age > UINT32_MAX ? UINT32_MAX : (uint32_t)age;
+}
+
+void trace_stereo_tracking(uint32_t pair_id, const StereoDepthResult *depth,
+                           const char *state, unsigned candidates, uint32_t epoch,
+                           uint64_t now_us)
+{
+    TraceLine line;
+    uint64_t gap;
+    if (depth == NULL || state == NULL) return;
+    gap = depth->left_received_us > depth->right_received_us
+        ? depth->left_received_us - depth->right_received_us
+        : depth->right_received_us - depth->left_received_us;
+    line_begin(&line, "RQ");
+    f_u32(&line, depth->right_session_id);
+    f_u32(&line, pair_id);
+    f_str(&line, state);
+    f_u32(&line, candidates);
+    f_u32(&line, epoch);
+    f_u32(&line, receipt_age(now_us, depth->left_received_us));
+    f_u32(&line, receipt_age(now_us, depth->right_received_us));
+    f_u32(&line, gap > UINT32_MAX ? UINT32_MAX : (uint32_t)gap);
+    line_end(&line);
 }
 
 static void emit_cs(uint32_t t_ms)

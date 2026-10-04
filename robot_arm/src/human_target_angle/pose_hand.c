@@ -70,6 +70,17 @@ int pm_update_gripper_from_2d(PoseMappingContext *ctx,
     w = ctx->wrist.value;
     f1 = ctx->finger1.value;
     f2 = ctx->finger2.value;
+    if (ctx->gripper_input.source) {
+        w = ctx->gripper_input.wrist;
+        f1 = ctx->gripper_input.finger1;
+        f2 = ctx->gripper_input.finger2;
+        if (!isfinite(ctx->gripper_input.reference_span_px)) {
+            ctx->gripper_hold_reason = PM_GRIPPER_HOLD_NONFINITE;
+            return -1;
+        }
+        shoulder_span_px = fmaxf(ctx->gripper_input.reference_span_px,
+                                PM_MIN_SHOULDER_WIDTH_PX);
+    }
     if (!w.valid || !f1.valid || !f2.valid) return -1;
     if (!isfinite(w.x) || !isfinite(w.y) ||
         !isfinite(f1.x) || !isfinite(f1.y) ||
@@ -102,6 +113,11 @@ int pm_update_gripper_from_2d(PoseMappingContext *ctx,
 
     /* Median of three valid ratios suppresses a single-frame spike without
      * rejecting all following movement. Two startup samples use their mean. */
+    /* A camera switch changes perspective. Start a new median history rather
+     * than mixing ratios from the two views; keep the command EMA continuous. */
+    if (ctx->gripper_last_source != ctx->gripper_input.source)
+        ctx->gripper_ratio_count = 0U;
+    ctx->gripper_last_source = ctx->gripper_input.source;
     used = ratio;
     if (ctx->gripper_ratio_count == 1U) {
         used = 0.5f * (ctx->gripper_ratio_history[1] + ratio);

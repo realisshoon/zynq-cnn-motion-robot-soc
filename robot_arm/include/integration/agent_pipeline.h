@@ -19,6 +19,21 @@ typedef enum {
 } Agent2Result;
 #endif
 
+typedef enum {
+    AGENT_OUTPUT_RESULT_NONE = 0,
+    AGENT_OUTPUT_RESULT_ENABLED,
+    AGENT_OUTPUT_RESULT_DISABLED,
+    AGENT_OUTPUT_RESULT_REFERENCE_INVALID,
+    AGENT_OUTPUT_RESULT_REFERENCE_LIMITS,
+    AGENT_OUTPUT_RESULT_REFERENCE_UNSAFE,
+    AGENT_OUTPUT_RESULT_REFERENCE_STATE,
+    AGENT_OUTPUT_RESULT_CONVERSION_FAILED,
+    AGENT_OUTPUT_RESULT_HAL_APPLY_FAILED,
+    AGENT_OUTPUT_RESULT_HAL_ENABLE_FAILED,
+    AGENT_OUTPUT_RESULT_HAL_DISABLE_FAILED,
+    AGENT_OUTPUT_RESULT_HAL_RECOVERY_DISABLE_FAILED
+} AgentPipelineOutputResult;
+
 /*
  * 2026-09-22: Agent1(agent1_forearm_stage_*)/Agent3(ForearmJointCommand PWM
  * 변환)가 새 5축(팔꿈치부터 시작하는 수평 설치)으로 전환하면서, Agent3의
@@ -54,11 +69,14 @@ typedef struct {
     /* PWM enabled면 마지막 HAL 성공값, disabled면 마지막 변환 성공값. */
     ServoPwmCommand pwm;
     uint8_t output_enabled;    /* 0: compute/trace only; robot PWM remains disabled */
+    uint8_t output_parked;
+    uint8_t output_faulted;
     ForearmJointCommand agent3_command; /* 가장 최근 Agent3 전달 시도 명령(TK trace용) */
     uint8_t agent3_command_valid;
     uint32_t agent3_command_tick; /* 위 명령을 전달하려 한 실행 control step 번호 */
     ForearmJointCommand applied_command; /* HAL 적용까지 성공한 마지막 관절 명령 */
     uint8_t applied_command_valid;
+    AgentPipelineOutputResult output_result;
 
     /* 디버그용 통계 */
     uint32_t frames_in;
@@ -87,6 +105,7 @@ typedef struct {
 int agent_pipeline_init(AgentPipelineContext *ctx);
 int agent_pipeline_init_mode(AgentPipelineContext *ctx, int enable_robot_pwm);
 int agent_pipeline_set_output_enabled(AgentPipelineContext *ctx, int enabled);
+const char *agent_pipeline_output_result_name(const AgentPipelineContext *ctx);
 
 /* HumanPose2D -> HumanForearmTarget. Agent1이 valid 타겟을 냈으면 1. */
 int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec);

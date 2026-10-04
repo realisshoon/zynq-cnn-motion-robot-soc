@@ -143,8 +143,10 @@ static void handle_record_or_play_event(MotionRecordReplay *record_replay,
         event == CNN_APP_EVENT_PWM_STATUS) {
         const char *result = "status";
         if (event == CNN_APP_EVENT_PWM_DISABLE) {
-            result = agent_pipeline_set_output_enabled(pipeline, 0)
-                ? "disabled_torque_released" : "HAL_disable_failed";
+            (void)agent_pipeline_set_output_enabled(pipeline, 0);
+            if (!pipeline->output_enabled && pipeline->output_parked)
+                motion_record_replay_on_output_change(record_replay, pipeline);
+            result = agent_pipeline_output_result_name(pipeline);
 #ifdef ROBOT_STEREO_RIGHT
             if (!pipeline->output_enabled) (void)stereo_board_set_async_test(0);
 #endif
@@ -156,9 +158,10 @@ static void handle_record_or_play_event(MotionRecordReplay *record_replay,
                 record_replay->gripper_catchup != 0U) {
                 result = "rejected_non_LIVE_or_gripper_catchup";
             } else {
-                result = agent_pipeline_set_output_enabled(pipeline, 1)
-                    ? "enabled_physical_pose_not_verified"
-                    : "rejected_motion_command_drift_or_HAL_failure";
+                unsigned was_enabled = pipeline->output_enabled;
+                if (agent_pipeline_set_output_enabled(pipeline, 1) && !was_enabled)
+                    motion_record_replay_on_output_change(record_replay, pipeline);
+                result = agent_pipeline_output_result_name(pipeline);
             }
 #endif
         }
@@ -167,7 +170,11 @@ static void handle_record_or_play_event(MotionRecordReplay *record_replay,
         return;
     }
 
-    if (event == CNN_APP_EVENT_RECORD_TOGGLE) {
+    if (!pipeline->output_enabled && pipeline->output_parked &&
+        (event == CNN_APP_EVENT_RECORD_TOGGLE || event == CNN_APP_EVENT_PLAY_TOGGLE)) {
+        accepted = 0;
+        record_replay->reason = MOTION_RR_REASON_BUSY;
+    } else if (event == CNN_APP_EVENT_RECORD_TOGGLE) {
         accepted = motion_record_replay_on_record_button_pulse(record_replay);
     } else if (event == CNN_APP_EVENT_PLAY_TOGGLE) {
         accepted = motion_record_replay_on_play_button_pulse(

@@ -1,6 +1,7 @@
 #include "integration/agent_pipeline.h"
 
 #include <stddef.h>
+#include <math.h>
 #include <string.h>
 
 #include "human_target_angle/agent1_forearm_stage.h"
@@ -118,53 +119,146 @@ int agent_pipeline_init(AgentPipelineContext *ctx)
     return agent_pipeline_init_mode(ctx, 1);
 }
 
-int agent_pipeline_set_output_enabled(AgentPipelineContext *ctx, int enabled)
+static AgentPipelineOutputResult prepare_output_reference(
+    const AgentPipelineContext *ctx, ForearmJointCommand *reference,
+    ForearmMotionState *motion, ServoPwmCommand *pwm)
 {
-    const ForearmJointCommand *reference;
     ForearmJointCommand clamped;
-    ServoPwmCommand pwm;
+    ForearmJointCommand output;
     unsigned axis;
     float positions[FOREARM_MOTION_JOINT_COUNT];
 
-    if (ctx == NULL) return 0;
-    if (!enabled) {
-        if (!servo_hal_disable()) {
-            ctx->servo_errors++;
-            return 0;
-        }
-        ctx->output_enabled = 0U;
-        return 1;
+    *reference = ctx->applied_command_valid ? ctx->applied_command : k_home_pose;
+    if (!reference->valid || !isfinite(reference->elbow_roll_deg) ||
+        !isfinite(reference->elbow_pitch_deg) || !isfinite(reference->wrist_pitch_deg) ||
+        !isfinite(reference->wrist_roll_deg) || !isfinite(reference->gripper_norm)) {
+        return AGENT_OUTPUT_RESULT_REFERENCE_INVALID;
     }
-    if (ctx->output_enabled) return 1;
-    reference = ctx->applied_command_valid ? &ctx->applied_command : &k_home_pose;
     clamped = *reference;
     forearm_motion_control_apply_limits(&clamped);
-    if (!reference->valid || !same_command(&clamped, reference) ||
-        !forearm_safety_check_apply(reference, NULL) ||
-        !same_command(&ctx->output, reference) || !ctx->agent3_command_valid ||
-        !same_command(&ctx->agent3_command, reference) || !ctx->motion.has_target ||
-        ctx->motion.gripper != reference->gripper_norm) return 0;
+    if (!same_command(&clamped, reference) || reference->gripper_norm < 0.0f ||
+        reference->gripper_norm > 1.0f) return AGENT_OUTPUT_RESULT_REFERENCE_LIMITS;
+    if (!forearm_safety_check_apply(reference, NULL))
+        return AGENT_OUTPUT_RESULT_REFERENCE_UNSAFE;
+
+    forearm_calibration_state_init(motion);
+    forearm_calibration_set_target(motion, reference);
+    forearm_calibration_step(motion, &output);
+    if (!same_command(&output, reference) || !motion->has_target || motion->held ||
+        motion->blocked_flags != FOREARM_SAFETY_CHECK_OK ||
+        motion->gripper != reference->gripper_norm) return AGENT_OUTPUT_RESULT_REFERENCE_STATE;
     positions[0] = reference->elbow_roll_deg;
     positions[1] = reference->elbow_pitch_deg;
     positions[2] = reference->wrist_pitch_deg;
     positions[3] = reference->wrist_roll_deg;
     for (axis = 0; axis < FOREARM_MOTION_JOINT_COUNT; ++axis) {
-        if (ctx->motion.axes[axis].v != 0.0 ||
-            ctx->motion.axes[axis].q != positions[axis] ||
-            ctx->motion.axes[axis].q != ctx->motion.axes[axis].target) return 0;
+        if (motion->axes[axis].v != 0.0 || motion->axes[axis].q != positions[axis] ||
+            motion->axes[axis].q != motion->axes[axis].target)
+            return AGENT_OUTPUT_RESULT_REFERENCE_STATE;
     }
-    if (!output_control_update(reference, &pwm)) return 0;
-    if (!servo_hal_apply(&pwm) || !servo_hal_enable()) {
-        servo_hal_disable();
-        ctx->servo_errors++;
+    if (!output_control_update(reference, pwm)) return AGENT_OUTPUT_RESULT_CONVERSION_FAILED;
+    return AGENT_OUTPUT_RESULT_NONE;
+}
+
+static void commit_output_reference(AgentPipelineContext *ctx,
+                                    const ForearmJointCommand *reference,
+                                    const ForearmMotionState *motion,
+                                    const ServoPwmCommand *pwm)
+{
+    ctx->motion = *motion;
+    ctx->output = *reference;
+    ctx->command = *reference;
+    ctx->command_valid = 1U;
+    ctx->agent3_command = *reference;
+    ctx->agent3_command_valid = 1U;
+    ctx->agent3_command_tick = ctx->ticks;
+    ctx->pwm = *pwm;
+    ctx->target_ready = 0U;
+    forearm_motion_control_unwrap_state_init(&ctx->unwrap);
+}
+
+int agent_pipeline_set_output_enabled(AgentPipelineContext *ctx, int enabled)
+{
+    ForearmJointCommand reference;
+    ForearmMotionState motion;
+    ServoPwmCommand pwm;
+    AgentPipelineOutputResult result;
+
+    if (ctx == NULL) return 0;
+    if (enabled && ctx->output_faulted) {
+        ctx->output_result = AGENT_OUTPUT_RESULT_HAL_RECOVERY_DISABLE_FAILED;
         return 0;
     }
-    ctx->pwm = pwm;
-    ctx->applied_command = *reference;
+    if (enabled && ctx->output_enabled) {
+        ctx->output_result = AGENT_OUTPUT_RESULT_ENABLED;
+        return 1;
+    }
+    result = prepare_output_reference(ctx, &reference, &motion, &pwm);
+    if (!enabled) {
+        if (!servo_hal_disable()) {
+            ctx->servo_errors++;
+            ctx->output_result = AGENT_OUTPUT_RESULT_HAL_DISABLE_FAILED;
+            return 0;
+        }
+        ctx->output_enabled = 0U;
+        ctx->output_parked = 1U;
+        ctx->output_faulted = 0U;
+        if (result != AGENT_OUTPUT_RESULT_NONE) {
+            ctx->output_result = result;
+            return 0;
+        }
+        commit_output_reference(ctx, &reference, &motion, &pwm);
+        ctx->output_result = AGENT_OUTPUT_RESULT_DISABLED;
+        return 1;
+    }
+    if (result != AGENT_OUTPUT_RESULT_NONE) {
+        ctx->output_result = result;
+        return 0;
+    }
+    result = AGENT_OUTPUT_RESULT_HAL_APPLY_FAILED;
+    if (servo_hal_apply(&pwm)) {
+        result = servo_hal_enable() ? AGENT_OUTPUT_RESULT_NONE
+                                   : AGENT_OUTPUT_RESULT_HAL_ENABLE_FAILED;
+    }
+    if (result != AGENT_OUTPUT_RESULT_NONE) {
+        ctx->servo_errors++;
+        if (!servo_hal_disable()) {
+            ctx->servo_errors++;
+            ctx->output_faulted = 1U;
+            result = AGENT_OUTPUT_RESULT_HAL_RECOVERY_DISABLE_FAILED;
+        }
+        ctx->output_result = result;
+        return 0;
+    }
+    commit_output_reference(ctx, &reference, &motion, &pwm);
+    ctx->applied_command = reference;
     ctx->applied_command_valid = 1U;
     ctx->output_enabled = 1U;
+    ctx->output_parked = 0U;
+    ctx->output_result = AGENT_OUTPUT_RESULT_ENABLED;
     ctx->servo_writes++;
     return 1;
+}
+
+const char *agent_pipeline_output_result_name(const AgentPipelineContext *ctx)
+{
+    if (ctx == NULL) return "invalid_pipeline";
+    switch (ctx->output_result) {
+        case AGENT_OUTPUT_RESULT_NONE: return "none";
+        case AGENT_OUTPUT_RESULT_ENABLED: return "enabled_physical_pose_not_verified";
+        case AGENT_OUTPUT_RESULT_DISABLED: return "disabled_last_written_command_latched";
+        case AGENT_OUTPUT_RESULT_REFERENCE_INVALID: return "rejected_resume_reference_invalid";
+        case AGENT_OUTPUT_RESULT_REFERENCE_LIMITS: return "rejected_resume_reference_limits";
+        case AGENT_OUTPUT_RESULT_REFERENCE_UNSAFE: return "rejected_resume_reference_FK_safety";
+        case AGENT_OUTPUT_RESULT_REFERENCE_STATE: return "rejected_resume_reference_state";
+        case AGENT_OUTPUT_RESULT_CONVERSION_FAILED: return "rejected_resume_PWM_conversion";
+        case AGENT_OUTPUT_RESULT_HAL_APPLY_FAILED: return "HAL_resume_apply_failed";
+        case AGENT_OUTPUT_RESULT_HAL_ENABLE_FAILED: return "HAL_enable_failed_output_disabled";
+        case AGENT_OUTPUT_RESULT_HAL_DISABLE_FAILED: return "HAL_disable_failed_state_preserved";
+        case AGENT_OUTPUT_RESULT_HAL_RECOVERY_DISABLE_FAILED:
+            return "HAL_recovery_disable_failed_hardware_state_unverified";
+        default: return "unknown_output_result";
+    }
 }
 
 int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec)
@@ -222,7 +316,8 @@ int agent2_run(AgentPipelineContext *ctx)
     if (ctx != NULL) {
         TRACE_SET_A2_RESULT(ctx, A2_RESULT_NONE); /* [TRACE] 이번 프레임의 결과를 먼저 "없음"으로 둔다. */
     }
-    if (ctx == NULL || !ctx->target_ready) return 0;
+    if (ctx == NULL || (!ctx->output_enabled && ctx->output_parked) ||
+        !ctx->target_ready) return 0;
 
     /* 호출 순서 계약: unwrap은 validate를 통과한 타겟만 받는다. */
     if (!forearm_motion_control_validate_target(&ctx->target)) {
@@ -255,13 +350,14 @@ int agent2_run(AgentPipelineContext *ctx)
         }
     }
 
-    /* Without a reconstructed wrist angle, hold the current wrist and grip.
+    /* Wrist angles and 2D finger separation have independent validity.
      * Safety is checked on the final mixed command in either case. */
     if (!ctx->target.wrist_valid) {
         command.wrist_pitch_deg = ctx->output.wrist_pitch_deg;
         command.wrist_roll_deg = ctx->output.wrist_roll_deg;
-        command.gripper_norm = ctx->output.gripper_norm;
     }
+    if (!ctx->target.gripper_valid)
+        command.gripper_norm = ctx->output.gripper_norm;
     command.valid = forearm_safety_check_apply(&command, NULL) ? 1U : 0U;
     /* 무효/위험이면 폐기하고 마지막으로 승인한 목표를 계속 유지한다. */
     if (!command.valid) {
@@ -302,7 +398,8 @@ int agent2_tick(AgentPipelineContext *ctx)
     if (ctx == NULL) return 0;
 
     ctx->ticks++;
-    forearm_calibration_step(&ctx->motion, &ctx->output);
+    if (ctx->output_enabled || !ctx->output_parked)
+        forearm_calibration_step(&ctx->motion, &ctx->output);
     return ctx->output.valid ? 1 : 0;
 }
 

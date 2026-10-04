@@ -103,6 +103,9 @@ typedef struct {
 
 void motion_record_replay_init(MotionRecordReplay *controller);
 
+void motion_record_replay_on_output_change(MotionRecordReplay *controller,
+                                            const AgentPipelineContext *pipeline);
+
 /*
  * ALIGN의 gripper 속도와 timeout을 설정한다.
  * 설정 전에는 PLAY 시작을 거부한다. 통합 main의 사용자 승인 시험값은

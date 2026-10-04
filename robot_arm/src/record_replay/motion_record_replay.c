@@ -395,6 +395,29 @@ static void finalize_recording(MotionRecordReplay *controller,
     controller->reason = reason;
 }
 
+void motion_record_replay_on_output_change(MotionRecordReplay *controller,
+                                            const AgentPipelineContext *pipeline)
+{
+    if (controller == NULL || pipeline == NULL) return;
+    if (!pipeline->output_enabled && pipeline->output_parked) {
+        if (controller->mode == MOTION_RR_RECORDING)
+            finalize_recording(controller, MOTION_RR_REASON_STOPPED);
+        controller->mode = MOTION_RR_LIVE;
+        controller->reason = MOTION_RR_REASON_STOPPED;
+        controller->gripper_catchup = 0U;
+    }
+    controller->previous_applied_replay_valid = 0U;
+    controller->previous_applied_replay_source = MOTION_RR_APPLIED_NONE;
+    controller->last_applied_replay_valid = 0U;
+    controller->last_applied_replay_source = MOTION_RR_APPLIED_NONE;
+    if (pipeline->applied_command_valid &&
+        validate_command(&pipeline->applied_command) == MOTION_RR_REASON_NONE) {
+        controller->last_applied_replay_command = pipeline->applied_command;
+        controller->last_applied_replay_valid = 1U;
+        controller->last_applied_replay_source = MOTION_RR_APPLIED_HAL;
+    }
+}
+
 void motion_record_replay_init(MotionRecordReplay *controller)
 {
     if (controller == NULL) return;
@@ -477,7 +500,8 @@ int motion_record_replay_start_play(MotionRecordReplay *controller,
     MotionRecordReplayReason reason;
 
     if (controller == NULL || pipeline == NULL) return 0;
-    if (controller->mode != MOTION_RR_LIVE) {
+    if (controller->mode != MOTION_RR_LIVE ||
+        (!pipeline->output_enabled && pipeline->output_parked)) {
         controller->reason = MOTION_RR_REASON_BUSY;
         return 0;
     }
@@ -793,6 +817,10 @@ int motion_record_replay_control_tick(MotionRecordReplay *controller,
                                       uint32_t tick_overrun_count)
 {
     if (controller == NULL || pipeline == NULL) return 0;
+    if (!pipeline->output_enabled && pipeline->output_parked) {
+        ++pipeline->ticks;
+        return 1;
+    }
     switch (controller->mode) {
         case MOTION_RR_LIVE:
         case MOTION_RR_RECORDING:
