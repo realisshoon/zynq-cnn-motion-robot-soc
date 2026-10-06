@@ -344,86 +344,72 @@ class cnn_dma_responder extends cnn_m_axil_responder;
         endcase
     endfunction
 
+    // One outstanding transaction per direction; AW/W are independent.
+    // Latency is extra cycles after request acceptance; zero is next edge.
     task run_phase(uvm_phase phase);
-
-        bit aw_seen;
-        bit w_seen;
-
-        bit [31:0] awaddr_q;
-        bit [31:0] wdata_q;
-
-        vif.m_axil_awready = 1'b0;
-        vif.m_axil_wready  = 1'b0;
-
-        vif.m_axil_bresp   = 2'b00;
-        vif.m_axil_bvalid  = 1'b0;
-
-        vif.m_axil_arready = 1'b0;
-
-        vif.m_axil_rdata   = 32'h0000_0000;
-        vif.m_axil_rresp   = 2'b00;
-        vif.m_axil_rvalid  = 1'b0;
-
+        bit aw_seen, w_seen, write_pending, read_pending;
+        bit [31:0] awaddr_q, wdata_q, rdata_q;
+        int unsigned write_delay, read_delay, transaction_index, order_mode, ar_wait;
+        vif.m_axil_awready=0; vif.m_axil_wready=0;
+        vif.m_axil_bresp=0; vif.m_axil_bvalid=0;
+        vif.m_axil_arready=0; vif.m_axil_rdata=0;
+        vif.m_axil_rresp=0; vif.m_axil_rvalid=0;
         reset_dma_model();
-
-        wait (vif.rst_n === 1'b1);
-
-        aw_seen = 1'b0;
-        w_seen  = 1'b0;
-
+        wait(vif.rst_n===1);
         forever begin
             @(vif.m_axil_rsp_cb);
-
-            // DMA completion model
             update_dma_completion();
-
-            // WRITE ADDRESS / DATA READY
-            vif.m_axil_rsp_cb.m_axil_awready <= !aw_seen && !vif.m_axil_bvalid;
-
-            vif.m_axil_rsp_cb.m_axil_wready  <= !w_seen && !vif.m_axil_bvalid;
-
-            // AW
-            if (vif.m_axil_rsp_cb.m_axil_awvalid && vif.m_axil_awready) begin
-                aw_seen  = 1'b1;
-                awaddr_q = vif.m_axil_rsp_cb.m_axil_awaddr;
-            end
-
-            // W
-            if (vif.m_axil_rsp_cb.m_axil_wvalid && vif.m_axil_wready) begin
-                w_seen  = 1'b1;
-                wdata_q = vif.m_axil_rsp_cb.m_axil_wdata;
-            end
-
-            // AW + W complete
-            if (aw_seen && w_seen && !vif.m_axil_bvalid) begin
-                dma_reg_write(awaddr_q, wdata_q);
-                vif.m_axil_rsp_cb.m_axil_bresp  <= 2'b00;
-                vif.m_axil_rsp_cb.m_axil_bvalid <= 1'b1;
-            end
-
-            // B response complete
             if (vif.m_axil_bvalid && vif.m_axil_rsp_cb.m_axil_bready) begin
-                vif.m_axil_rsp_cb.m_axil_bvalid <= 1'b0;
-
-                aw_seen = 1'b0;
-                w_seen  = 1'b0;
-            end
-
-            // READ
-            vif.m_axil_rsp_cb.m_axil_arready <= !vif.m_axil_rvalid;
-            if (vif.m_axil_rsp_cb.m_axil_arvalid && vif.m_axil_arready) begin
-                vif.m_axil_rsp_cb.m_axil_rdata <= dma_reg_read(
-                    vif.m_axil_rsp_cb.m_axil_araddr
-                );
-
-                vif.m_axil_rsp_cb.m_axil_rresp <= 2'b00;
-
-                vif.m_axil_rsp_cb.m_axil_rvalid <= 1'b1;
+                vif.m_axil_rsp_cb.m_axil_bvalid<=0;
+                aw_seen=0; w_seen=0; write_pending=0;
+                transaction_index++;
             end
             if (vif.m_axil_rvalid && vif.m_axil_rsp_cb.m_axil_rready) begin
-                vif.m_axil_rsp_cb.m_axil_rvalid <= 1'b0;
+                vif.m_axil_rsp_cb.m_axil_rvalid<=0;
+                read_pending=0;
             end
+            if (vif.m_axil_rsp_cb.m_axil_awvalid && vif.m_axil_awready) begin
+                aw_seen=1; awaddr_q=vif.m_axil_rsp_cb.m_axil_awaddr;
+            end
+            if (vif.m_axil_rsp_cb.m_axil_wvalid && vif.m_axil_wready) begin
+                w_seen=1; wdata_q=vif.m_axil_rsp_cb.m_axil_wdata;
+            end
+            if (write_pending && !vif.m_axil_bvalid) begin
+                if (write_delay<=1) begin
+                    vif.m_axil_rsp_cb.m_axil_bvalid<=1;
+                    vif.m_axil_rsp_cb.m_axil_bresp<=0;
+                end else write_delay--;
+            end
+            if (aw_seen && w_seen && !write_pending) begin
+                dma_reg_write(awaddr_q,wdata_q);
+                write_pending=1;
+                write_delay=cfg.dma_write_latency;
+                if (write_delay==0) vif.m_axil_rsp_cb.m_axil_bvalid<=1;
+            end
+            if (read_pending && !vif.m_axil_rvalid) begin
+                if (read_delay<=1) begin
+                    vif.m_axil_rsp_cb.m_axil_rvalid<=1;
+                    vif.m_axil_rsp_cb.m_axil_rdata<=rdata_q;
+                    vif.m_axil_rsp_cb.m_axil_rresp<=0;
+                end else read_delay--;
+            end
+            if (vif.m_axil_rsp_cb.m_axil_arvalid && vif.m_axil_arready) begin
+                read_pending=1; ar_wait=0;
+                rdata_q=dma_reg_read(vif.m_axil_rsp_cb.m_axil_araddr);
+                read_delay=cfg.dma_read_latency;
+                if (read_delay<=1) begin
+                    vif.m_axil_rsp_cb.m_axil_rvalid<=1;
+                    vif.m_axil_rsp_cb.m_axil_rdata<=rdata_q;
+                end
+            end
+            order_mode=cfg.axil_order_cycle ? transaction_index%3 : 0;
+            vif.m_axil_rsp_cb.m_axil_awready<=!aw_seen && !write_pending &&
+                (order_mode!=2 || w_seen);
+            vif.m_axil_rsp_cb.m_axil_wready<=!w_seen && !write_pending &&
+                (order_mode!=1 || aw_seen);
+            if (!read_pending && vif.m_axil_rsp_cb.m_axil_arvalid && !vif.m_axil_arready) ar_wait++;
+            vif.m_axil_rsp_cb.m_axil_arready<=!read_pending &&
+                (cfg.dma_ar_delay==0 || ar_wait>=cfg.dma_ar_delay);
         end
     endtask
-
 endclass

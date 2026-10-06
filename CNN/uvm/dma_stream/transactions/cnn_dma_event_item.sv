@@ -14,6 +14,11 @@ class cnn_dma_event_item extends uvm_sequence_item;
 
     cnn_dma_event_kind_e kind;
 
+    int unsigned stage;
+    time observed_time;
+    longint unsigned aw_cycle, w_cycle, ar_cycle, commit_cycle;
+    int handshake_order; // 0=same, 1=AW first, 2=W first
+    int response_cycles;
     bit [31:0] addr;
     bit [31:0] data;
     bit [3:0] strb;

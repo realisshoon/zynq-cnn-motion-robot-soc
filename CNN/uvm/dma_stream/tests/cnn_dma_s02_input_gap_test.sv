@@ -18,6 +18,7 @@ class cnn_dma_s02_input_gap_test extends cnn_dma_stream_base_test;
     function void build_phase(uvm_phase phase);
 
         super.build_phase(phase);
+        cfg.scenario_id = DMA_SCENARIO_S02;
 
         // S02
         //

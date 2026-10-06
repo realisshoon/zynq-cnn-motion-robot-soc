@@ -2,6 +2,8 @@ class cnn_dma_stream_env extends cnn_env;
     `uvm_component_utils(cnn_dma_stream_env)
 
     cnn_dma_master_monitor dma_mon;
+    cnn_dma_stream_observer observer;
+    cnn_dma_stream_feeder feeder;
 
     cnn_dma_stream_scoreboard dma_scb;
 
@@ -26,6 +28,9 @@ class cnn_dma_stream_env extends cnn_env;
         // override를 먼저 해야 상속 가능
         super.build_phase(phase);
 
+        feeder = cnn_dma_stream_feeder::type_id::create("feeder", this);
+        observer = cnn_dma_stream_observer::type_id::create("observer", this);
+
         // DMA 전용 monitor 생성
         dma_mon = cnn_dma_master_monitor::type_id::create("dma_mon", this);
 
@@ -37,10 +42,15 @@ class cnn_dma_stream_env extends cnn_env;
     endfunction
 
     function void connect_phase(uvm_phase phase);
+        cnn_dma_stream_coverage coverage_handle;
         super.connect_phase(phase);
+        if (!$cast(coverage_handle,cov)) `uvm_fatal("DMA_ENV", "Coverage cast failed")
+        dma_mon.ap.connect(coverage_handle.dma_imp);
+        dma_mon.ap.connect(feeder.imp);
 
         // DMA monitor -> DMA scoreboard 연결
         dma_mon.ap.connect(dma_scb.dma_imp);
+        agt.mon.ap.connect(dma_scb.checked_stream_imp);
     endfunction
 
 endclass

@@ -16,6 +16,7 @@ class cnn_dma_s01_no_stall_test extends cnn_dma_stream_base_test;
     function void build_phase(uvm_phase phase);
 
         super.build_phase(phase);
+        cfg.scenario_id = DMA_SCENARIO_S01;
 
         // S01 = baseline
         //

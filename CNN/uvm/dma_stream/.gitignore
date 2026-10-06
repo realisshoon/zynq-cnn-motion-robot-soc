@@ -1,11 +1,2 @@
 output/
-# Synopsys Verdi / Coverage GUI generated files
-.fsm.sch.verilog.xml
-novas.rc
-
-vdCov.conf
-vdCov.cmd
-vdCov.cmd.bak
-vdCov_autosave.ses
-
-verdi/
+scripts/

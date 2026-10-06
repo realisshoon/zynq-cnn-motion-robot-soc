@@ -1,6 +1,7 @@
 typedef enum int unsigned {
     DMA_GAP_WEIGHT = 0,
-    DMA_GAP_IMAGE  = 1
+    DMA_GAP_IMAGE  = 1,
+    DMA_GAP_FEATURE = 2
 } cnn_dma_gap_stream_e;
 
 class cnn_dma_gap_event_item extends uvm_object;

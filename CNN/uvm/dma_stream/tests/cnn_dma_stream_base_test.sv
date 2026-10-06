@@ -28,6 +28,24 @@ class cnn_dma_stream_base_test extends cnn_base_test;
         end
     endfunction
 
+    // Runs after scenario-specific checks and child report phases. Never infer
+    // PASS from coverage or simulator exit status alone.
+    function void report_phase(uvm_phase phase);
+        uvm_report_server server;
+        int errors,fatals,assert_fails;
+        super.report_phase(phase);
+        server=uvm_report_server::get_server();
+        errors=server.get_severity_count(UVM_ERROR);
+        fatals=server.get_severity_count(UVM_FATAL);
+        assert_fails=server.get_id_count("DMA_ASSERT");
+        if(cfg.scenario_id!=DMA_SCENARIO_UNSET)
+            `uvm_info("SCENARIO_RESULT",$sformatf(
+                "S%02d SCOREBOARD SUMMARY: weight=%0d image=%0d feature_out=%0d errors=%0d fatals=%0d assert_fail=%0d RESULT=%s",
+                int'(cfg.scenario_id),dma_env.dma_scb.weight_beats,dma_env.dma_scb.image_beats,
+                dma_env.dma_scb.feature_out_beats,errors,fatals,assert_fails,
+                (errors==0 && fatals==0 && assert_fails==0) ? "PASS" : "FAIL"),UVM_NONE)
+    endfunction
+
     function void end_of_elaboration_phase(uvm_phase phase);
     super.end_of_elaboration_phase(phase);
 

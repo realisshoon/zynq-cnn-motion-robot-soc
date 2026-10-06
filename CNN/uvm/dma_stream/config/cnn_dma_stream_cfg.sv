@@ -1,6 +1,24 @@
+typedef enum {DMA_SCENARIO_UNSET, DMA_SCENARIO_S01, DMA_SCENARIO_S02,
+    DMA_SCENARIO_S03, DMA_SCENARIO_S04, DMA_SCENARIO_S05,
+    DMA_SCENARIO_S06, DMA_SCENARIO_S07, DMA_SCENARIO_S08} cnn_dma_scenario_e;
+
 class cnn_dma_stream_cfg extends uvm_object;
     `uvm_object_utils(cnn_dma_stream_cfg)
 
+    mailbox #(bit [31:0]) weight_commands = new();
+    mailbox #(bit [31:0]) feature_commands = new();
+    mailbox #(bit [31:0]) image_commands = new();
+    cnn_dma_scenario_e scenario_id = DMA_SCENARIO_UNSET;
+    int unsigned boundary_stall_cycles = 3;
+    int unsigned normal_stalls, last_stalls, observed_stall_cycles, recoveries;
+    int unsigned output_accepts, output_last_accepts, simultaneous_cycles;
+    int unsigned gap_events[3], gap_cycles[3];
+    bit gap_active[3];
+    bit random_stall_enable;
+    bit full_flow_enable;
+    int unsigned random_seed = 1;
+    bit axil_order_cycle;
+    int unsigned dma_ar_delay = 0;
     bit image_gap_enable;  // s_image_valid에 공백을 넣을지 설정 
     // image_gap_enable = 0 -> valid 1 1 1 1 1, 1 -> valid 1 1 0 0 1 0 1 (gap을 넣을 수 있음)
 
