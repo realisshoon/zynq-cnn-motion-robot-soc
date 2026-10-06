@@ -660,6 +660,8 @@ class cnn_g01_e2e_seq extends cnn_golden_base_seq;
 
         if (mismatch_count == 0) begin
 
+            golden_cov.sample_result(test_frame_id, expected_result_seq, joint_threshold, golden_joint[0]);
+
             `uvm_info("G01_GOLDEN", "============================================================",
                       UVM_LOW)
 

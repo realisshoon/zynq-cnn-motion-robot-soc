@@ -18,7 +18,18 @@ module tb_top_golden;
         .rst_n(rst_n)
     );
 
+    cnn_g05_probe_if g05_if (
+        .clk  (clk),
+        .rst_n(rst_n)
+    );
+
     initial clk = 1'b0;
+    cnn_g07_probe_if g07_if (.clk(clk), .rst_n(rst_n));
+    assign g07_if.data = c_if.m_feature_data;
+    assign g07_if.keep = c_if.m_feature_keep;
+    assign g07_if.valid = c_if.m_feature_valid;
+    assign g07_if.ready = c_if.m_feature_ready;
+    assign g07_if.last = c_if.m_feature_last;
     always #5 clk = ~clk;
 
     initial begin
@@ -101,32 +112,51 @@ module tb_top_golden;
 
 
     // Conv0 output
-    assign g02_if.conv0_data  = dut.input_body_data;
-    assign g02_if.conv0_valid = dut.input_body_valid;
-    assign g02_if.conv0_ready = dut.input_body_ready;
-    assign g02_if.conv0_mask  = dut.input_body_mask;
-    assign g02_if.conv0_tag   = dut.input_body_tag;
+    assign g02_if.conv0_data      = dut.input_body_data;
+    assign g02_if.conv0_valid     = dut.input_body_valid;
+    assign g02_if.conv0_ready     = dut.input_body_ready;
+    assign g02_if.conv0_mask      = dut.input_body_mask;
+    assign g02_if.conv0_tag       = dut.input_body_tag;
 
     // Depthwise output
-    assign g02_if.dw_data     = dut.dw_pixel_data;
-    assign g02_if.dw_valid    = dut.dw_pixel_valid;
-    assign g02_if.dw_ready    = dut.dw_pixel_ready;
-    assign g02_if.dw_mask     = dut.dw_pixel_mask;
-    assign g02_if.dw_tag      = dut.dw_pixel_tag;
+    assign g02_if.dw_data         = dut.dw_pixel_data;
+    assign g02_if.dw_valid        = dut.dw_pixel_valid;
+    assign g02_if.dw_ready        = dut.dw_pixel_ready;
+    assign g02_if.dw_mask         = dut.dw_pixel_mask;
+    assign g02_if.dw_tag          = dut.dw_pixel_tag;
 
     // Pointwise / head output
-    assign g02_if.pw_data     = dut.pw_value_data;
-    assign g02_if.pw_valid    = dut.pw_value_valid;
-    assign g02_if.pw_ready    = dut.pw_value_ready;
-    assign g02_if.pw_mask     = dut.pw_value_mask;
-    assign g02_if.pw_tag      = dut.pw_value_tag;
+    assign g02_if.pw_data         = dut.pw_value_data;
+    assign g02_if.pw_valid        = dut.pw_value_valid;
+    assign g02_if.pw_ready        = dut.pw_value_ready;
+    assign g02_if.pw_mask         = dut.pw_value_mask;
+    assign g02_if.pw_tag          = dut.pw_value_tag;
 
+    // G05 public result
+    assign g05_if.busy            = dut.busy;
+    assign g05_if.done_pending    = dut.done_pending;
+    assign g05_if.result_seq      = dut.result_seq;
+    assign g05_if.result_frame_id = dut.result_frame_id;
+    assign g05_if.joint_words     = dut.joint_words;
+    assign g05_if.joint_flags     = dut.joint_flags;
+    assign g05_if.red_word        = dut.red_word;
+    assign g05_if.blue_word       = dut.blue_word;
+    assign g05_if.green_word      = dut.green_word;
+
+    // G05 result banks
+    assign g05_if.published_bank  = dut.u_top_level_fsm.published_bank;
+    assign g05_if.bank0_joints    = dut.u_top_level_fsm.joint_words_r;
+    assign g05_if.bank1_joints    = dut.u_top_level_fsm.shadow_joints;
+    assign g05_if.bank0_flags     = dut.u_top_level_fsm.joint_flags_r;
+    assign g05_if.bank1_flags     = dut.u_top_level_fsm.shadow_flags;
 
     initial begin
 
         uvm_config_db#(virtual cnn_if)::set(null, "*", "vif", c_if);
 
         uvm_config_db#(virtual cnn_g02_probe_if)::set(null, "*", "g02_vif", g02_if);
+
+        uvm_config_db#(virtual cnn_g05_probe_if)::set(null, "*", "g05_vif", g05_if);
 
         run_test();
 
@@ -135,8 +165,12 @@ module tb_top_golden;
 
 `ifdef FSDB
     initial begin
-        $fsdbDumpfile("cnn_uvm.fsdb");
-        $fsdbDumpvars(0, tb_top_golden);
+        string fsdb_path;
+        if ($value$plusargs("FSDB_FILE=%s", fsdb_path)) begin
+            $fsdbDumpfile(fsdb_path);
+            if ($test$plusargs("FSDB_G05")) $fsdbDumpvars(0, tb_top_golden.g05_if);
+            else $fsdbDumpvars(0, tb_top_golden.g07_if);
+        end
     end
 `endif
 
