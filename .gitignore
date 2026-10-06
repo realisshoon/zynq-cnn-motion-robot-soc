@@ -1,18 +1,27 @@
 # Python virtual environments
 .venv/
 **/.venv/
+venv/
+**/venv/
 
-# Synopsys VCS generated files
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python tooling/cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# VCS simulation build artifacts
 csrc/
 simv
 simv.daidir/
 ucli.key
 
-# Root tool logs (do not hide arbitrary source logs)
-/cm.log
-/compile_dma_stream.log
-/run_dma_stream_base.log
-/tr_db.log
+# Simulation / waveform / tool logs
+*.log
 
 # UVM per-role simulation outputs
 /CNN/uvm/*/output/
