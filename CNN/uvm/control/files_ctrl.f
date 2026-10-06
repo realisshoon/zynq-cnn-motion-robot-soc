@@ -6,6 +6,10 @@
 +incdir+.
 +incdir+./items
 +incdir+./drivers
++incdir+./responders
++incdir+./monitors
++incdir+./checkers
++incdir+./coverage
 +incdir+./sequences
 +incdir+./tests
 +incdir+../../rtl
@@ -34,6 +38,12 @@
 // ============================================================
 
 ./cnn_ctrl_pkg.sv
+
+// C05 controller invariants are bound without modifying RTL.
+./assertions/cnn_c05_fsm_sva.sv
+./assertions/cnn_c06_reset_sva.sv
+./assertions/cnn_c07_irq_sva.sv
+./assertions/cnn_c08_fault_sva.sv
 
 
 // ============================================================
