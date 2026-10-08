@@ -63,6 +63,7 @@ void trace_a1(const AgentPipelineContext *ctx);
 
 /* agent2_run 직후. A2 줄(결과, 거부 사유, 보정된 명령)을 쌓는다. */
 void trace_a2(const AgentPipelineContext *ctx);
+void trace_gripper(const AgentPipelineContext *ctx, const StereoDepthResult *depth, int result);
 
 /* agent3_run 직후(제어 틱 1회 뒤). TK 줄을 쌓는다. */
 void trace_tick(const AgentPipelineContext *ctx);
@@ -95,6 +96,7 @@ int trace_robot_output_enabled(void);
 #define TRACE_MARK()   trace_mark()
 #define TRACE_A1(p)    trace_a1(p)
 #define TRACE_A2(p)    trace_a2(p)
+#define TRACE_GR(p, depth, result) trace_gripper(p, depth, result)
 #define TRACE_TK(p)    trace_tick(p)
 #define TRACE_POLL(p)  trace_poll(p)
 #define TRACE_CN(fid, seq, irq, dur, flags, overwritten) \
@@ -118,6 +120,7 @@ int trace_robot_output_enabled(void);
 #define TRACE_MARK()   ((void)0)
 #define TRACE_A1(p)    ((void)0)
 #define TRACE_A2(p)    ((void)0)
+#define TRACE_GR(p, depth, result) ((void)0)
 #define TRACE_TK(p)    ((void)0)
 #define TRACE_POLL(p)  ((void)0)
 #define TRACE_CN(fid, seq, irq, dur, flags, overwritten) ((void)0)

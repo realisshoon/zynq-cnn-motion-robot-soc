@@ -1,4 +1,5 @@
 #include "robot_calibration/forearm_safety_check.h"
+#include "dual_arm_config.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -102,7 +103,7 @@ static RobotPoint3D rotate_about_axis(RobotPoint3D v, RobotPoint3D axis, float c
     return r;
 }
 
-int forearm_robot_forward_kinematics_3d(const ForearmJointCommand *c, ForearmJointPositions3D *p)
+static int right_forward_kinematics_3d(const ForearmJointCommand *c, ForearmJointPositions3D *p)
 {
     float roll, pitch, wroll, wpitch;
     RobotPoint3D forward0, up0;
@@ -167,16 +168,98 @@ static int has_self_collision(const ForearmJointCommand *command, const ForearmJ
     return 0;
 }
 
+#if !ROBOT_SPLIT_BOARD_CONTROL || !defined(ROBOT_STEREO_LEFT)
 static int has_table_collision(const ForearmJointPositions3D *p)
 {
     /* 직선 구간이므로 두 끝점만 확인하면 충분하다(테이블은 수평면이고
      * z는 구간을 따라 선형이라 최솟값이 항상 끝점에서 나온다). */
     return p->wrist.z_cm <= TABLE_SURFACE_Z_CM || p->tip.z_cm <= TABLE_SURFACE_Z_CM;
 }
+#endif
+
+int forearm_robot_forward_kinematics_geometry(const ForearmJointCommand *command,
+    const ForearmRobotGeometry *geometry, ForearmJointPositions3D *positions,
+    RobotPoint3D *roll_motor_end)
+{
+    ForearmJointPositions3D reference;
+    RobotPoint3D forearm_direction, hand_direction;
+    if (geometry == NULL || positions == NULL || roll_motor_end == NULL ||
+        !isfinite(geometry->elbow_wrist_cm) || !isfinite(geometry->wrist_roll_end_cm) ||
+        !isfinite(geometry->roll_end_tip_cm) || !isfinite(geometry->table_z_cm) ||
+        geometry->elbow_wrist_cm <= 0.0f || geometry->wrist_roll_end_cm <= 0.0f ||
+        geometry->roll_end_tip_cm <= 0.0f ||
+        !right_forward_kinematics_3d(command, &reference)) return 0;
+    forearm_direction = sub(reference.wrist, reference.elbow);
+    forearm_direction.x_cm /= LINK_ELBOW_WRIST_CM;
+    forearm_direction.y_cm /= LINK_ELBOW_WRIST_CM;
+    forearm_direction.z_cm /= LINK_ELBOW_WRIST_CM;
+    hand_direction = sub(reference.tip, reference.wrist);
+    hand_direction.x_cm /= LINK_WRIST_TIP_CM;
+    hand_direction.y_cm /= LINK_WRIST_TIP_CM;
+    hand_direction.z_cm /= LINK_WRIST_TIP_CM;
+    positions->elbow = reference.elbow;
+    positions->wrist = along(reference.elbow, forearm_direction, geometry->elbow_wrist_cm);
+    *roll_motor_end = along(positions->wrist, hand_direction, geometry->wrist_roll_end_cm);
+    positions->tip = along(positions->wrist, hand_direction,
+                          geometry->wrist_roll_end_cm + geometry->roll_end_tip_cm);
+    return 1;
+}
+
+const ForearmRobotGeometry *forearm_robot_selected_geometry(void)
+{
+#if ROBOT_SPLIT_BOARD_CONTROL && defined(ROBOT_STEREO_LEFT)
+    static const ForearmRobotGeometry geometry = {
+        ROBOT_LEFT_FOREARM_CM, ROBOT_LEFT_WRIST_ROLL_END_CM,
+        ROBOT_LEFT_ROLL_END_TIP_CM, ROBOT_LEFT_TABLE_Z_CM
+    };
+#else
+    static const ForearmRobotGeometry geometry = {
+        ROBOT_RIGHT_FOREARM_CM, ROBOT_RIGHT_WRIST_ROLL_END_CM,
+        ROBOT_RIGHT_ROLL_END_TIP_CM, ROBOT_RIGHT_TABLE_Z_CM
+    };
+#endif
+    return &geometry;
+}
+
+int forearm_robot_forward_kinematics_3d(const ForearmJointCommand *command,
+                                      ForearmJointPositions3D *positions)
+{
+#if ROBOT_SPLIT_BOARD_CONTROL && defined(ROBOT_STEREO_LEFT)
+    RobotPoint3D roll_motor_end;
+    return forearm_robot_forward_kinematics_geometry(command,
+        forearm_robot_selected_geometry(), positions, &roll_motor_end);
+#else
+    return right_forward_kinematics_3d(command, positions);
+#endif
+}
+
+int forearm_safety_check_geometry(const ForearmJointCommand *command,
+    const ForearmRobotGeometry *geometry, uint32_t *issues)
+{
+    ForearmJointPositions3D positions;
+    RobotPoint3D roll_motor_end;
+    uint32_t flags = FOREARM_SAFETY_CHECK_OK;
+    if (command == NULL || !command->valid || !command_is_finite(command) ||
+        !forearm_robot_forward_kinematics_geometry(command, geometry,
+                                                  &positions, &roll_motor_end)) {
+        if (issues != NULL) *issues = FOREARM_SAFETY_CHECK_INVALID_COMMAND;
+        return 0;
+    }
+    if (has_self_collision(command, &positions)) flags |= FOREARM_SAFETY_CHECK_SELF_COLLISION;
+    if (positions.wrist.z_cm <= geometry->table_z_cm ||
+        positions.tip.z_cm <= geometry->table_z_cm ||
+        roll_motor_end.z_cm <= geometry->table_z_cm) flags |= FOREARM_SAFETY_CHECK_TABLE_COLLISION;
+    if (issues != NULL) *issues = flags;
+    return flags == FOREARM_SAFETY_CHECK_OK;
+}
 
 int forearm_safety_check_apply(const ForearmJointCommand *command,
                                ForearmSafetyCheckFlags *issues_out)
 {
+#if ROBOT_SPLIT_BOARD_CONTROL && defined(ROBOT_STEREO_LEFT)
+    return forearm_safety_check_geometry(command,
+        forearm_robot_selected_geometry(), issues_out);
+#else
     ForearmJointPositions3D p;
     ForearmSafetyCheckFlags issues = FOREARM_SAFETY_CHECK_OK;
 
@@ -192,4 +275,5 @@ int forearm_safety_check_apply(const ForearmJointCommand *command,
 
     if (issues_out != NULL) *issues_out = issues;
     return issues == FOREARM_SAFETY_CHECK_OK;
+#endif
 }

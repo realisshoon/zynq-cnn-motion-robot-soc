@@ -146,7 +146,7 @@
 
 /* 2D finger spread / mean 2D wrist-to-fingertip length.
  * Provisional values: available clips have no labeled open/close ground truth. */
-#define PM_GRIPPER_CLOSE_THRESHOLD              0.10f
+#define PM_GRIPPER_CLOSE_DISTANCE_PX            15.0f
 #define PM_GRIPPER_OPEN_THRESHOLD               0.60f
 #define PM_GRIPPER_CLOSE_HYST_THRESHOLD         0.20f
 #define PM_GRIPPER_OPEN_HYST_THRESHOLD          0.40f

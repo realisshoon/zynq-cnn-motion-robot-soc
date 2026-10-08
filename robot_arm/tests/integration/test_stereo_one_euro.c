@@ -50,8 +50,8 @@ static void test_defaults_and_configuration(void)
     unsigned field;
 
     assert(STEREO_ONE_EURO_RESET_GAP_US == UINT64_C(500000));
-    assert(defaults.minimum_cutoff_hz == 1.0f);
-    assert(defaults.beta_per_mm == 0.01f);
+    assert(defaults.minimum_cutoff_hz == 0.5f);
+    assert(defaults.beta_per_mm == 0.001f);
     assert(defaults.derivative_cutoff_hz == 1.0f);
     stereo_one_euro_init(NULL, defaults);
     for (field = 0U; field < 3U; ++field) {
@@ -93,7 +93,7 @@ static void test_constant_and_fixed_cutoff(void)
     float input[3] = {15.0f, -25.0f, 35.0f};
     float output[3];
     double expected_position = 0.0;
-    double coefficient = expected_coefficient(1.0, 0.02);
+    double coefficient = expected_coefficient(config.minimum_cutoff_hz, 0.02);
     unsigned sample;
     unsigned axis;
 

@@ -1,5 +1,9 @@
 # 스테레오 3D One Euro 기본 필터 (2026-10-04)
 
+이 문서는 A/One Euro 채택 당시의 이력이다. 2026-10-08 승열3은 운영 G/칼만과
+로봇0 RIGHT·로봇1 LEFT 독립 제어를 정상 소스에 통합했다. 현행 계약은
+[승열3 릴리스](seungyeol3_release.md), [Unity UART](uart_protocol_unity.md)를 따른다.
+
 One Euro를 운영 소스에 통합했다. RIGHT 역할의 일반 Vitis 빌드에서도 적용되며,
 외부 하네스의 소스 복사/주입 훅이 필요하지 않다. LEFT는 CNN 좌표 송신만 한다.
 
@@ -25,33 +29,69 @@ CNN 원시 2D → 점 품질 검사 → 카메라별 2D EMA → 좌우 매칭/�
 
 ## 계산과 초기값
 
-- 최소 cutoff: **1 Hz**.
-- 속도 적응 계수 beta: **0.01/mm**.
+- 최소 cutoff: **0.5 Hz**.
+- 속도 적응 계수 beta: **0.001/mm**.
 - 미분 cutoff: **1 Hz**.
 - 같은 점의 XYZ는 필터링된 속도 벡터의 크기로 계산한 동일 alpha를 사용한다.
 
 ```text
 v = (현재 원본 위치 - 직전 필터 위치) / dt
 v_filtered = alpha_d * v + (1 - alpha_d) * 직전 v_filtered
-cutoff = 1 Hz + 0.01/mm * norm(v_filtered)
+cutoff = 0.5 Hz + 0.001/mm * norm(v_filtered)
 alpha = dt / (dt + 1 / (2*pi*cutoff))
 position_filtered = alpha * position_raw + (1 - alpha) * position_previous
 ```
 
-미분의 alpha도 같은 식을 쓰되 cutoff=1 Hz다. 현재 SD용 One Euro 비교 후보와
-같은 수식/초기값을 채택했다. 정지 시 흔들림 억제, 빠른 이동 시 지연 감소를 목표로
+미분의 alpha도 같은 식을 쓰되 cutoff=1 Hz다. 2026-10-04 A안은 기존 최소 1 Hz,
+beta 0.01/mm보다 강한 평활화를 시험하기 위해 위 기본값을 사용한다. 정지 시
+흔들림 억제, 빠른 이동 시 지연 감소를 목표로
 하지만 실측 정확도 향상이나 좌우 노출 동기화를 보증하지 않는다.
 
 ## 이력과 시간
 
 - 첫 입력은 원본 좌표로 초기화한다.
-- 입력 dt를 누적한 필터 시각을 사용한다. 비동기 dt는 오른쪽 수신기 시각 차이,
-  검증된 strict dt는 검증된 노출 시각 차이다. 보드 간 프레임 번호 차이를 dt로 쓰지 않는다.
-- 점 누락/nonfinite는 해당 점 이력을 초기화한다. 전체 pose invalid는 모든 점 이력을
-  초기화한다. 유효하지만 승인되지 않은 JUMP 후보는 필터 위치 이력을 갱신하지 않는다.
-- 초기화, 비동기 모드 변경, 새 session 재획득, 250 ms 초과 승인 간격 및 JUMP 재획득은
-  filter epoch로 3D 이력을 초기화한다. A1 각도 EMA와 A2 목표/출력 이력은 지우지 않는다.
-- 필터 자체도 역행/동일 시각 또는 500 ms 초과 간격에 원본으로 재초기화한다.
+- 새 좌우 입력의 나이는 각각 **250 ms 이하**, 수신 시각 차이는 **100 ms 이하**여야 한다.
+  이 신선도 검사는 승인 기준과 별개이며 publish와 take에서 검사한다.
+- 2026-10-04 사용자 요청으로 운영 펌웨어 전체를 외부 G 제작 당시 원본으로 복원했다.
+  원본은 `captures/acg_build_20261004_acg_final/source/`이며 운영 A는 One Euro를 유지한다.
+- 같은 세션에서 마지막 원본 승인 위치 대비 elbow/wrist 이동 ≤150 mm이면 승인한다.
+  세션 변경 또는 150 mm 초과 시 첫 후보의 50 mm 이내인 서로 다른 3개 쌍으로 재획득한다.
+  시간만 지났다고 재획득을 강제하지 않으며, 이동 예측 기반 재획득은 적용되지 않는다.
+- 비동기 dt는 입력 승인 간격을 사용한다. 같은 세션·재획득 아님·간격 ≤250 ms이면
+  실제 승인 간격을 전달하고, 그 외에는 0.1초를 전달한다. 250 ms 초과 승인 공백은
+  filter epoch를 초기화한다. 마지막 실제 필터 갱신 시각과 승인 시각은 분리하지 않는다.
+- 무효점은 해당 필터를 초기화하며, 필수점 출력 기하 탈락은 네 필터를 초기화한다.
+  손가락 출력 기하 탈락은 손가락 두 필터를 초기화한다. 이전 좌표를 새 유효점으로 출력하지 않는다.
+- 각 점의 필터 자체에는 기존 500 ms 초과 초기화가 있지만, 이는 최근 적용했다가 되돌린
+  500 ms 승인 공백·이력 보존 정책과 다르다. A1·A2·150 mm·기하 안전검사는 유지한다.
+
+복원 전 소스·테스트·문서는 `captures/restore_G_baseline_20261004/before/`에 보관한다.
+SD의 기존 A BOOT은 소스 복원만으로 바뀌지 않는다. 실제 적용은 새 BOOT 설치 후 재부팅해야 한다.
+회귀 테스트는 `test_stereo_pose_filter`, `test_stereo_reacquisition`, `test_stereo_filter_epoch`을 사용한다.
+
+## UART 계수 조정
+
+새 BOOT를 설치한 RIGHT에서는 모니터의 `r filter show`, `r filter default`,
+`r filter 2d ema tau 0.15`, `r filter 3d min 0.5`, `r filter 3d beta 0.001`,
+`r filter 3d derivative 1.0`을 사용한다. 2D tau의 단위는 초이고,
+One Euro cutoff는 Hz, beta는 /mm다. 2D EMA는 기본 tau=0.10 s를 유지한다.
+
+호스트는 `~F,SHOW\r`, `~F,DEFAULT\r`, `~F,EMA,<microseconds>\r`,
+`~F,MIN,<milliHz>\r`, `~F,BETA,<millionths/mm>\r`,
+`~F,DERIVATIVE,<milliHz>\r`으로 변환한다. 허용 범위는 tau 0.001..1 s,
+cutoff 0.01..10 Hz, beta 0..0.1/mm다. 소수 입력은 정수 스케일로 정확히
+표현할 수 있어야 한다. 형식/범위 오류, LEFT/MONO 요청, 열린 색상/카메라 메뉴에서의
+요청은 설정을 변경하지 않는다. 프레임 내용은 기존 E/A/P 등 단일 키로 실행하지 않는다.
+종료 문자는 CR이며 프레임 내부 LF는 오류로 처리하고 CR까지 나머지 내용을 버린다.
+CR 뒤의 선택적인 LF만 무시한다.
+
+성공 응답 `[FILTER] result=APPLIED`와 실제 설정을 확인한다. 변경은 기존 위치/속도
+이력을 유지하고 다음 신규 샘플부터 적용한다. 이미 처리된 큐 항목을 재계산하지 않는다.
+세션 재획득과 3D filter epoch 초기화에도 조정값을 유지하며, 재부팅/앱 초기화에서
+빌드 기본값으로 복귀한다. SD 저장은 하지 않는다. `default`도 필터 이력을 지우지 않는다.
+PWM/비동기 활성화, 마지막 승인 궤적, JUMP/안전검사 및 노출 동기화 계약은 변경하지 않는다.
+강한 평활화는 추종 지연을 늘릴 수 있으므로 정지와 동작 시험을 모두 진행한다.
+외부 G Kalman BOOT는 One Euro 조정을 거부하고 `one_euro_tunable=0`으로 표시한다.
 
 ## 빌드와 검증
 

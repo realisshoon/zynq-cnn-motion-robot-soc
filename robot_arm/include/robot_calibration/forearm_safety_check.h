@@ -30,6 +30,21 @@ typedef struct {
     RobotPoint3D tip;
 } ForearmJointPositions3D;
 
+typedef struct {
+    float elbow_wrist_cm;
+    float wrist_roll_end_cm;
+    float roll_end_tip_cm;
+    float table_z_cm;
+} ForearmRobotGeometry;
+
+const ForearmRobotGeometry *forearm_robot_selected_geometry(void);
+
+int forearm_robot_forward_kinematics_geometry(const ForearmJointCommand *command,
+    const ForearmRobotGeometry *geometry, ForearmJointPositions3D *positions,
+    RobotPoint3D *roll_motor_end);
+int forearm_safety_check_geometry(const ForearmJointCommand *command,
+    const ForearmRobotGeometry *geometry, uint32_t *issues);
+
 /*
  * command==NULL이거나 finite가 아니면 0을 반환한다. command->valid는 보지
  * 않는다(안전검사와 무관하게 기하학은 항상 계산 가능해야 하므로).

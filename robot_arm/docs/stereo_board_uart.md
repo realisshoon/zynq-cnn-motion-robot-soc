@@ -1,5 +1,7 @@
 # 보드 간 CNN 좌표 UART 및 오른쪽 보드 depth 처리
 
+> 아래는 2026-10-02 통신 통합 이력이다. 현행 승열3의 XSA는 `vitis/xsa/final_uart0.xsa`이며 LEFT=로봇1/JC, RIGHT=로봇0/JB로 분리한다. 양안 depth는 RIGHT에서 계산하고 LEFT 추종 요청에는 승인된 목표를 UART0로 전달한다. 현재 역할·명령은 [Unity UART 계약](uart_protocol_unity.md), [로봇0/1 사용 안내](robot0_robot1_commands.md)를 따른다.
+
 ## 실행 경로
 
 2026-10-02 통합. 왼쪽 카메라 보드는 CNN 결과를 **PS UART0**로 전송하고,
@@ -90,19 +92,18 @@ PIX는 gripper용 좌우 뷰 선택으로 합치기 전의 각 카메라 좌표�
 
 PG 사유는 `OK`, `OFF`, `GEOMETRY`, `CLOCK`, `INVALID`, `SEQUENCE`, `STALE`,
 `MATCH_GAP`, `JUMP_HOLD`, `REACQ_WAIT`, `REACQ_ACCEPT`, `UNVERIFIED`, `METADATA`,
-`TIME_SEQUENCE`다. 150 mm 초과 입력은 먼저 `JUMP_HOLD`로 보류한다. 최초 후보를
-고정 기준으로 삼아 팔꿈치·손목이 각각 50 mm 이내인 신선하고 유효한 3개 서로 다른
-프레임쌍이 모이면 `REACQ_ACCEPT`로 입력 기준을 갱신한다. 중복 프레임은 횟수에
-포함하지 않고, 불량/만료 입력·후보 수신 간격 250 ms 초과는 후보를 초기화한다.
-이는 입력 승인이지 A2 충돌 검사나 PWM 성공이 아니다. 새 입력이 탈락하더라도
-PWM이 ON이면 마지막 승인 목표까지 기존 궤적을 진행한 후 유지한다. 유효 입력 승인 시 재개한다.
-`X`는 별도의 명시적 토크 해제 명령이고 이 입력 끊김 정책과 구분한다.
+`TIME_SEQUENCE`, `FILTER_GEOMETRY`다. 같은 세션에서 이전 승인 위치 대비 elbow/wrist
+변화 ≤150 mm인 신선한 기하 유효 입력은 승인한다. 세션 변경·150 mm 초과는 첫 후보의
+50 mm 이내인 서로 다른 3개 쌍으로 재획득한다. 후보 간 간격은 ≤250 ms다.
 
-`RQ,rsid,pair,state,candidates,filter_epoch,l_age_us,r_age_us,gap_us`는 재획득 상태와
-후보 수, 3D 필터 초기화 세대, 처리 시점의 좌우 수신 나이·수신 시각 차이를 기록한다.
-`WAIT/HOLD/REACQUIRE/TRACK/OFF`는 입력 상태다. 재획득 시 운영 소스의 3D One Euro
-이력은 초기화하지만 로봇 출력 명령을 새 위치로 덮어쓰지 않는다. 기존 A2와 20 ms
-궤적·충돌 검사를 거쳐 이동한다. 3개/50 mm는 시험 초기값이며 실측 인증값이 아니다.
+운영 소스는 외부 G 제작 당시로 복원했다. 승인 공백 >250 ms이면 filter epoch 초기화와
+dt=0.1초를 사용한다. 무효점/기하 탈락 초기화도 그 당시 방식이다. 최근 500 ms 승인 경계,
+실제 갱신 시각 분리, 짧은 누락 이력 보존, 이동 예측 재획득은 적용되지 않는다.
+복원 전 자료는 `captures/restore_G_baseline_20261004/before/`에 보관하며 SD는 변경하지 않았다.
+
+`RQ,rsid,pair,state,candidates,filter_epoch,l_age_us,r_age_us,gap_us`는 재획득 상태·후보 수·
+필터 세대·좌우 수신 나이·간격을 기록한다. 입력 거부 시 마지막 승인 궤적은 완료 후 유지하며
+재획득도 기존 A2/FK/20 ms 검사를 우회하지 않는다. `X`는 별도의 명시적 토크 해제 명령이다.
 
 가만히 유지한 구간의 PAIR 범위를 골라 좌우 RAW/PIX의 표준편차·픽셀 범위·프레임 간
 점프를 비교한다. 유효점만 통계에 포함하되 invalid/누락 개수를 함께 확인한다.

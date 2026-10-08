@@ -6,15 +6,15 @@
 #include "integration/agent_pipeline.h"
 
 /*
- * DDR 전용 v1의 임시 최대 sample 수.
+ * SD 재생을 포함한 최대 sample 수.
  * record/replay 버퍼는 motion_record_replay.c의 전역 정적 배열이므로
  * stack/heap이 아니라 linker가 정하는 .bss에 놓인다. MotionSample 하나는
- * 20 byte이므로 현재 값에서는 버퍼 하나가 20,480 byte, 두 버퍼 합계가
- * 40,960 byte다. 최종 Vitis linker map에서 실제 PS DDR 배치와 남은 공간을
+ * 20 byte이므로 현재 값에서는 버퍼 하나가 40,960 byte, 두 버퍼 합계가
+ * 81,920 byte다. SD staging 버퍼도 40,960 byte를 사용한다. Vitis linker map에서 DDR 배치와 남은 공간을
  * 확인하기 전에는 이 값을 늘리지 않는다.
  */
 #ifndef MOTION_RECORD_REPLAY_MAX_SAMPLES
-#define MOTION_RECORD_REPLAY_MAX_SAMPLES 1024U
+#define MOTION_RECORD_REPLAY_MAX_SAMPLES 2048U
 #endif
 
 /*
@@ -133,6 +133,12 @@ int motion_record_replay_load_replay(MotionRecordReplay *controller,
 int motion_record_replay_start_play(MotionRecordReplay *controller,
                                     AgentPipelineContext *pipeline,
                                     uint32_t tick_overrun_count);
+
+MotionRecordReplayReason motion_record_replay_validate_replay(
+    const MotionRecordReplay *controller);
+
+int motion_record_replay_hold_live(MotionRecordReplay *controller,
+                                   AgentPipelineContext *pipeline);
 
 /*
  * ALIGN/PLAY/HOLD를 사용자가 중단할 때 호출한다.

@@ -55,7 +55,7 @@ static void update_roll_zero_calibration(
 int pm_update_gripper_from_2d(PoseMappingContext *ctx,
                               float shoulder_span_px, float *gripper_norm)
 {
-    float d_finger, d_hand, ratio, used;
+    float d_finger, d_hand, ratio, used, close_ratio;
     Point2D w, f1, f2;
 
     if (ctx == NULL || gripper_norm == NULL) return -1;
@@ -141,12 +141,16 @@ int pm_update_gripper_from_2d(PoseMappingContext *ctx,
     ctx->gripper_hand_span_px = d_hand;
     ctx->gripper_open_ratio = ratio;
     ctx->gripper_ratio_used = used;
+    close_ratio = PM_GRIPPER_CLOSE_DISTANCE_PX / d_hand;
     ctx->gripper_norm_value = pm_clampf(
-        (used - PM_GRIPPER_CLOSE_THRESHOLD) /
-        (PM_GRIPPER_OPEN_THRESHOLD - PM_GRIPPER_CLOSE_THRESHOLD),
+        (used - close_ratio) /
+        fmaxf(PM_GRIPPER_OPEN_THRESHOLD - close_ratio, PM_EPS),
         0.0f, 1.0f);
 
-    if (!ctx->gripper_initialized) {
+    if (ctx->gripper_norm_value == 0.0f) {
+        ctx->gripper_state = 0U;
+        ctx->gripper_initialized = 1U;
+    } else if (!ctx->gripper_initialized) {
         ctx->gripper_state = (used >= PM_GRIPPER_OPEN_HYST_THRESHOLD) ? 1U : 0U;
         ctx->gripper_initialized = 1U;
     } else if (ctx->gripper_state) {

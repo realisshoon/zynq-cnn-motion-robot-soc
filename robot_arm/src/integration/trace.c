@@ -62,6 +62,8 @@ static const char *const k_schema[] = {
     ,"#PIX,rsid,pair,side,sid,seq,fid,slx,sly,slv,srx,sry,srv,ex,ey,ev,wx,wy,wv,redx,redy,redv,greenx,greeny,greenv"
     ,"#PG,rsid,pair,accepted,reason"
     ,"#RQ,rsid,pair,state,candidates,filter_epoch,l_age_us,r_age_us,gap_us"
+    ,"#GR,rsid,lsid,lseq,rseq,lfid,rfid,t_ms,source,fresh,desired,command,latched,close_n,open_n,result"
+    ,"#GH,rsid,lsid,lseq,rseq,t_ms,span_px,pending,cancel_n,candidate_age_ms"
 };
 #define TRACE_SCHEMA_COUNT ((unsigned)(sizeof(k_schema) / sizeof(k_schema[0])))
 
@@ -525,6 +527,70 @@ static float ramp_remaining(const ForearmMotionState *m)
     return worst;
 }
 
+void trace_gripper(const AgentPipelineContext *ctx, const StereoDepthResult *depth, int result)
+{
+    TraceLine line;
+    if (ctx == NULL || depth == NULL) return;
+    line_begin(&line, "GR");
+    line.robot = 1U;
+    f_u32(&line, depth->right_session_id);
+    f_u32(&line, depth->left_session_id);
+    f_u32(&line, depth->left_sequence);
+    f_u32(&line, depth->right_sequence);
+    f_u32(&line, depth->left_frame_id);
+    f_u32(&line, depth->right_frame_id);
+    f_u32(&line, ms_update(platform_trace_time_us()));
+    f_u32(&line, depth->image_pose.gripper_2d.source);
+    f_u32(&line, ctx->gripper_fresh);
+    if (ctx->gripper_fresh) f_fx(&line, ctx->gripper_desired, 3U);
+    else f_empty(&line, 1U);
+    f_fx(&line, ctx->command_valid ? ctx->command.gripper_norm : ctx->output.gripper_norm, 3U);
+    f_u32(&line, ctx->gripper_latch.latched);
+    f_u32(&line, ctx->gripper_latch.close_count);
+    f_u32(&line, ctx->gripper_latch.open_count);
+    f_i32(&line, result);
+    line_end(&line);
+    line_begin(&line, "GH");
+    line.robot = 1U;
+    f_u32(&line, depth->right_session_id);
+    f_u32(&line, depth->left_session_id);
+    f_u32(&line, depth->left_sequence);
+    f_u32(&line, depth->right_sequence);
+    f_u32(&line, ms_update(platform_trace_time_us()));
+    if (ctx->gripper_fresh) f_fx(&line, ctx->gripper_distance_px, 3U);
+    else f_empty(&line, 1U);
+    f_u32(&line, ctx->gripper_latch.candidate_active);
+    f_u32(&line, ctx->gripper_latch.cancel_count);
+    f_u32(&line, ctx->gripper_latch.candidate_active ?
+        (platform_trace_time_us() - ctx->gripper_latch.candidate_started_us) / 1000U : 0U);
+    line_end(&line);
+    line_begin(&line, "GM");
+    line.robot = 1U;
+    f_u32(&line, depth->right_session_id);
+    f_u32(&line, depth->left_session_id);
+    f_u32(&line, ms_update(platform_trace_time_us()));
+    f_u32(&line, ctx->gripper_motion_hold.armed);
+    f_u32(&line, ctx->gripper_motion_hold.locked);
+    f_u32(&line, ctx->gripper_motion_hold.moving);
+    if (ctx->gripper_motion_hold.speed_valid && ctx->gripper_motion_hold.samples &&
+        platform_trace_time_us() - ctx->gripper_motion_hold.times[ctx->gripper_motion_hold.samples - 1U] <= 100000U)
+        f_fx(&line, ctx->gripper_motion_hold.speed, 2U);
+    else f_empty(&line, 1U);
+    f_u32(&line, ctx->gripper_motion_hold.open_count);
+    f_u32(&line, ctx->gripper_motion_hold.manual_open);
+    line_end(&line);
+    line_begin(&line, "GO");
+    line.robot = 1U;
+    f_u32(&line, depth->right_session_id);
+    f_u32(&line, depth->left_session_id);
+    f_u32(&line, ms_update(platform_trace_time_us()));
+    f_u32(&line, ctx->gripper_motion_hold.strong_open.pending);
+    f_u32(&line, ctx->gripper_motion_hold.strong_open.count);
+    f_u32(&line, ctx->gripper_motion_hold.strong_open.pending ?
+        (platform_trace_time_us() - ctx->gripper_motion_hold.strong_open.started_us) / 1000U : 0U);
+    line_end(&line);
+}
+
 void trace_tick(const AgentPipelineContext *ctx)
 {
     const ForearmJointCommand *command;
@@ -723,6 +789,16 @@ void trace_stereo_pair(uint32_t pair_id, const StereoDepthResult *depth,
     line_end(&line);
     trace_pair_pixels(pair_id, depth, 0U, left_points);
     trace_pair_pixels(pair_id, depth, 1U, right_points);
+    line_begin(&line, "MS");
+    f_u32(&line, depth->right_session_id);
+    f_u32(&line, pair_id);
+    f_u32(&line, depth->arm_stationary);
+    f_u32(&line, depth->arm_motion_count);
+    f_fx(&line, depth->arm_motion_rms_px, 3U);
+    f_fx(&line, depth->arm_motion_drift_px, 3U);
+    f_fx(&line, depth->arm_motion_anchor_px, 3U);
+    f_u32(&line, depth->arm_motion_trend);
+    line_end(&line);
 }
 
 void trace_stereo_admission(uint32_t pair_id, const StereoDepthResult *depth,

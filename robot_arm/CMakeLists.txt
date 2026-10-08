@@ -5,11 +5,19 @@ project(robot_arm_2d_control C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
+if(MSVC)
+    set(CMAKE_C_STANDARD 11)
+endif()
+option(ROBOT_DUAL_ARM_ENABLE "Enable RIGHT-board dual robot PWM outputs" OFF)
+option(ROBOT_SPLIT_BOARD_CONTROL "Enable independent robot control on stereo boards" OFF)
 
 # ============================================================
 # 공통 빌드 설정
 # ============================================================
 function(configure_robot_target target_name)
+    target_compile_definitions(${target_name} PUBLIC
+        ROBOT_DUAL_ARM_ENABLE=$<BOOL:${ROBOT_DUAL_ARM_ENABLE}>
+        ROBOT_SPLIT_BOARD_CONTROL=$<BOOL:${ROBOT_SPLIT_BOARD_CONTROL}>)
     target_include_directories(${target_name}
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -17,7 +25,7 @@ function(configure_robot_target target_name)
     )
 
     if(MSVC)
-        target_compile_options(${target_name} PRIVATE /W4)
+        target_compile_options(${target_name} PRIVATE /W4 /utf-8)
     else()
         target_compile_options(${target_name} PRIVATE -Wall -Wextra -Wpedantic)
     endif()
@@ -43,9 +51,12 @@ add_library(stereo_vision STATIC
     src/stereo_vision/stereo_calibration.c
     src/stereo_vision/stereo_pose.c
     src/stereo_vision/stereo_uart_protocol.c
+    src/stereo_vision/robot_follow_protocol.c
     src/stereo_vision/stereo_link.c
     src/stereo_vision/stereo_one_euro.c
+    src/stereo_vision/g_kalman3d.c
     src/stereo_vision/stereo_pose_filter.c
+    src/stereo_vision/stereo_filter_command.c
 )
 configure_robot_target(stereo_vision)
 if(UNIX OR MINGW)
@@ -84,7 +95,6 @@ target_link_libraries(test_uart_agent1_pc
     PRIVATE
         uart_pose_protocol_pc
         human_target_angle
-        m
 )
 
 target_include_directories(test_uart_agent1_pc
@@ -150,9 +160,11 @@ add_library(output_controller STATIC
     src/output_controller/servo_control.c
     src/output_controller/servo_config.c
     src/output_controller/servo_hal.c
+    src/output_controller/dual_arm_follower.c
     src/drivers/servo_pwm_driver.c
 )
 configure_robot_target(output_controller)
+target_link_libraries(output_controller PUBLIC robot_calibration)
 
 # ============================================================
 # Main Application
@@ -175,12 +187,18 @@ target_link_libraries(robot_arm_2d_control
 include(CTest)
 
 if(BUILD_TESTING)
-    foreach(name stereo_one_euro stereo_pose_filter)
+    foreach(name stereo_one_euro stereo_pose_filter stereo_filter_command)
         add_executable(test_${name} tests/integration/test_${name}.c)
         configure_robot_target(test_${name})
         target_link_libraries(test_${name} PRIVATE stereo_vision)
         add_test(NAME ${name} COMMAND test_${name})
     endforeach()
+    add_executable(test_stereo_filter_runtime tests/integration/test_stereo_filter_runtime.c
+        src/integration/input_pose_cnn.c)
+    configure_robot_target(test_stereo_filter_runtime)
+    target_include_directories(test_stereo_filter_runtime PRIVATE tests/integration/stubs)
+    target_link_libraries(test_stereo_filter_runtime PRIVATE stereo_vision)
+    add_test(NAME stereo_filter_runtime COMMAND test_stereo_filter_runtime)
     add_executable(test_forearm_stereo_absolute tests/human_target_angle/test_forearm_stereo_absolute.c)
     configure_robot_target(test_forearm_stereo_absolute)
     target_link_libraries(test_forearm_stereo_absolute PRIVATE human_target_angle)

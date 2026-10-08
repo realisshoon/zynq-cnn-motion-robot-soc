@@ -94,8 +94,8 @@ static void test_initialization_and_arguments(void)
     assert(state.time_us == 0U);
     assert_points_reset(&state);
     for (index = 0U; index < STEREO_POSE_FILTER_POINT_COUNT; ++index) {
-        assert(state.euro[index].config.minimum_cutoff_hz == 1.0f);
-        assert(state.euro[index].config.beta_per_mm == 0.01f);
+        assert(state.euro[index].config.minimum_cutoff_hz == 0.5f);
+        assert(state.euro[index].config.beta_per_mm == 0.001f);
         assert(state.euro[index].config.derivative_cutoff_hz == 1.0f);
         state.euro[index].config = (StereoOneEuroConfig){2.0f, 0.0f, 3.0f};
     }
@@ -337,6 +337,7 @@ static void test_postfilter_geometry(void)
     assert(stereo_pose_filter_apply(&state, &pose, 0.001f));
     assert(pose.wrist.y >= 80.0f && pose.wrist.y < 200.0f);
     stereo_pose_filter_init(&state);
+    state.euro[1].config.minimum_cutoff_hz = 1.0f;
     state.euro[1].config.beta_per_mm = 0.0f;
     pose = flat_fixture(1500.0f, 200.0f);
     assert(stereo_pose_filter_apply(&state, &pose, 0.02f));

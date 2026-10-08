@@ -38,8 +38,8 @@ StereoOneEuroConfig stereo_one_euro_defaults(void)
 {
     StereoOneEuroConfig config;
 
-    config.minimum_cutoff_hz = 1.0f;
-    config.beta_per_mm = 0.01f;
+    config.minimum_cutoff_hz = 0.5f;
+    config.beta_per_mm = 0.001f;
     config.derivative_cutoff_hz = 1.0f;
     return config;
 }

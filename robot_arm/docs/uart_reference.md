@@ -1,8 +1,17 @@
 # UART 참고 문서 (콘솔 명령 + TRACE 로그)
 
-RIGHT의 3D One Euro는 운영 소스에 통합되어 기본 적용된다. 별도 UART 활성화 키가
-필요하지 않으며 PWM/추종 E/A와는 독립된 처리 단계다. 기존 2D·각도 EMA와 안전검사를
-유지한다. 설정·비교 빌드와 미해결 손목 기준 복구 항목은
+## 현행 승열3 우선 안내 (2026-10-08)
+
+최신 운영 소스는 정상 `src/include/config`이며 G의 3D 칼만과 로봇0·1 독립 제어를 사용한다.
+다음 One Euro/A 수치는 이전 버전 이력이다. 현재 UART 프레임·녹화 메뉴 상태·Unity GUI 연동은
+[Unity UART 계약](uart_protocol_unity.md), 개별/공통 명령은 [로봇별 명령](robot0_robot1_commands.md)을 우선한다.
+콘솔의 `l/r/both` 접두어는 호스트 문법이며 Unity에서 보드에 그대로 보내지 않는다.
+
+운영 A는 2D 시간 EMA τ=0.10 s → 삼각측량 → 3D One Euro(min=0.5 Hz,
+β=0.001 /mm, derivative=1 Hz)를 기본 적용한다. 별도 UART 활성화 키가
+필요하지 않으며 PWM/추종 E/A와는 독립된 처리 단계다. RIGHT 런타임 설정은 아래의
+`~F,...\r` 프레임을 사용하며 A1 각도 EMA와 안전검사를 유지한다.
+설정·비교 빌드와 미해결 손목 기준 복구 항목은
 [One Euro 계약](stereo_one_euro.md)을 따른다.
 
 2026-10-04 수정 소스 기준. USB 콘솔 UART1은 **CNN 브링업 콘솔 명령 입력**과
@@ -28,7 +37,7 @@ TRACE 로그 줄이 같은 스트림에 섞여 나온다.
 
 ## 2. 콘솔 명령 (터미널에서 키 입력)
 
-한 글자를 누르면 즉시 실행된다(Enter 불필요, `m`/`j` 하위 메뉴는 예외 — 3절 참고).
+한 글자를 누르면 즉시 실행된다(Enter 불필요, `m`/`j` 하위 메뉴 및 아래 런타임 필터 프레임은 예외).
 `?`를 누르면 이 표와 같은 도움말이 그대로 출력된다.
 
 | 키 | 동작 |
@@ -82,6 +91,42 @@ PWM ON 중 새 입력이 탈락하면 마지막 승인 목표까지 이동 후 �
 스테레오 노출 동기화 gate는 그대로 유지한다. 상세 안전 조건과 PC 입력법은
 [양안 시험 운영 안내](stereo_async_trial.md)를 따른다.
 PC 모니터에서는 `r E`, `r X`, `r V` + Enter이며 E/X는 `--allow-motion-commands`가 필요하다.
+
+### RIGHT 런타임 필터 프레임
+
+`monitor_stereo_uart.py --interactive`의 고수준 명령을 사용한다. 필터는 RIGHT 전용이며
+`l filter ...`/`both filter ...`는 PC에서 거부한다. 기존 단일 키와 `both m/value/enter`
+문법은 유지한다. 원시 프레임을 임의 payload로 보내는 PC 입력 문법은 제공하지 않는다.
+
+| PC 입력 | 보드에 전송하는 프레임 | 값·단위 |
+|---|---|---|
+| `r filter show` | `~F,SHOW\r` | 현재 설정 조회 |
+| `r filter default` | `~F,DEFAULT\r` | 해당 BOOT 기본값 복원 |
+| `r filter 2d ema tau <seconds>` | `~F,EMA,<정수 µs>\r` | 0.001..1 s, 입력 × 1,000,000 |
+| `r filter 3d min <Hz>` | `~F,MIN,<정수 milliHz>\r` | 0.01..10 Hz, 입력 × 1,000 |
+| `r filter 3d beta <계수>` | `~F,BETA,<정수 계수>\r` | 0..0.1 /mm, 입력 × 1,000,000 |
+| `r filter 3d derivative <Hz>` | `~F,DERIVATIVE,<정수 milliHz>\r` | 0.01..10 Hz, 입력 × 1,000 |
+
+`\r`는 실제 CR 한 바이트이며 LF를 붙이지 않는다. 값은 부호·지수 없는 유한 ASCII
+십진수(`숫자+` 또는 `숫자+.숫자+`)만 받는다. Decimal 정밀도로 범위를 검사하고
+배율 적용 결과가 정수로 정확히 표현되어야 한다. τ `0.10` → `100000`, min `0.5` →
+`500`, β `0.001` → `1000`, derivative `1` → `1000`이며 τ `0.1000001`이나
+min `0.5001`은 반올림 없이 거부한다. NaN/Infinity·부호·지수·원시 UART 문자열도 거부한다.
+
+런타임 필터 명령을 구현한 **새 RIGHT BOOT이 필요**하다. PC 업데이트만으로는 이전
+BOOT에 기능이 추가되지 않는다. 이전 BOOT에 새 프레임을 보내 지원 여부를 시험하지 않는다.
+변경은 **RAM 전용이며 SD에 영속 저장하지 않는다**. 재부팅하면 해당 BOOT 기본값으로
+돌아가며 운영 A의 기본값은 위의 τ=0.10 s/min=0.5 Hz/β=0.001 /mm/derivative=1 Hz다.
+`ACK`/`FILTER` 응답으로 적용·조회 결과를 확인한다. PC `sent`는 UART write 성공이며
+적용 확인이 아니다. `--filter commands`는 전송 대상의 응답 창 안에서 두 태그를 표시하고,
+창 밖 응답도 디스크 전체 로그에는 남긴다.
+
+외부 C는 약한 2D EMA τ=0.03 s → 2D One Euro → 삼각측량 → 운영 A와 같은 3D One Euro,
+외부 G는 2D EMA τ=0.10 s → 삼각측량 → 상수 속도 Kalman3D로 3D One Euro를 대체한다.
+C/G는 별도 비교 빌드이며 `r filter`로 프로필을 선택하는 문법은 없다. 해당 BOOT의 실제
+지원·적용 결과는 응답으로 확인한다. 필터 명령은 PWM/비동기 추종을 활성화하지 않고
+`--allow-motion-commands` 없이 허용한다. 하드웨어 ABI `0x77D4E3BB`, SD 가중치·SHA
+sidecar, PWM/async 부팅 OFF와 matching/JUMP/원시 입력 승인/A2 안전검사 계약은 유지한다.
 
 `C`는 진행 중인 CNN 프레임이 끝나면 연속 추론을 잠시 멈추고, VDMA 쓰기 채널을
 계속 실행하면서 다른 버퍼로 잠시 park하여 완료된 버퍼를 복사하고, circular 모드로 복원한 뒤 PPM(P6, 1280×720)으로 저장한다.
@@ -216,7 +261,7 @@ red minimum brightness는 빨간 마커 검출 임계값이지 센서 노출 설
 | `CS` | 1초마다 | CNN 누적 통계: t_ms,irq,ok,error,timeout,last_us,max_us,overwritten |
 | `RAW` | 좌우 CNN 완료마다 | 필터 전 좌표·검출 정보. 어깨 L/R, 사용 팔꿈치/손목, 빨강/초록 손가락 마커; 보드 세션/sequence/fid로 출처 추적 |
 | `PAIR` | RIGHT가 좌우 쌍을 처리할 때 | 오른쪽 세션+쌍 순번으로 양쪽 세션/sequence/fid를 연결. 좌우 fid 동일 여부로 짝짓지 않음 |
-| `PIX` | 처리 쌍마다 | 선택된 쌍의 좌우 2D EMA 후 좌표. RAW와 비교해 필터 효과 확인 |
+| `PIX` | 처리 쌍마다 | 선택된 쌍의 좌우 2D 필터 후 좌표(운영 A는 시간 EMA). RAW와 비교해 필터 효과 확인 |
 | `PG` | 처리 쌍의 입력 판정마다 | 해당 쌍의 입력 승인/거부와 이유. 승인과 실제 PWM 적용 성공은 별개 |
 | `RQ` | 처리 쌍마다 | 추적 상태·재획득 후보 수·3D 필터 세대·좌우 수신 나이·수신 시각 차이 |
 
@@ -236,10 +281,22 @@ TRACE_DROP/SM drop·ST qdrop이 증가하면 해당 측정 구간의 누락도 �
 비동기 LIVE 시험(`r A`)에서는 최신 RIGHT에 가장 가까운 수신 시각의 LEFT를 연결하며,
 수신 나이 ≤250 ms·좌우 수신 시각 차이 ≤100 ms를 요구한다. 수신 시각은 노출 동기화가 아니다.
 2D 큰 도약은 EMA 전에 보류하며 3개 원시 표본의 안정성을 확인한다.
-3D 팔꿈치/손목이 마지막 입력 승인 위치에서 150 mm를 넘으면 `PG=JUMP_HOLD` →
-`REACQ_WAIT` → `REACQ_ACCEPT`로 진행한다. 서로 다른 최신 쌍 3개가 고정 후보 위치에서
-50 mm 이내여야 재획득하며 불량/만료 입력은 후보를 초기화한다. 재획득은 3D 필터 기록만
-초기화하고 A1 각도 EMA·A2 충돌검사·속도 제한을 유지한다. 승인 위치는 실제 서보 위치가 아니다.
+운영 소스는 외부 G 제작 당시 전체 원본으로 복원했다. 기준은
+`captures/acg_build_20261004_acg_final/source/`이며 운영 A는 One Euro를 유지한다.
+같은 세션에서 이전 승인 위치 대비 elbow/wrist 변화 ≤150 mm이면 승인한다.
+세션 변경·150 mm 초과는 `JUMP_HOLD` → `REACQ_WAIT` → `REACQ_ACCEPT`로 진행하며
+첫 후보의 50 mm 이내인 서로 다른 3개 유효 쌍을 요구한다. 후보 간 간격은 ≤250 ms다.
+
+같은 세션·재획득 아님·승인 간격 ≤250 ms이면 그 간격을 dt로 사용한다. 그 외에는
+dt=0.1초이며 승인 공백 >250 ms이면 필터 epoch를 초기화한다. 무효점은 해당 필터를
+초기화하며 필수점 출력 기하 탈락은 전체 필터, 손가락 출력 기하 탈락은 손가락 필터를 초기화한다.
+최근 500 ms 승인/이력 보존·실제 필터 시각 분리·이동 예측 재획득은 제거했다.
+A1/A2/PWM·신선도·150 mm·기하 검사는 유지한다. A 계수는 0.5 Hz/0.001/mm/1 Hz다.
+
+복원 전 소스·문서·테스트는 `captures/restore_G_baseline_20261004/before/`에 보관했다.
+기존 SD의 최신 A BOOT은 소스 복원만으로 바뀌지 않는다. 칼만 UART 조정은 외부 G 전용이며
+[G 전용 설명서](../tools/stereo_vision/filter_acg/g_variant/uart_tuning/README.md)를 따른다.
+G 시험은 RIGHT BOOT만 교체하며 LEFT·가중치 BIN/SHA·XSA/비트스트림/PACK_ID는 유지한다.
 `RQ,rsid,pair,state,candidates,filter_epoch,l_age_us,r_age_us,gap_us`로 이 상태를 확인한다.
 
 2026-10-04 사용자 확인 기구 치수: 전완 16 cm·손목~손끝 20 cm,

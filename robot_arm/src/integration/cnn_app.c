@@ -11,13 +11,24 @@
 #include "xuartps_hw.h"
 #include "xil_exception.h"
 #include "xscugic.h"
+#include "xtime_l.h"
 
 #include "integration/cnn_app.h"
+#include "integration/uart_settings.h"
+#include "output_controller/servo_hal.h"
+#include "dual_arm_config.h"
+#include "../cnn_firmware/cnn/cnn_weights.h"
+#include <string.h>
+#if defined(ROBOT_STEREO_RIGHT) || ROBOT_SPLIT_BOARD_CONTROL
+#include "record_replay/motion_library.h"
+#endif
 #include "integration/platform_vitis.h"
 #include "integration/trace.h"
 #include "integration/stereo_board.h"
 #include "input_pose_cnn.h"
 #include "cnn_console.h"
+#include "stereo_filter_config.h"
+#include "stereo_vision/stereo_filter_command.h"
 #include "cnn_app_event.h"
 #include "frame_capture_sd.h"
 #include "../cnn_firmware/cam_gpio/cam_gpio.h"
@@ -59,11 +70,123 @@ static int frame_capture_delete_jig;
 static int frame_capture_resume_auto;
 static FrameCaptureSdFolder frame_capture_folder = FRAME_CAPTURE_FOLDER_CALIB;
 
+static void settings_capture(UartSettingsValues *values)
+{
+    u8 red, green, blue;
+    u32 packed;
+    memset(values, 0, sizeof(*values));
+    cnn_hw_get_color_margins(&red, &green, &blue);
+    values->value[0] = red; values->value[1] = green; values->value[2] = blue;
+    packed = cnn_hw_read(CNN_REG_YELLOW_MARGIN);
+    values->value[3] = (packed >> 8) & 255U; values->value[4] = packed & 255U;
+    values->value[5] = cnn_hw_read(CNN_REG_RED_THRESHOLD) & 255U;
+    values->value[6] = (cnn_hw_read(CNN_REG_GREEN_THRESHOLD) >> 8) & 255U;
+    values->value[7] = (cnn_hw_read(CNN_REG_BLUE_THRESHOLD) >> 16) & 255U;
+    packed = cnn_hw_read(CNN_REG_YELLOW_THRESHOLD);
+    values->value[8] = packed & 255U; values->value[9] = (packed >> 8) & 255U;
+    values->value[10] = (packed >> 16) & 255U;
+    values->value[11] = cnn_hw_read(CNN_REG_MIN_COUNT) & 0x3ffffU;
+    values->value[12] = cnn_hw_get_color_enable();
+#ifdef ROBOT_STEREO_RIGHT
+    {
+        StereoKalman3DConfig config = input_pose_cnn_kalman_config();
+        values->value[13] = stereo_board_pixel_tau_us();
+        values->value[14] = (uint32_t)(config.measurement_std_mm[0] * 1000.0f + 0.5f);
+        values->value[15] = (uint32_t)(config.measurement_std_mm[2] * 1000.0f + 0.5f);
+        values->value[16] = (uint32_t)(config.acceleration_std_mm_s2 * 1000.0f + 0.5f);
+        values->value[17] = (uint32_t)(config.initial_velocity_std_mm_s * 1000.0f + 0.5f);
+    }
+#endif
+}
+
+static int settings_apply(const UartSettingsValues *values)
+{
+    const uint32_t *fields = values->value;
+    cnn_error_t result;
+    if (cnn_hw_status() & (CNN_STATUS_BUSY | CNN_STATUS_ERROR)) return 0;
+    result = cnn_hw_set_color_margins((u8)fields[0], (u8)fields[1], (u8)fields[2]);
+    if (result == CNN_OK) result = cnn_hw_set_yellow_margins((u8)fields[3], (u8)fields[4]);
+    if (result == CNN_OK) result = cnn_hw_set_color_thresholds((u8)fields[5], (u8)fields[6],
+        (u8)fields[7], (u8)fields[8], (u8)fields[9], (u8)fields[10]);
+    if (result == CNN_OK) result = cnn_hw_set_color_min_count(fields[11]);
+    if (result == CNN_OK) result = cnn_hw_set_color_enable(fields[12]);
+    if (result != CNN_OK) return 0;
+#ifdef ROBOT_STEREO_RIGHT
+    {
+        StereoKalman3DConfig config = input_pose_cnn_kalman_config();
+        config.measurement_std_mm[0] = config.measurement_std_mm[1] = fields[14] / 1000.0f;
+        config.measurement_std_mm[2] = fields[15] / 1000.0f;
+        config.acceleration_std_mm_s2 = fields[16] / 1000.0f;
+        config.initial_velocity_std_mm_s = fields[17] / 1000.0f;
+        if (!stereo_board_set_pixel_tau_us(fields[13]) || !input_pose_cnn_kalman_configure(config)) return 0;
+    }
+#endif
+    return 1;
+}
+
+int cnn_app_settings_service(int storage_safe)
+{
+    return uart_settings_service(storage_safe && !cnn_continuous_mode && !cnn_single_pending &&
+        !cnn_ctx.running && !cnn_console_active() && !cnn_stopping && !frame_capture_requested &&
+        !(cnn_hw_status() & (CNN_STATUS_BUSY | CNN_STATUS_ERROR)));
+}
+
+static void uart_stop_capability(void)
+{
+#ifdef ROBOT_STEREO_LEFT
+    unsigned role=1U;
+#else
+    unsigned role=2U;
+#endif
+    xil_printf("[UART] stop_escape=1 protocol=ESC_X_S frame_timeout_ms=250 role=%u\r\n",role);
+}
+
 void cnn_app_report_pwm_result(unsigned enabled, const char *result, const char *mode)
 {
+    uart_stop_capability();
+#if ROBOT_DUAL_ARM_ENABLE
+    const DualArmFollower *left = servo_hal_dual_status();
+    xil_printf("[PWM] enabled=%u result=%s mode=%s arm=RIGHT_AND_LEFT_CH0_CH4; "
+               "no position feedback; stereo exposure gate unchanged\r\n",
+               enabled, result, mode);
+    if (left != NULL) {
+        xil_printf("[DUAL] left_pwm=%u state=%s flags=0x%lx reference=%u "
+            "hold_ticks=%lu rejoin_ticks=%lu track_ticks=%lu left_forearm_mm=135 "
+            "left_motor_end_mm=60 left_tip_mm=190; JC=1,2,3,4,7 CH5=unused\r\n",
+            (unsigned)left->enabled, dual_arm_follower_mode_name(left->mode),
+            (unsigned long)left->safety_flags, (unsigned)left->have_command,
+            (unsigned long)left->hold_ticks, (unsigned long)left->rejoin_ticks,
+            (unsigned long)left->tracking_ticks);
+        if (left->have_command) xil_printf("[DUAL] left_command_degrees_x10=%d,%d,%d,%d grip_x1000=%d\r\n",
+            (int)(left->applied.elbow_roll_deg * 10.0f),
+            (int)(left->applied.elbow_pitch_deg * 10.0f),
+            (int)(left->applied.wrist_pitch_deg * 10.0f),
+            (int)(left->applied.wrist_roll_deg * 10.0f),
+            (int)(left->applied.gripper_norm * 1000.0f));
+    }
+#elif ROBOT_SPLIT_BOARD_CONTROL
+#ifdef ROBOT_STEREO_LEFT
+    const char *arm = "ROBOT1_JC_CH0_CH4";
+#else
+    const char *arm = "ROBOT0_JB_CH0_CH4";
+#endif
+    xil_printf("[PWM] enabled=%u result=%s mode=%s arm=%s; "
+               "no position feedback; stereo exposure gate unchanged\r\n",
+               enabled, result, mode, arm);
+    xil_printf("[RF] version=1 role=%u local=%u remote=%u forearm_mm=%u tip_mm=%u\r\n",
+#ifdef ROBOT_STEREO_LEFT
+        1U, (unsigned)stereo_board_remote_follow_enabled(), 0U, 135U, 190U);
+    xil_printf("[GRIP_PWM] robot=1 close_max_us=%u policy=CLAMP_ONLY; no current or temperature feedback\r\n",
+        (unsigned)ROBOT_LEFT_GRIPPER_CLOSE_MAX_US);
+#else
+        2U, (unsigned)stereo_board_async_test_enabled(),
+        (unsigned)stereo_board_remote_requested(), 160U, 200U);
+#endif
+#else
     xil_printf("[PWM] enabled=%u result=%s mode=%s arm=RIGHT_CH0_CH4; "
                "no position feedback; stereo exposure gate unchanged\r\n",
                enabled, result, mode);
+#endif
 }
 
 void cnn_app_report_async_result(unsigned enabled, unsigned pwm_enabled,
@@ -208,9 +331,108 @@ static void menu_help(void)
     xil_printf("  E : enable robot PWM (LIVE, stationary approved command only; arm may move)\r\n");
     xil_printf("  X : disable robot PWM (torque released; support the arm)\r\n");
     xil_printf("  V : print robot PWM state (not camera PWM)\r\n");
+#if ROBOT_SPLIT_BOARD_CONTROL && defined(ROBOT_STEREO_LEFT)
+    xil_printf("  A : request stereo HUMAN-angle follow from RIGHT (local PWM ON, LIVE)\r\n");
+#else
     xil_printf("  A : enable EXPERIMENTAL asynchronous binocular control (RIGHT, PWM ON, LIVE)\r\n");
+#endif
     xil_printf("  S : disable asynchronous test inputs; last approved goal still completes\r\n");
     xil_printf("  T : print asynchronous test mode (not exposure synchronization)\r\n");
+    xil_printf("  O : local LIVE manual gripper OPEN until H (object may drop)\r\n");
+    xil_printf("  H : local LIVE restore automatic gripper control\r\n");
+    xil_printf("  Grip: fresh OPEN >=0.8 for 800ms can release during motion; missing grace 200ms\r\n");
+    xil_printf("  ~F,SHOW<Enter> : RIGHT filter settings; host r filter commands supported\r\n");
+}
+
+#ifdef ROBOT_STEREO_RIGHT
+static void filter_report(void)
+{
+    xil_printf("[FILTER] backend=%s ema_tau_us=%u one_euro_tunable=%d persistence=RAM; settings save commits to SD\r\n",
+        ROBOT_STEREO_FILTER_NAME, (unsigned)stereo_board_pixel_tau_us(),
+        input_pose_cnn_filter_tunable());
+    {
+        StereoKalman3DConfig config = input_pose_cnn_kalman_config();
+        xil_printf("[FILTER] kxy_milli_mm=%u kz_milli_mm=%u kacc_milli_mm_s2=%u kvel_milli_mm_s=%u history=preserved initial_velocity=next_seed\r\n",
+            (unsigned)(config.measurement_std_mm[0] * 1000.0f + 0.5f),
+            (unsigned)(config.measurement_std_mm[2] * 1000.0f + 0.5f),
+            (unsigned)(config.acceleration_std_mm_s2 * 1000.0f + 0.5f),
+            (unsigned)(config.initial_velocity_std_mm_s * 1000.0f + 0.5f));
+        xil_printf("[FILTER] time_policy=G_SHORT_GAP_HISTORY freshness_us=250000 history_hold_us=500000 filter_reset_gap_us=500000 dt=last_successful_update invalid=skip_history_preserved reacquire=original_3x50mm\r\n");
+    }
+    if (input_pose_cnn_filter_tunable()) {
+        StereoOneEuroConfig config = input_pose_cnn_filter_config();
+        xil_printf("[FILTER] min_mHz=%u beta_u_per_mm=%u derivative_mHz=%u history=preserved\r\n",
+            (unsigned)(config.minimum_cutoff_hz * 1000.0f + 0.5f),
+            (unsigned)(config.beta_per_mm * 1000000.0f + 0.5f),
+            (unsigned)(config.derivative_cutoff_hz * 1000.0f + 0.5f));
+    }
+}
+#endif
+
+static void filter_run(const StereoFilterCommand *command)
+{
+#ifdef ROBOT_STEREO_RIGHT
+    StereoOneEuroConfig config = input_pose_cnn_filter_config();
+    uint32_t before = 0U;
+    int applied = 0;
+    const char *key = "DEFAULT";
+    if (command->action == STEREO_FILTER_SHOW) {
+        filter_report();
+        return;
+    }
+    if (command->action == STEREO_FILTER_DEFAULT) {
+        applied = stereo_board_set_pixel_tau_us(STEREO_LINK_PIXEL_TAU_US);
+        if (applied) applied = input_pose_cnn_kalman_configure(stereo_kalman3d_defaults());
+    } else if (command->action == STEREO_FILTER_EMA) {
+        key = "EMA";
+        before = stereo_board_pixel_tau_us();
+        applied = stereo_board_set_pixel_tau_us(command->value);
+    } else if (command->action >= STEREO_FILTER_KALMAN_XY &&
+               command->action <= STEREO_FILTER_KALMAN_VELOCITY) {
+        StereoKalman3DConfig kalman = input_pose_cnn_kalman_config();
+        float value = command->value / 1000.0f;
+        if (command->action == STEREO_FILTER_KALMAN_XY) {
+            key = "KXY";
+            before = (uint32_t)(kalman.measurement_std_mm[0] * 1000.0f + 0.5f);
+            kalman.measurement_std_mm[0] = kalman.measurement_std_mm[1] = value;
+        } else if (command->action == STEREO_FILTER_KALMAN_Z) {
+            key = "KZ";
+            before = (uint32_t)(kalman.measurement_std_mm[2] * 1000.0f + 0.5f);
+            kalman.measurement_std_mm[2] = value;
+        } else if (command->action == STEREO_FILTER_KALMAN_ACCEL) {
+            key = "KACC";
+            before = (uint32_t)(kalman.acceleration_std_mm_s2 * 1000.0f + 0.5f);
+            kalman.acceleration_std_mm_s2 = value;
+        } else {
+            key = "KVEL";
+            before = (uint32_t)(kalman.initial_velocity_std_mm_s * 1000.0f + 0.5f);
+            kalman.initial_velocity_std_mm_s = value;
+        }
+        applied = input_pose_cnn_kalman_configure(kalman);
+    } else {
+        if (command->action == STEREO_FILTER_MIN) {
+            key = "MIN";
+            before = (uint32_t)(config.minimum_cutoff_hz * 1000.0f + 0.5f);
+            config.minimum_cutoff_hz = command->value / 1000.0f;
+        } else if (command->action == STEREO_FILTER_BETA) {
+            key = "BETA";
+            before = (uint32_t)(config.beta_per_mm * 1000000.0f + 0.5f);
+            config.beta_per_mm = command->value / 1000000.0f;
+        } else {
+            key = "DERIVATIVE";
+            before = (uint32_t)(config.derivative_cutoff_hz * 1000.0f + 0.5f);
+            config.derivative_cutoff_hz = command->value / 1000.0f;
+        }
+        applied = input_pose_cnn_filter_configure(config);
+    }
+    xil_printf("[FILTER] result=%s key=%s before=%u requested=%u; PWM and safety unchanged\r\n",
+        applied ? "APPLIED" : "REJECTED_UNAVAILABLE", key,
+        (unsigned)before, (unsigned)command->value);
+    filter_report();
+#else
+    (void)command;
+    xil_printf("[FILTER] result=REJECTED_RIGHT_ONLY\r\n");
+#endif
 }
 
 static void menu_run(void)
@@ -218,15 +440,69 @@ static void menu_run(void)
     cnn_error_t result=CNN_OK;
     int report_pass=0;
     char c;
+    static StereoFilterCommandParser filter_parser;
+    static CnnAppUartGuard uart_guard;
+    StereoFilterCommand filter_command;
+    StereoFilterCommandStatus filter_status;
+    CnnAppUartAction uart_action;
+    XTime now;
+    uint32_t now_us;
+    int partial_active;
 
-    if(cnn_console_active()) {
-        cnn_console_poll();
+    XTime_GetTime(&now);
+    now_us=(uint32_t)((now/COUNTS_PER_SECOND)*1000000U+
+        (now%COUNTS_PER_SECOND)*1000000U/COUNTS_PER_SECOND);
+    if(!XUartPs_IsReceiveData(STDIN_BASEADDRESS)) {
+        partial_active=filter_parser.active || uart_settings_active();
+#if defined(ROBOT_STEREO_RIGHT) || ROBOT_SPLIT_BOARD_CONTROL
+        partial_active=partial_active || motion_library_input_active();
+#endif
+        if(cnn_app_uart_guard_expire(&uart_guard,now_us,partial_active)) {
+            memset(&filter_parser,0,sizeof(filter_parser));
+            uart_settings_abort_input();
+#if defined(ROBOT_STEREO_RIGHT) || ROBOT_SPLIT_BOARD_CONTROL
+            motion_library_abort_input();
+#endif
+            xil_printf("[UART] incomplete frame cancelled after 250ms idle; tail discarded until CR/new frame/stop\r\n");
+        }
         return;
     }
-    if(!XUartPs_IsReceiveData(STDIN_BASEADDRESS))
-        return;
 
     c=(char)XUartPs_RecvByte(STDIN_BASEADDRESS);
+    uart_action=cnn_app_uart_guard_feed(&uart_guard,(uint8_t)c,now_us);
+    if(uart_action==CNN_APP_UART_ABORT) {
+        memset(&filter_parser,0,sizeof(filter_parser));
+        uart_settings_abort_input();
+#if defined(ROBOT_STEREO_RIGHT) || ROBOT_SPLIT_BOARD_CONTROL
+        motion_library_abort_input();
+#endif
+        cnn_console_cancel();
+        return;
+    }
+    if(uart_action==CNN_APP_UART_STOP) {
+        (void)cnn_app_control_event_post_stop_uart(c);
+        return;
+    }
+    if(uart_action==CNN_APP_UART_DROP) return;
+    if(uart_settings_active() && uart_settings_feed((uint8_t)c,0)) return;
+#if defined(ROBOT_STEREO_RIGHT) || ROBOT_SPLIT_BOARD_CONTROL
+    if(!filter_parser.active && motion_library_feed((uint8_t)c,cnn_console_active())) return;
+#endif
+    if(!filter_parser.active && uart_settings_feed((uint8_t)c,cnn_console_active())) return;
+    filter_status=stereo_filter_command_feed(&filter_parser,(uint8_t)c,
+        cnn_console_active(),&filter_command);
+    if(filter_status!=STEREO_FILTER_NOT_HANDLED) {
+        if(filter_status==STEREO_FILTER_COMPLETE) filter_run(&filter_command);
+        else if(filter_status==STEREO_FILTER_MALFORMED ||
+                filter_status==STEREO_FILTER_MENU_ACTIVE)
+            xil_printf("[FILTER] result=REJECTED reason=%s; settings unchanged\r\n",
+                filter_status==STEREO_FILTER_MENU_ACTIVE ? "MENU_ACTIVE" : "FORMAT_OR_RANGE");
+        return;
+    }
+    if(cnn_console_active()) {
+        cnn_console_feed((unsigned char)c);
+        return;
+    }
     if(cnn_app_control_event_post_uart(c))
         return;
     switch(c) {
@@ -274,6 +550,8 @@ static void menu_run(void)
         }
         break;
     case 't':
+        uart_stop_capability();
+        uart_settings_report_capability();
         cnn_bringup_print_status(&cnn_ctx);
         xil_printf("Frame capture: folder=%s, pending=%d\r\n",
                    frame_capture_sd_folder_path(frame_capture_folder),
@@ -653,6 +931,14 @@ int cnn_app_init(void)
 
     print_video_status();
     menu_help();
+    uart_stop_capability();
+#ifdef ROBOT_STEREO_RIGHT
+    uart_settings_init(2U,settings_capture,settings_apply);
+#else
+    uart_settings_init(1U,settings_capture,settings_apply);
+#endif
+    if(cnn_sd_mount()==CNN_OK) uart_settings_boot_restore();
+    else xil_printf("[CFG] SD mount failed; boot defaults retained\r\n");
     cnn_auto_start();
 
     return 0;

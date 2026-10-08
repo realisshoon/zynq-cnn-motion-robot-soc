@@ -7,6 +7,7 @@
 #include "human_target_angle/agent1_forearm_stage.h"
 #include "output_controller/output_control.h"
 #include "output_controller/servo_hal.h"
+#include "integration/trace.h"
 
 /*
  * [TRACE] UART 로그용 기록. ROBOT_TRACE를 정의하지 않으면 아무것도 하지 않는다.
@@ -72,6 +73,152 @@ static int home_is_safe(void)
     return forearm_safety_check_apply(&k_home_pose, NULL);
 }
 
+static float gripper_latch_update(AgentGripperLatch *latch, float desired,
+                                  float held, int fresh, uint32_t frame_id,
+                                  uint8_t source, uint32_t now_us)
+{
+    uint32_t advance = frame_id - latch->frame_id;
+    if (latch->have_frame && !advance) return held;
+    if (latch->have_frame && advance >= 0x80000000U)
+        memset(latch, 0, sizeof(*latch));
+    if (latch->have_frame && (source != latch->source ||
+        now_us - latch->sample_time_us > AGENT_GRIPPER_SAMPLE_MAX_GAP_US)) {
+        latch->close_count = 0U;
+        latch->open_count = 0U;
+    }
+    latch->frame_id = frame_id;
+    latch->have_frame = 1U;
+    latch->sample_time_us = now_us;
+    latch->source = source;
+    if (!fresh || !isfinite(desired)) {
+        latch->close_count = 0U;
+        latch->open_count = 0U;
+        return latch->latched ? 0.0f : held;
+    }
+    if (latch->latched) {
+        int hold_done = latch->closed_applied
+            ? now_us - latch->applied_time_us >= AGENT_GRIPPER_CLOSE_HOLD_US
+            : now_us - latch->confirmed_time_us >= AGENT_GRIPPER_CLOSE_MAX_WAIT_US;
+        if (hold_done && desired > 0.0f) {
+            ++latch->open_count;
+            if (latch->open_count >= AGENT_GRIPPER_CONFIRM_SAMPLES) {
+                latch->latched = 0U;
+                latch->closed_applied = 0U;
+                latch->open_count = 0U;
+                return desired;
+            }
+        } else latch->open_count = 0U;
+        return 0.0f;
+    }
+    if (desired == 0.0f) {
+        ++latch->close_count;
+        if (latch->close_count >= AGENT_GRIPPER_CONFIRM_SAMPLES) {
+            latch->close_count = 0U;
+            latch->open_count = 0U;
+            latch->latched = 1U;
+            latch->closed_applied = 0U;
+            latch->confirmed_time_us = now_us;
+            return 0.0f;
+        }
+        return held;
+    }
+    latch->close_count = 0U;
+    return desired;
+}
+
+static float gripper_hysteresis_update(AgentGripperLatch *latch, float desired,
+    float distance_px, float held, int fresh, uint32_t frame_id,
+    uint8_t source, uint32_t now_us)
+{
+    uint32_t advance = frame_id - latch->frame_id;
+    if (latch->have_frame && !advance) return held;
+    if (latch->have_frame && advance >= 0x80000000U)
+        memset(latch, 0, sizeof(*latch));
+    if (latch->latched)
+        return gripper_latch_update(latch, desired, held, fresh, frame_id, source, now_us);
+    if (!fresh || !isfinite(desired) || !isfinite(distance_px) || distance_px < 0.0f ||
+        (latch->have_frame && (source != latch->source ||
+         now_us - latch->sample_time_us > AGENT_GRIPPER_SAMPLE_MAX_GAP_US)) ||
+        (latch->candidate_active &&
+         now_us - latch->candidate_started_us > AGENT_GRIPPER_CANDIDATE_WINDOW_US)) {
+        latch->candidate_active = 0U;
+        latch->close_count = 0U;
+        latch->cancel_count = 0U;
+    }
+    latch->frame_id = frame_id;
+    latch->have_frame = 1U;
+    latch->sample_time_us = now_us;
+    latch->source = source;
+    if (!fresh || !isfinite(desired) || !isfinite(distance_px) || distance_px < 0.0f)
+        return held;
+    if (distance_px <= AGENT_GRIPPER_CLOSE_START_PX) {
+        if (!latch->candidate_active) {
+            latch->candidate_active = 1U;
+            latch->candidate_started_us = now_us;
+        }
+        latch->cancel_count = 0U;
+        ++latch->close_count;
+        if (latch->close_count >= AGENT_GRIPPER_CONFIRM_SAMPLES) {
+            latch->candidate_active = 0U;
+            latch->close_count = 0U;
+            latch->open_count = 0U;
+            latch->latched = 1U;
+            latch->closed_applied = 0U;
+            latch->confirmed_time_us = now_us;
+            return 0.0f;
+        }
+        return held;
+    }
+    if (latch->candidate_active) {
+        if (distance_px > AGENT_GRIPPER_CANCEL_PX) {
+            ++latch->cancel_count;
+            if (latch->cancel_count >= AGENT_GRIPPER_CANCEL_SAMPLES) {
+                latch->candidate_active = 0U;
+                latch->close_count = 0U;
+                latch->cancel_count = 0U;
+                return desired;
+            }
+        } else latch->cancel_count = 0U;
+        return held;
+    }
+    return desired;
+}
+
+static void gripper_latch_applied(AgentGripperLatch *latch, float command, uint32_t now_us)
+{
+    if (latch->latched && !latch->closed_applied && command == 0.0f) {
+        latch->closed_applied = 1U;
+        latch->applied_time_us = now_us;
+    }
+}
+
+void agent_pipeline_reset_gripper_latch(AgentPipelineContext *ctx)
+{
+    if (ctx != NULL) memset(&ctx->gripper_latch, 0, sizeof(ctx->gripper_latch));
+    if (ctx != NULL) {
+        uint8_t manual_open = ctx->gripper_motion_hold.manual_open;
+        memset(&ctx->gripper_motion_hold, 0, sizeof(ctx->gripper_motion_hold));
+        ctx->gripper_motion_hold.manual_open = manual_open;
+    }
+    agent1_forearm_stage_reset_gripper();
+    if (ctx != NULL) {
+        memset(&ctx->elbow_reentry, 0, sizeof(ctx->elbow_reentry));
+        memset(&ctx->elbow_return, 0, sizeof(ctx->elbow_return));
+        memset(ctx->wrist_return, 0, sizeof(ctx->wrist_return));
+        ctx->wrist_observation_fresh = 0U;
+    }
+}
+
+static uint32_t gripper_latch_time_us(const AgentPipelineContext *ctx)
+{
+#ifdef ROBOT_TRACE
+    (void)ctx;
+    return platform_trace_time_us();
+#else
+    return ctx->ticks * 20000U;
+#endif
+}
+
 int agent_pipeline_init_mode(AgentPipelineContext *ctx, int enable_robot_pwm)
 {
     ServoPwmCommand pwm;
@@ -103,7 +250,7 @@ int agent_pipeline_init_mode(AgentPipelineContext *ctx, int enable_robot_pwm)
     ctx->agent3_command_valid = 1U;
     ctx->agent3_command_tick = ctx->ticks;
     if (ctx->output_enabled) {
-        if (!servo_hal_apply(&pwm)) return -1;
+        if (!servo_hal_apply_joint_command(&ctx->output, &pwm, 0)) return -1;
         ctx->applied_command = ctx->output;
         ctx->applied_command_valid = 1U;
         if (!servo_hal_enable()) return -1;
@@ -201,8 +348,10 @@ int agent_pipeline_set_output_enabled(AgentPipelineContext *ctx, int enabled)
             return 0;
         }
         ctx->output_enabled = 0U;
+        ctx->arm_stationary = ctx->arm_tracking_started = 0U;
         ctx->output_parked = 1U;
         ctx->output_faulted = 0U;
+        agent_pipeline_reset_gripper_latch(ctx);
         if (result != AGENT_OUTPUT_RESULT_NONE) {
             ctx->output_result = result;
             return 0;
@@ -216,7 +365,7 @@ int agent_pipeline_set_output_enabled(AgentPipelineContext *ctx, int enabled)
         return 0;
     }
     result = AGENT_OUTPUT_RESULT_HAL_APPLY_FAILED;
-    if (servo_hal_apply(&pwm)) {
+    if (servo_hal_apply_joint_command(&reference, &pwm, 0)) {
         result = servo_hal_enable() ? AGENT_OUTPUT_RESULT_NONE
                                    : AGENT_OUTPUT_RESULT_HAL_ENABLE_FAILED;
     }
@@ -236,6 +385,7 @@ int agent_pipeline_set_output_enabled(AgentPipelineContext *ctx, int enabled)
     ctx->output_enabled = 1U;
     ctx->output_parked = 0U;
     ctx->output_result = AGENT_OUTPUT_RESULT_ENABLED;
+    agent_pipeline_reset_gripper_latch(ctx);
     ctx->servo_writes++;
     return 1;
 }
@@ -271,6 +421,7 @@ int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec)
     ctx->dt_sec = dt_sec;
     ctx->frames_in++;
     ctx->target_ready = 0U;
+    ctx->wrist_observation_fresh = 0U;
 
     /*
      * 반환값(1/0/-1)은 보지 않는다. 짧은 dropout 동안 HOLD(0)에서도 valid=1인
@@ -297,6 +448,9 @@ int agent1_run_stereo(AgentPipelineContext *ctx, const HumanPose2D *image_pose,
     ctx->dt_sec = dt_sec;
     ctx->frames_in++;
     ctx->target_ready = 0U;
+    ctx->wrist_observation_fresh = measured_pose->valid &&
+        measured_pose->wrist.valid && measured_pose->finger1.valid &&
+        measured_pose->finger2.valid && measured_pose->frame_id == image_pose->frame_id;
     rc = agent1_forearm_stage_run_stereo(image_pose, measured_pose,
                                         AGENT_PIPELINE_ACTIVE_ARM, dt_sec);
     TRACE_SET_A1_RC(ctx, rc);
@@ -308,9 +462,117 @@ int agent1_run_stereo(AgentPipelineContext *ctx, const HumanPose2D *image_pose,
     return 1;
 }
 
+void agent_pipeline_sync_arm_motion(AgentPipelineContext *ctx, int stationary, uint32_t input_epoch)
+{
+    if (ctx == NULL) return;
+    if (ctx->arm_input_epoch != input_epoch) {
+        ctx->arm_tracking_started = 0U;
+        ctx->elbow_return.pending_epoch = ctx->elbow_return.valid;
+        memset(&ctx->elbow_reentry, 0, sizeof(ctx->elbow_reentry));
+    }
+    ctx->arm_input_epoch = input_epoch;
+    ctx->arm_stationary = stationary ? 1U : 0U;
+}
+
+static float elbow_reentry_update(AgentElbowReentry *state, float desired,
+    float reference, int reachable, int held, uint32_t frame_id, uint32_t now)
+{
+    uint32_t elapsed = now - state->time_us;
+    if (state->seen && frame_id == state->frame_id) return reference;
+    state->seen = 1U;
+    state->frame_id = frame_id;
+    state->time_us = now;
+    if (!reachable) {
+        state->outside = 1U;
+        state->pending = state->ramping = 0U;
+        return reference;
+    }
+    if (held) {
+        state->pending = 0U;
+        return reference;
+    }
+    if (state->outside) {
+        uint32_t span = now - state->candidate_time_us;
+        if (!state->pending || span > 250000U || fabsf(desired - state->candidate) > 10.0f) {
+            state->pending = 1U;
+            state->candidate = desired;
+            state->candidate_time_us = now;
+            return reference;
+        }
+        if (span < 80000U) return reference;
+        state->outside = state->pending = 0U;
+        state->ramping = 1U;
+    }
+    if (state->ramping) {
+        float limit;
+        if (elapsed > 250000U) {
+            state->outside = 1U;
+            state->pending = 0U;
+            return reference;
+        }
+        limit = 45.0f * (float)elapsed / 1000000.0f;
+        if (desired > reference + limit) return reference + limit;
+        if (desired < reference - limit) return reference - limit;
+        state->ramping = 0U;
+    }
+    return desired;
+}
+
+static float elbow_return_prepare(AgentElbowReturn *state, float goal,
+    float reference, int held, uint32_t now)
+{
+    uint32_t elapsed = now - state->time_us;
+    float result = goal;
+    if (state->valid && (state->pending_epoch || (state->held && !held)) &&
+        fabsf(goal - reference) > 8.0f) state->active = 1U;
+    if (state->active) {
+        float limit;
+        if (elapsed > 100000U) elapsed = 100000U;
+        limit = 45.0f * (float)elapsed / 1000000.0f;
+        if (goal > reference + limit) result = reference + limit;
+        else if (goal < reference - limit) result = reference - limit;
+        else state->active = 0U;
+    }
+    state->goal = goal;
+    state->valid = 1U;
+    state->held = held ? 1U : 0U;
+    state->pending_epoch = 0U;
+    state->time_us = now;
+    return result;
+}
+
+static void elbow_return_tick(AgentPipelineContext *ctx)
+{
+    ForearmJointCommand command;
+    float difference;
+    if (!ctx->output_enabled || ctx->output_parked || !ctx->command_valid ||
+        !ctx->elbow_return.valid || !ctx->elbow_return.active) return;
+    command = ctx->command;
+    command.elbow_roll_deg = ctx->elbow_return.goal;
+    if (!forearm_safety_check_apply(&command, NULL)) return;
+    difference = command.elbow_roll_deg - ctx->command.elbow_roll_deg;
+    if (difference > 0.90f) command.elbow_roll_deg = ctx->command.elbow_roll_deg + 0.90f;
+    else if (difference < -0.90f) command.elbow_roll_deg = ctx->command.elbow_roll_deg - 0.90f;
+    if (!forearm_safety_check_apply(&command, NULL)) return;
+    ctx->elbow_return.time_us = gripper_latch_time_us(ctx);
+    if (fabsf(ctx->elbow_return.goal - command.elbow_roll_deg) <= 0.0001f)
+        ctx->elbow_return.active = 0U;
+    if (!same_command(&command, &ctx->command) || ctx->motion.held) {
+        forearm_calibration_set_target(&ctx->motion, &command);
+        ctx->command = command;
+        ctx->retargets++;
+    }
+}
+
+#include "wrist_return.h"
+
 int agent2_run(AgentPipelineContext *ctx)
 {
     ForearmJointCommand command;
+    AgentGripperLatch next_gripper;
+    AgentElbowReentry next_elbow;
+    AgentElbowReturn next_return;
+    AgentWristReturn next_wrist[2];
     int elbow_roll_reachable;
 
     if (ctx != NULL) {
@@ -321,6 +583,10 @@ int agent2_run(AgentPipelineContext *ctx)
 
     /* 호출 순서 계약: unwrap은 validate를 통과한 타겟만 받는다. */
     if (!forearm_motion_control_validate_target(&ctx->target)) {
+        if (!ctx->gripper_independent) {
+            ctx->gripper_latch.close_count = 0U;
+            ctx->gripper_latch.open_count = 0U;
+        }
         ctx->commands_rejected++;
         TRACE_SET_A2_RESULT(ctx, A2_RESULT_REJECT_VALIDATE); /* [TRACE] */
         return 0;
@@ -335,17 +601,24 @@ int agent2_run(AgentPipelineContext *ctx)
      * endpoint target. Keep the last approved target (or boot position),
      * while allowing the other joints to follow if the mixed pose is safe. */
     if (!elbow_roll_reachable) {
-        command.elbow_roll_deg = ctx->command_valid ? ctx->command.elbow_roll_deg
+        command.elbow_roll_deg = ctx->elbow_return.valid ? ctx->elbow_return.goal : ctx->command_valid ? ctx->command.elbow_roll_deg
                                                     : ctx->output.elbow_roll_deg;
     }
 
+    next_elbow = ctx->elbow_reentry;
+    command.elbow_roll_deg = elbow_reentry_update(&next_elbow, command.elbow_roll_deg,
+        ctx->elbow_return.valid ? ctx->elbow_return.goal : ctx->command_valid ? ctx->command.elbow_roll_deg : ctx->output.elbow_roll_deg,
+        elbow_roll_reachable, ctx->gripper_independent && ctx->output_enabled &&
+        ctx->arm_stationary && ctx->arm_tracking_started && ctx->command_valid,
+        ctx->target.frame_id, gripper_latch_time_us(ctx));
+
     if (ctx->target.wrist_valid) {
         if (!forearm_motion_control_wrist_pitch_reachable(ctx->target.wrist_pitch_deg)) {
-            command.wrist_pitch_deg = ctx->command_valid ? ctx->command.wrist_pitch_deg
+            command.wrist_pitch_deg = ctx->command_valid ? wrist_return_reference(ctx, 0U)
                                                         : ctx->output.wrist_pitch_deg;
         }
         if (!forearm_motion_control_wrist_roll_reachable(ctx->target.wrist_roll_deg)) {
-            command.wrist_roll_deg = ctx->command_valid ? ctx->command.wrist_roll_deg
+            command.wrist_roll_deg = ctx->command_valid ? wrist_return_reference(ctx, 1U)
                                                        : ctx->output.wrist_roll_deg;
         }
     }
@@ -356,17 +629,54 @@ int agent2_run(AgentPipelineContext *ctx)
         command.wrist_pitch_deg = ctx->output.wrist_pitch_deg;
         command.wrist_roll_deg = ctx->output.wrist_roll_deg;
     }
-    if (!ctx->target.gripper_valid)
+    if (ctx->gripper_independent)
+        command.gripper_norm = ctx->command_valid ? ctx->command.gripper_norm : ctx->output.gripper_norm;
+    else if (!ctx->target.gripper_valid)
         command.gripper_norm = ctx->output.gripper_norm;
+    next_gripper = ctx->gripper_latch;
+    if (ctx->gripper_independent && ctx->output_enabled && ctx->arm_stationary &&
+        ctx->arm_tracking_started && ctx->command_valid) {
+        command.elbow_roll_deg = ctx->elbow_return.valid ? ctx->elbow_return.goal : ctx->command.elbow_roll_deg;
+        command.elbow_pitch_deg = ctx->command.elbow_pitch_deg;
+        command.wrist_pitch_deg = wrist_return_reference(ctx, 0U);
+        command.wrist_roll_deg = wrist_return_reference(ctx, 1U);
+    }
+    if (ctx->output_enabled && !ctx->gripper_independent) {
+        float held_gripper = ctx->command_valid ? ctx->command.gripper_norm : ctx->output.gripper_norm;
+        int gripper_fresh = ctx->target.gripper_valid &&
+            ctx->target.frame_id == ctx->pose.frame_id && agent1_forearm_stage_gripper_fresh();
+        command.gripper_norm = gripper_latch_update(&next_gripper, command.gripper_norm,
+            held_gripper, gripper_fresh, ctx->pose.frame_id, ctx->pose.gripper_2d.source,
+            gripper_latch_time_us(ctx));
+    }
+    next_return = ctx->elbow_return;
+    memcpy(next_wrist, ctx->wrist_return, sizeof(next_wrist));
+    if (forearm_safety_check_apply(&command, NULL))
+        wrist_return_prepare(ctx, &command, next_wrist);
+    if (forearm_safety_check_apply(&command, NULL)) {
+        command.elbow_roll_deg = elbow_return_prepare(&next_return, command.elbow_roll_deg,
+            ctx->command_valid ? ctx->command.elbow_roll_deg : ctx->output.elbow_roll_deg,
+            ctx->gripper_independent && ctx->output_enabled && ctx->arm_stationary &&
+            ctx->arm_tracking_started && ctx->command_valid, gripper_latch_time_us(ctx));
+    }
     command.valid = forearm_safety_check_apply(&command, NULL) ? 1U : 0U;
     /* 무효/위험이면 폐기하고 마지막으로 승인한 목표를 계속 유지한다. */
     if (!command.valid) {
+        if (!ctx->gripper_independent) {
+            ctx->gripper_latch.close_count = 0U;
+            ctx->gripper_latch.open_count = 0U;
+        }
         ctx->commands_rejected++;
         TRACE_SET_A2_MAPPED(ctx, command); /* [TRACE] 거부돼도 매핑된 각도는 남는다(valid만 0). 사유 flags를 로그에서 다시 구한다. */
         TRACE_SET_A2_RESULT(ctx, A2_RESULT_REJECT_SAFETY); /* [TRACE] */
         return 0;
     }
+    ctx->elbow_return = next_return;
+    memcpy(ctx->wrist_return, next_wrist, sizeof(next_wrist));
+    ctx->elbow_reentry = next_elbow;
+    ctx->gripper_latch = next_gripper;
     ctx->commands_accepted++;
+    ctx->arm_tracking_started = 1U;
     TRACE_SET_A2_MAPPED(ctx, command); /* [TRACE] */
 
     /* HOLD 프레임처럼 직전과 같은 명령이면 재계획하지 않는다(램프가 속도 0에서 다시 시작되는 것을 막는다).
@@ -393,11 +703,192 @@ int agent2_run(AgentPipelineContext *ctx)
     return 1;
 }
 
+static void gripper_motion_sample(AgentGripperMotionHold *state,
+                                  const ForearmJointCommand *command, uint32_t now_us)
+{
+    float angles[4] = {command->elbow_roll_deg, command->elbow_pitch_deg,
+                       command->wrist_pitch_deg, command->wrist_roll_deg};
+    unsigned sample, axis;
+    uint32_t span;
+    if (state->samples && now_us == state->times[state->samples - 1U]) return;
+    if (state->samples && now_us - state->times[state->samples - 1U] > 100000U) {
+        state->samples = 0U;
+        state->speed_valid = state->low_valid = state->open_count = 0U;
+    }
+    while (state->samples && (state->samples == 7U || now_us - state->times[0] > 120000U)) {
+        state->samples--;
+        memmove(state->angles, state->angles + 1, state->samples * sizeof(state->angles[0]));
+        memmove(state->times, state->times + 1, state->samples * sizeof(state->times[0]));
+    }
+    memcpy(state->angles[state->samples], angles, sizeof(angles));
+    state->times[state->samples++] = now_us;
+    span = now_us - state->times[0];
+    state->speed_valid = span >= 60000U;
+    if (!state->speed_valid) return;
+    state->speed = 0.0f;
+    for (axis = 0U; axis < 4U; axis++) {
+        float distance = 0.0f;
+        for (sample = 1U; sample < state->samples; sample++)
+            distance += fabsf(state->angles[sample][axis] - state->angles[sample - 1U][axis]);
+        distance *= 1000000.0f / (float)span;
+        if (distance > state->speed) state->speed = distance;
+    }
+}
+
+static int gripper_strong_open_confirm(AgentGripperOpenConfirm *state, float command,
+                                      int latched, int fresh, uint32_t frame_id,
+                                      uint8_t source, uint32_t now_us)
+{
+    int valid;
+    if (latched) {
+        memset(state, 0, sizeof(*state));
+        return 0;
+    }
+    if (!fresh) {
+        if (!state->have_frame || now_us - state->fresh_us > AGENT_GRIPPER_OPEN_MISSING_GRACE_US)
+            state->pending = state->count = 0U;
+        return 0;
+    }
+    valid = isfinite(command) && command >= AGENT_GRIPPER_STRONG_OPEN_NORM;
+    if (!valid || (state->have_frame && (frame_id == state->frame_id || source != state->source ||
+        now_us - state->fresh_us > AGENT_GRIPPER_SAMPLE_MAX_GAP_US)))
+        state->pending = state->count = 0U;
+    state->have_frame = 1U;
+    state->source = source;
+    state->frame_id = frame_id;
+    state->fresh_us = now_us;
+    if (!valid) return 0;
+    if (!state->pending) {
+        state->pending = 1U;
+        state->started_us = now_us;
+    }
+    if (state->count < 255U) state->count++;
+    return state->count >= AGENT_GRIPPER_CONFIRM_SAMPLES &&
+        now_us - state->started_us >= AGENT_GRIPPER_STRONG_OPEN_US;
+}
+
+static float gripper_motion_select(AgentGripperMotionHold *state, float command,
+                                  int latched, int fresh, uint32_t frame_id,
+                                  uint8_t source, uint32_t now_us)
+{
+    int known = state->speed_valid && state->samples &&
+        now_us - state->times[state->samples - 1U] <= 100000U;
+    int new_frame = fresh && (!state->have_frame || frame_id != state->frame_id || source != state->source);
+    int slow;
+    int strong_open;
+    if (state->manual_open) return 1.0f;
+    if (state->have_frame && frame_id == state->frame_id && source == state->source)
+        memset(&state->strong_open, 0, sizeof(state->strong_open));
+    strong_open = gripper_strong_open_confirm(&state->strong_open, command, latched,
+        fresh && new_frame, frame_id, source, now_us);
+    if (!known) {
+        state->low_valid = state->open_count = 0U;
+    } else if (state->speed >= 8.0f) {
+        state->moving = 1U;
+        state->low_valid = state->open_count = 0U;
+    } else if (state->speed <= 3.0f) {
+        if (!state->low_valid) {
+            state->low_valid = 1U;
+            state->low_since_us = now_us;
+        }
+        if (now_us - state->low_since_us >= 200000U) state->moving = 0U;
+    } else {
+        state->low_valid = state->open_count = 0U;
+    }
+    if (new_frame) {
+        if (state->have_frame && (source != state->source || now_us - state->fresh_us > 250000U))
+            state->open_count = 0U;
+        state->frame_id = frame_id;
+        state->source = source;
+        state->fresh_us = now_us;
+        state->have_frame = 1U;
+    } else state->open_count = 0U;
+    if (new_frame && latched && command == 0.0f) state->armed = 1U;
+    if (state->armed && (state->moving || !known)) state->locked = 1U;
+    if (!state->locked) {
+        memset(&state->strong_open, 0, sizeof(state->strong_open));
+        if (new_frame && !latched && command >= 0.05f && known && !state->moving)
+            state->armed = 0U;
+        return command;
+    }
+    if (known && new_frame && strong_open) {
+        state->locked = state->armed = state->open_count = 0U;
+        memset(&state->strong_open, 0, sizeof(state->strong_open));
+        return command;
+    }
+    slow = known && state->speed <= 3.0f && !state->moving && state->low_valid &&
+        now_us - state->low_since_us >= 200000U;
+    if (slow && new_frame && command >= 0.05f && !latched) {
+        if (++state->open_count >= 3U) {
+            state->locked = state->armed = state->open_count = 0U;
+            memset(&state->strong_open, 0, sizeof(state->strong_open));
+            return command;
+        }
+    } else state->open_count = 0U;
+    return 0.0f;
+}
+
+int agent_pipeline_gripper_manual(AgentPipelineContext *ctx, int open)
+{
+    ForearmJointCommand command, current;
+    if (ctx == NULL || !ctx->output_enabled || !ctx->gripper_independent) return 0;
+    command = ctx->command_valid ? ctx->command : ctx->output;
+    current = ctx->output;
+    if (open) {
+        command.gripper_norm = current.gripper_norm = 1.0f;
+        if (!command.valid || !current.valid || !forearm_safety_check_apply(&command, NULL) ||
+            !forearm_safety_check_apply(&current, NULL)) return 0;
+    }
+    memset(&ctx->gripper_motion_hold, 0, sizeof(ctx->gripper_motion_hold));
+    memset(&ctx->gripper_latch, 0, sizeof(ctx->gripper_latch));
+    agent1_forearm_stage_reset_gripper();
+    ctx->gripper_motion_hold.manual_open = open ? 1U : 0U;
+    if (open) {
+        ctx->command = command;
+        ctx->command_valid = 1U;
+        ctx->motion.gripper = 1.0f;
+    }
+    return 1;
+}
+
+int agent_gripper_run(AgentPipelineContext *ctx, const HumanPose2D *pose)
+{
+    AgentGripperLatch next;
+    AgentGripperMotionHold next_hold;
+    ForearmJointCommand command, current;
+    float desired = NAN;
+    int fresh;
+    if (ctx == NULL || pose == NULL || !ctx->gripper_independent || !ctx->output_enabled) return 0;
+    fresh = agent1_forearm_stage_update_gripper(pose, &desired);
+    ctx->gripper_fresh = fresh ? 1U : 0U;
+    ctx->gripper_desired = desired;
+    ctx->gripper_distance_px = fresh ? agent1_forearm_stage_gripper_distance_px() : NAN;
+    command = ctx->command_valid ? ctx->command : ctx->output;
+    next = ctx->gripper_latch;
+    next_hold = ctx->gripper_motion_hold;
+    command.gripper_norm = gripper_hysteresis_update(&next, desired, ctx->gripper_distance_px, command.gripper_norm,
+        fresh, pose->frame_id, pose->gripper_2d.source, gripper_latch_time_us(ctx));
+    command.gripper_norm = gripper_motion_select(&next_hold, command.gripper_norm,
+        next.latched, fresh, pose->frame_id, pose->gripper_2d.source, gripper_latch_time_us(ctx));
+    current = ctx->output;
+    current.gripper_norm = command.gripper_norm;
+    if (!command.valid || !current.valid || !forearm_safety_check_apply(&command, NULL) ||
+        !forearm_safety_check_apply(&current, NULL)) return -1;
+    ctx->gripper_latch = next;
+    ctx->gripper_motion_hold = next_hold;
+    ctx->motion.gripper = command.gripper_norm;
+    ctx->command = command;
+    ctx->command_valid = 1U;
+    return fresh ? 1 : 0;
+}
+
 int agent2_tick(AgentPipelineContext *ctx)
 {
     if (ctx == NULL) return 0;
 
     ctx->ticks++;
+    wrist_return_tick(ctx);
+    elbow_return_tick(ctx);
     if (ctx->output_enabled || !ctx->output_parked)
         forearm_calibration_step(&ctx->motion, &ctx->output);
     return ctx->output.valid ? 1 : 0;
@@ -429,14 +920,21 @@ int agent3_apply_command(AgentPipelineContext *ctx,
         ctx->pwm = pwm;
         return 1;
     }
-    if (!servo_hal_apply(&pwm)) {
+    if (!servo_hal_apply_joint_command(command, &pwm, 1)) {
         ctx->servo_errors++;
+        if (servo_hal_dual_status() != NULL &&
+            servo_hal_dual_status()->mode == DUAL_ARM_HAL_FAULT) {
+            ctx->output_enabled = 0U;
+            ctx->output_faulted = 1U;
+        }
         return 0;
     }
 
     ctx->pwm = pwm;
     ctx->applied_command = *command;
     ctx->applied_command_valid = 1U;
+    gripper_motion_sample(&ctx->gripper_motion_hold, command, gripper_latch_time_us(ctx));
+    gripper_latch_applied(&ctx->gripper_latch, command->gripper_norm, gripper_latch_time_us(ctx));
     ctx->servo_writes++;
     return 1;
 }

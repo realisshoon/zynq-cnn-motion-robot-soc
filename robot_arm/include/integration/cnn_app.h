@@ -11,6 +11,8 @@
 #define CNN_APP_UART_CMD_ASYNC_ENABLE 'A'
 #define CNN_APP_UART_CMD_ASYNC_DISABLE 'S'
 #define CNN_APP_UART_CMD_ASYNC_STATUS 'T'
+#define CNN_APP_UART_CMD_GRIP_OPEN 'O'
+#define CNN_APP_UART_CMD_GRIP_AUTO 'H'
 
 typedef enum {
     CNN_APP_EVENT_NONE = 0,
@@ -21,13 +23,16 @@ typedef enum {
     CNN_APP_EVENT_PWM_STATUS,
     CNN_APP_EVENT_ASYNC_ENABLE,
     CNN_APP_EVENT_ASYNC_DISABLE,
-    CNN_APP_EVENT_ASYNC_STATUS
+    CNN_APP_EVENT_ASYNC_STATUS,
+    CNN_APP_EVENT_GRIP_OPEN,
+    CNN_APP_EVENT_GRIP_AUTO
 } CnnAppEvent;
 
 /* Initialize all CNN camera, HDMI, overlay, tracker, logging and console paths. */
 int cnn_app_init(void);
 /* Foreground service: never waits for CNN completion. */
 void cnn_app_service(void);
+int cnn_app_settings_service(int storage_safe);
 
 /* UART 메뉴가 만든 software event를 한 번 가져오고 pending 값을 비운다. */
 int cnn_app_take_control_event(CnnAppEvent *event);

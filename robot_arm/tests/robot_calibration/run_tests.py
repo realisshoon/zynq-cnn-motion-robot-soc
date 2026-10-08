@@ -53,9 +53,15 @@ def main():
     stereo = [f"src/stereo_vision/{name}.c" for name in
               ("stereo_geometry", "stereo_calibration", "stereo_pose", "stereo_uart_protocol", "stereo_link")]
     stereo_filter = [f"src/stereo_vision/{name}.c" for name in
-                     ("stereo_one_euro", "stereo_pose_filter")]
+                     ("stereo_one_euro", "g_kalman3d", "stereo_pose_filter")]
     stereo += stereo_filter
     cases += [
+        ("test_stereo_filter_command", ["src/stereo_vision/stereo_filter_command.c",
+         "tests/integration/test_stereo_filter_command.c"], [], []),
+        ("test_stereo_filter_console_dispatch", ["src/stereo_vision/stereo_filter_command.c",
+         "tests/integration/test_stereo_filter_console_dispatch.c"], [], []),
+        ("test_stereo_filter_runtime", stereo + ["src/integration/input_pose_cnn.c",
+         "tests/integration/test_stereo_filter_runtime.c"], ["-Itests/integration/stubs"], []),
         ("test_stereo_one_euro", stereo_filter + ["tests/integration/test_stereo_one_euro.c"], [], []),
         ("test_stereo_pose_filter", stereo_filter + ["tests/integration/test_stereo_pose_filter.c"], [], []),
         ("test_stereo_filter_epoch", stereo_filter + ["src/integration/input_pose_cnn.c",

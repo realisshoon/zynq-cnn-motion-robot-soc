@@ -1,6 +1,7 @@
 """Receive-only and interactive monitor tests using fake ports, never real hardware."""
 
 from contextlib import redirect_stdout
+from decimal import localcontext
 import io
 import json
 from pathlib import Path
@@ -68,6 +69,31 @@ class BlockingInput:
         return ''
 
 
+class FakeSessionRecorder:
+    def __init__(self, output, error=None):
+        self.output = Path(output)
+        self.error = error
+        self.started = False
+        self.closed = False
+        self.result = {'status': 'starting'}
+
+    def start(self):
+        session = json.loads((self.output / 'session.json').read_text())
+        if session['status'] != 'running':
+            raise AssertionError('Recording must start after the UART session is running')
+        self.started = True
+        self.result = ({'status': 'error', 'error': self.error} if self.error
+                       else {'status': 'recording'})
+
+    def close(self):
+        self.closed = True
+        if not self.error:
+            self.result = {'status': 'complete'}
+
+    def summary(self):
+        return dict(self.result)
+
+
 def wait_for(predicate):
     deadline = time.monotonic() + 2.0
     while not predicate():
@@ -77,6 +103,43 @@ def wait_for(predicate):
 
 
 class MonitorTests(unittest.TestCase):
+    def test_gripper_manual_commands_require_motion_opt_in(self):
+        for enabled in (False, True):
+            with self.subTest(enabled=enabled), tempfile.TemporaryDirectory() as folder, redirect_stdout(io.StringIO()):
+                logs = monitor.MonitorLogs(Path(folder))
+                ports = [FakeWritablePort(), FakeWritablePort()]
+                instance = monitor.ConsoleMonitor(ports, logs, True, enabled)
+                try:
+                    instance.handle_input('r O')
+                    instance.handle_input('r H')
+                finally:
+                    instance.close()
+                    logs.close()
+                self.assertEqual(ports[0].writes, [])
+                self.assertEqual(ports[1].writes, [b'O', b'H'] if enabled else [])
+                self.assertEqual([event['status'] for event in logs.commands],
+                                 ['sent', 'sent'] if enabled else ['blocked', 'blocked'])
+
+    def test_gripper_motion_trace_is_saved_without_command_console_flood(self):
+        with tempfile.TemporaryDirectory() as folder:
+            logs = monitor.MonitorLogs(Path(folder), 'commands')
+            logs.arm_response('right', 'O')
+            logs.feed('right', b'GM,1,2,300,1,1,1,12.00,0,0\n')
+            logs.feed('right', b'GO,1,2,300,1,4,300\n')
+            self.assertTrue(logs.display.empty())
+            logs.close()
+            self.assertIn('GM,1,2,300', (Path(folder) / 'combined_uart.log').read_text())
+            self.assertIn('GO,1,2,300', (Path(folder) / 'combined_uart.log').read_text())
+
+    def test_motion_stationarity_trace_is_hidden_but_saved_in_commands_mode(self):
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder)
+            logs = monitor.MonitorLogs(output, 'commands')
+            logs.feed('right', b'MS,515,100,1,6,2.500,3.000,0.000,0\n')
+            self.assertTrue(logs.display.empty())
+            logs.close()
+            self.assertIn('MS,515,100,1,6', (output / 'combined_uart.log').read_text())
+
     def test_fragmented_lines_and_exact_raw(self):
         with tempfile.TemporaryDirectory() as folder:
             output = Path(folder)
@@ -198,14 +261,183 @@ class MonitorTests(unittest.TestCase):
                 monitor.open_port(serial, 'COM3', 921600)
         self.assertTrue(port.closed)
 
-    def run_main(self, folder, open_effect, display_effect=None, extra_args=(), stdin=None):
+    def run_main(self, folder, open_effect, display_effect=None, extra_args=(), stdin=None,
+                 obs_factory=FakeSessionRecorder, review_factory=None):
         args = ['monitor', '--left', 'COM3', '--right', 'COM4',
                 '--output', str(Path(folder) / 'session'), *extra_args]
         with patch('sys.argv', args), patch.object(monitor, 'open_port',
                 side_effect=open_effect), patch.object(monitor, 'display_logs',
-                side_effect=display_effect), patch('sys.stdin', stdin or io.StringIO()), \
+                side_effect=display_effect), patch.object(monitor, 'create_obs_recorder',
+                side_effect=obs_factory), patch('sys.stdin', stdin or io.StringIO()), \
+                patch.object(monitor, 'create_xyz_review', side_effect=review_factory,
+                             return_value={'status': 'skipped', 'reason': 'No PAIR rows received'}), \
                 redirect_stdout(io.StringIO()):
             return monitor.main()
+
+    def test_review_runs_after_ports_logs_and_video_finalize(self):
+        with tempfile.TemporaryDirectory() as folder:
+            ports = [FakeWritablePort(), FakeWritablePort()]
+            video = FakeSessionRecorder(Path(folder) / 'session')
+            calls = []
+
+            def review(output, open_browser):
+                self.assertTrue(all(port.closed for port in ports))
+                self.assertTrue(video.closed)
+                self.assertEqual(json.loads((output / 'session.json').read_text())['status'], 'stopped')
+                self.assertTrue((output / 'combined_uart.log').is_file())
+                calls.append(open_browser)
+                return {'status': 'complete', 'path': 'review.html', 'browser_opened': False}
+
+            self.assertEqual(self.run_main(folder, ports, obs_factory=lambda output: video,
+                                           review_factory=review), 0)
+            self.assertEqual(calls, [True])
+
+    def test_review_failure_does_not_fail_uart_session(self):
+        with tempfile.TemporaryDirectory() as folder:
+            def fail(output, open_browser):
+                raise RuntimeError('viewer unavailable')
+
+            self.assertEqual(self.run_main(folder, [FakePort(), FakePort()], review_factory=fail), 0)
+            session = json.loads((Path(folder) / 'session/session.json').read_text())
+            self.assertEqual(session['status'], 'stopped')
+            self.assertEqual(session['xyz_review']['status'], 'error')
+
+    def test_no_review_never_generates_or_opens_viewer(self):
+        with tempfile.TemporaryDirectory() as folder:
+            def unexpected(output, open_browser):
+                raise AssertionError('Review must not run')
+
+            self.assertEqual(self.run_main(folder, [FakePort(), FakePort()],
+                                           extra_args=['--no-review'], review_factory=unexpected), 0)
+            session = json.loads((Path(folder) / 'session/session.json').read_text())
+            self.assertEqual(session['xyz_review']['status'], 'disabled')
+
+    def test_no_video_still_generates_review_without_browser_when_requested(self):
+        with tempfile.TemporaryDirectory() as folder:
+            calls = []
+
+            def review(output, open_browser):
+                calls.append(open_browser)
+                return {'status': 'skipped', 'reason': 'No PAIR rows received'}
+
+            self.assertEqual(self.run_main(folder, [FakePort(), FakePort()],
+                                           extra_args=['--no-video', '--no-open-review'],
+                                           review_factory=review), 0)
+            self.assertEqual(calls, [False])
+
+    def test_real_review_helper_skips_empty_log_without_browser(self):
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder)
+            (output / 'combined_uart.log').write_text('', encoding='utf-8')
+            with patch.object(monitor.webbrowser, 'open') as browser:
+                result = monitor.create_xyz_review(output)
+            self.assertEqual(result['status'], 'skipped')
+            self.assertFalse((output / 'xyz_review').exists())
+            self.assertTrue((output / 'xyz_review_build.log').is_file())
+            browser.assert_not_called()
+
+    def test_real_review_helper_generates_recorded_angles_and_opens_one_page(self):
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder)
+            payload = ('PAIR,1000,40,1,10,20,700,30,9,0,10000,-2,0,0,0,0,0\n'
+                       'PG,40,1,1,OK\n'
+                       'A1,700,1000,5,300,1,63,1,1,-20,30,40,50,0.5\n')
+            (output / 'combined_uart.log').write_text('\n'.join(
+                f'2026-10-05T01:00:00.000+00:00 [R] {line}'
+                for line in payload.splitlines()), encoding='utf-8')
+            with patch.object(monitor.webbrowser, 'open', return_value=True) as browser:
+                result = monitor.create_xyz_review(output)
+            self.assertEqual(result['status'], 'complete')
+            self.assertEqual(result['angle_pairs'], 1)
+            browser.assert_called_once_with((output / 'xyz_review/review.html').as_uri())
+            data = json.loads((output / 'xyz_review/review.json').read_text(encoding='utf-8'))
+            self.assertEqual(data['frames'][0]['A1']['angles'], [-20, 30, 40, 50, 0.5])
+
+    def test_default_command_records_video_and_finalizes_on_local_quit(self):
+        with tempfile.TemporaryDirectory() as folder:
+            ports = [FakeWritablePort(), FakeWritablePort()]
+            video = FakeSessionRecorder(Path(folder) / 'session')
+            real_display = monitor.display_logs
+
+            def display(instance):
+                self.assertTrue(video.started)
+                self.assertFalse(video.closed)
+                real_display(instance)
+
+            result = self.run_main(folder, ports, display,
+                                   ['--interactive', '--allow-motion-commands',
+                                    '--filter', 'commands', '--format', 'plain'],
+                                   io.StringIO('q\n'), lambda output: video)
+            self.assertEqual(result, 0)
+            self.assertTrue(video.closed)
+            self.assertEqual([port.writes for port in ports], [[], []])
+            session = json.loads((Path(folder) / 'session/session.json').read_text())
+            self.assertEqual(session['obs']['status'], 'complete')
+            self.assertEqual(session['status'], 'stopped')
+
+    def test_ctrl_c_finalizes_video_without_board_commands(self):
+        with tempfile.TemporaryDirectory() as folder:
+            ports = [FakeWritablePort(), FakeWritablePort()]
+            video = FakeSessionRecorder(Path(folder) / 'session')
+
+            def interrupt(instance):
+                raise KeyboardInterrupt
+
+            self.assertEqual(self.run_main(folder, ports, interrupt,
+                                           obs_factory=lambda output: video), 130)
+            self.assertTrue(video.closed)
+            self.assertEqual([port.writes for port in ports], [[], []])
+            session = json.loads((Path(folder) / 'session/session.json').read_text())
+            self.assertEqual(session['obs']['status'], 'complete')
+            self.assertEqual(session['status'], 'interrupted')
+
+    def test_obs_failure_keeps_uart_monitor_and_persists_warning(self):
+        with tempfile.TemporaryDirectory() as folder:
+            ports = [FakeWritablePort(), FakeWritablePort()]
+            video = FakeSessionRecorder(Path(folder) / 'session', 'OBS unavailable')
+            self.assertEqual(self.run_main(folder, ports, monitor.display_logs,
+                                           ['--interactive'], io.StringIO('r ?\nq\n'),
+                                           lambda output: video), 0)
+            self.assertEqual([port.writes for port in ports], [[], [b'?']])
+            self.assertTrue(video.closed)
+            session = json.loads((Path(folder) / 'session/session.json').read_text())
+            self.assertEqual(session['obs'], {'status': 'error', 'error': 'OBS unavailable'})
+            self.assertEqual(session['errors'], [])
+
+    def test_missing_recorder_keeps_uart_logging(self):
+        with tempfile.TemporaryDirectory() as folder:
+            ports = [FakePort(), FakePort()]
+
+            def missing(output):
+                raise ImportError('recorder missing')
+
+            self.assertEqual(self.run_main(folder, ports, obs_factory=missing), 0)
+            session = json.loads((Path(folder) / 'session/session.json').read_text())
+            self.assertEqual(session['obs']['status'], 'error')
+            self.assertIn('recorder missing', session['obs']['error'])
+
+    def test_no_video_does_not_load_obs(self):
+        with tempfile.TemporaryDirectory() as folder:
+            ports = [FakePort(), FakePort()]
+
+            def unexpected(output):
+                raise AssertionError('OBS must not load with --no-video')
+
+            self.assertEqual(self.run_main(folder, ports, extra_args=['--no-video'],
+                                           obs_factory=unexpected), 0)
+            session = json.loads((Path(folder) / 'session/session.json').read_text())
+            self.assertEqual(session['obs'], {'status': 'disabled'})
+
+    def test_uart_open_failure_does_not_start_recording(self):
+        with tempfile.TemporaryDirectory() as folder:
+            left = FakePort()
+
+            def unexpected(output):
+                raise AssertionError('OBS must not load before both UART ports open')
+
+            self.assertEqual(self.run_main(folder, [left, OSError('right busy')],
+                                           obs_factory=unexpected), 1)
+            self.assertTrue(left.closed)
 
     def test_second_port_failure_closes_first_and_records_error(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -324,6 +556,215 @@ class MonitorTests(unittest.TestCase):
                      'both value ４０', 'both\u00a0value 40', 'both enter E']:
             with self.subTest(text=text), self.assertRaises(ValueError):
                 monitor.parse_command(text)
+
+    def test_filter_parser_default_wire_contract(self):
+        for text, payload in [
+                ('r filter show', '~F,SHOW\r'),
+                ('r filter default\r\n', '~F,DEFAULT\r'),
+                ('r filter 2d ema tau 0.10', '~F,EMA,100000\r'),
+                ('r filter 3d min 0.5', '~F,MIN,500\r'),
+                ('r filter 3d beta 0.001', '~F,BETA,1000\r'),
+                ('r\tfilter\t3d\tderivative\t1', '~F,DERIVATIVE,1000\r')]:
+            with self.subTest(text=text):
+                self.assertEqual(monitor.parse_command(text), ('r', payload))
+
+    def test_filter_parser_inclusive_bounds_and_exact_scaling(self):
+        for setting, values, operation in [
+                ('2d ema tau', [('0.001', 1000), ('1', 1000000),
+                                ('0.030001', 30001), ('000.1000000', 100000)], 'EMA'),
+                ('3d min', [('0.01', 10), ('10', 10000), ('0.501', 501)], 'MIN'),
+                ('3d beta', [('0', 0), ('0.0000000', 0), ('0.1', 100000),
+                             ('0.000001', 1), ('0.012345', 12345)], 'BETA'),
+                ('3d derivative', [('0.01', 10), ('10', 10000),
+                                   ('1.001000', 1001)], 'DERIVATIVE')]:
+            for token, scaled in values:
+                with self.subTest(setting=setting, token=token):
+                    self.assertEqual(monitor.parse_command(f'r filter {setting} {token}'),
+                                     ('r', f'~F,{operation},{scaled}\r'))
+
+    def test_filter_parser_rejects_non_plain_decimals(self):
+        for setting in ['2d ema tau', '3d min', '3d beta', '3d derivative']:
+            for token in ['NaN', 'sNaN', 'inf', 'Infinity', '-0', '-1', '+0.1',
+                          '1e-2', '1E-2', '0x1', '.1', '1.', '0,1', '0_1',
+                          '０.１', '1/10', '1 2', '0.1\rE', '0.1\n~F,SHOW']:
+                with self.subTest(setting=setting, token=token), self.assertRaises(ValueError):
+                    monitor.parse_command(f'r filter {setting} {token}')
+
+    def test_filter_parser_rejects_ranges_and_fractional_wire_units(self):
+        for setting, tokens in [
+                ('2d ema tau', ['0', '0.000999', '1.000001', '0.1000001']),
+                ('3d min', ['0', '0.009', '10.001', '0.0101', '0.5000001']),
+                ('3d beta', ['0.100001', '0.0000001', '0.00100001']),
+                ('3d derivative', ['0', '0.009', '10.001', '1.0001'])]:
+            for token in tokens:
+                with self.subTest(setting=setting, token=token), self.assertRaises(ValueError):
+                    monitor.parse_command(f'r filter {setting} {token}')
+
+    def test_filter_parser_preserves_precision_beyond_decimal_context(self):
+        with localcontext() as context:
+            context.prec = 3
+            for text, payload in [
+                    ('r filter 2d ema tau 0.123456', '~F,EMA,123456\r'),
+                    ('r filter 2d ema tau 0.1000000000000000000000000000000000000',
+                     '~F,EMA,100000\r'),
+                    ('r filter 3d beta 0.0123450000000000000000000000000000000',
+                     '~F,BETA,12345\r')]:
+                with self.subTest(text=text):
+                    self.assertEqual(monitor.parse_command(text), ('r', payload))
+            for setting, token in [
+                    ('2d ema tau', '0.1000000000000000000000000000000000001'),
+                    ('3d min', '0.5000000000000000000000000000000000001'),
+                    ('3d beta', '0.0010000000000000000000000000000000001'),
+                    ('3d derivative', '1.0000000000000000000000000000000000001'),
+                    ('2d ema tau', '1.0000000000000000000000000000000000001'),
+                    ('3d min', '0.0099999999999999999999999999999999999'),
+                    ('3d beta', '0.1000000000000000000000000000000000001')]:
+                with self.subTest(setting=setting, token=token), self.assertRaises(ValueError):
+                    monitor.parse_command(f'r filter {setting} {token}')
+
+    def test_filter_parser_rejects_other_targets_syntax_and_raw_payloads(self):
+        for target in ['l', 'both', 'R', 'right']:
+            for setting in ['show', 'default', '2d ema tau 0.1', '3d min 0.5',
+                            '3d beta 0.001', '3d derivative 1']:
+                with self.subTest(target=target, setting=setting), self.assertRaises(ValueError):
+                    monitor.parse_command(f'{target} filter {setting}')
+        for text in ['r filter', 'r filter SHOW', 'r Filter show', 'r filter show extra',
+                     'r filter default 0', 'r filter 2d ema tau', 'r filter 3d min',
+                     'r filter 2d tau 0.1', 'r filter 2d ema beta 0.1',
+                     'r filter 3d ema 0.1', 'r filter 3d MIN 0.5',
+                     'r filter 3d min 0.5 extra', 'r filter ~F,SHOW',
+                     'r ~F,SHOW', 'r ~F,EMA,100000\r', 'r raw ~F,DEFAULT',
+                     'r value ~F,SHOW', 'r filter show\nr E']:
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                monitor.parse_command(text)
+
+    def test_filter_commands_exact_right_tx_and_full_audit(self):
+        commands = ['r filter show', 'r filter default', 'r filter 2d ema tau 0.1',
+                    'r filter 3d min 0.5', 'r filter 3d beta 0.001',
+                    'r filter 3d derivative 1']
+        payloads = [b'~F,SHOW\r', b'~F,DEFAULT\r', b'~F,EMA,100000\r',
+                    b'~F,MIN,500\r', b'~F,BETA,1000\r', b'~F,DERIVATIVE,1000\r']
+        with tempfile.TemporaryDirectory() as folder, redirect_stdout(io.StringIO()):
+            output = Path(folder)
+            logs = monitor.MonitorLogs(output, 'commands')
+            ports = [FakeWritablePort(), FakeWritablePort()]
+            instance = monitor.ConsoleMonitor(ports, logs, True)
+            try:
+                for command in commands:
+                    instance.handle_input(command)
+                self.assertEqual(ports[0].writes, [])
+                self.assertEqual(ports[1].writes, payloads)
+                self.assertIsNone(logs.response_windows['left'])
+                for event, command, payload in zip(logs.commands, commands, payloads):
+                    self.assertEqual(event['input'], command)
+                    self.assertEqual(event['command'], payload.decode('ascii'))
+                    self.assertEqual(event['target'], 'r')
+                    self.assertEqual(event['status'], 'sent')
+                    self.assertEqual(event['results'], [{'side': 'right',
+                        'bytes_requested': len(payload), 'bytes_written': len(payload),
+                        'status': 'sent'}])
+            finally:
+                instance.close()
+                logs.close()
+            audit = [json.loads(line) for line in
+                     (output / 'host_commands.jsonl').read_text().splitlines()]
+            self.assertEqual(audit, logs.commands)
+
+    def test_invalid_and_receive_only_filter_commands_never_transmit(self):
+        for interactive in [False, True]:
+            with self.subTest(interactive=interactive), tempfile.TemporaryDirectory() as folder, \
+                    redirect_stdout(io.StringIO()):
+                logs = monitor.MonitorLogs(Path(folder), 'commands')
+                instance = monitor.ConsoleMonitor([FakePort(), FakePort()], logs, interactive)
+                try:
+                    commands = (['l filter show', 'both filter default', 'r filter 3d beta NaN',
+                                 'r filter 2d ema tau 0.1000001', 'r ~F,SHOW'] if interactive else
+                                ['r filter default', 'r filter 2d ema tau 0.1'])
+                    for command in commands:
+                        instance.handle_input(command)
+                    self.assertEqual(len(logs.commands), len(commands) if interactive else 0)
+                    self.assertTrue(all(event['status'] == 'rejected' for event in logs.commands))
+                    self.assertTrue(all(event['results'] == [] for event in logs.commands))
+                    self.assertEqual(logs.response_windows, {'left': None, 'right': None})
+                    self.assertFalse(instance.stop.is_set())
+                finally:
+                    instance.close()
+                    logs.close()
+
+    def test_filter_commands_short_or_failed_write_stop_without_retry(self):
+        for result in [0, 5, OSError('unplugged')]:
+            with self.subTest(result=result), tempfile.TemporaryDirectory() as folder, \
+                    redirect_stdout(io.StringIO()):
+                logs = monitor.MonitorLogs(Path(folder), 'commands')
+                ports = [FakeWritablePort(), FakeWritablePort(result)]
+                instance = monitor.ConsoleMonitor(ports, logs, True)
+                try:
+                    instance.handle_input('r filter 2d ema tau 0.1')
+                    instance.handle_input('r filter default')
+                    self.assertEqual(ports[0].writes, [])
+                    self.assertEqual(ports[1].writes, [b'~F,EMA,100000\r'])
+                    self.assertEqual(logs.commands[0]['status'], 'failed')
+                    self.assertEqual(logs.commands[0]['results'][0]['bytes_written'],
+                                     None if isinstance(result, Exception) else result)
+                    self.assertIsNone(logs.response_windows['right'])
+                    self.assertTrue(instance.stop.is_set())
+                finally:
+                    instance.close()
+                    logs.close()
+
+    def test_filter_ack_and_status_visible_in_commands_window_and_saved(self):
+        with tempfile.TemporaryDirectory() as folder, redirect_stdout(io.StringIO()), \
+                patch.object(monitor.time, 'monotonic', return_value=100.0) as clock:
+            output = Path(folder)
+            logs = monitor.MonitorLogs(output, 'commands', display_format='plain')
+            reply = b'ACK,F,SHOW,OK\r\nFILTER,EMA,100000,MIN,500,BETA,1000,DERIVATIVE,1000\r\n'
+            telemetry = b'TK,1\nRQ,1,2\n[ST] tx=3\n'
+
+            class ImmediateFilterReply(FakeWritablePort):
+                def write(self, data):
+                    self.writes.append(data)
+                    logs.feed('left', reply)
+                    for byte in reply:
+                        logs.feed('right', bytes([byte]))
+                    logs.feed('right', telemetry)
+                    return len(data)
+
+            instance = monitor.ConsoleMonitor([FakePort(), ImmediateFilterReply()], logs, True)
+            try:
+                logs.feed('right', b'FILTER,unsolicited\n')
+                instance.handle_input('r filter show')
+                self.assertEqual(logs.display.get_nowait(), '[R] ACK,F,SHOW,OK')
+                self.assertEqual(logs.display.get_nowait(),
+                                 '[R] FILTER,EMA,100000,MIN,500,BETA,1000,DERIVATIVE,1000')
+                self.assertEqual(logs.display.qsize(), 0)
+                clock.return_value = 104.0
+                logs.feed('right', b'ACK,F,late\n')
+                self.assertEqual(logs.display.qsize(), 0)
+            finally:
+                instance.close()
+                logs.close()
+            raw = b'FILTER,unsolicited\n' + reply + telemetry + b'ACK,F,late\n'
+            self.assertEqual((output / 'right_uart.raw').read_bytes(), raw)
+            self.assertEqual((output / 'left_uart.raw').read_bytes(), reply)
+            combined = (output / 'combined_uart.log').read_text()
+            self.assertIn('[R] ACK,F,SHOW,OK', combined)
+            self.assertIn('[R] FILTER,EMA,100000', combined)
+            self.assertIn('[R] ACK,F,late', combined)
+
+    def test_filter_main_manifest_and_no_automatic_tx(self):
+        with tempfile.TemporaryDirectory() as folder:
+            ports = [FakeWritablePort(), FakeWritablePort()]
+            result = self.run_main(folder, ports, monitor.display_logs,
+                                   ['--interactive', '--filter', 'commands', '--format', 'plain'],
+                                   io.StringIO('r filter show\nr filter default\nq\n'))
+            self.assertEqual(result, 0)
+            self.assertEqual(ports[0].writes, [])
+            self.assertEqual(ports[1].writes, [b'~F,SHOW\r', b'~F,DEFAULT\r'])
+            self.assertTrue(all(port.closed for port in ports))
+            session = json.loads((Path(folder) / 'session/session.json').read_text())
+            self.assertFalse(session['allow_motion_commands'])
+            self.assertEqual([event['command'] for event in session['commands']],
+                             ['~F,SHOW\r', '~F,DEFAULT\r', None])
 
     def test_margin_menu_thirteen_fields_and_audit(self):
         with tempfile.TemporaryDirectory() as folder, redirect_stdout(io.StringIO()):
@@ -610,7 +1051,7 @@ class MonitorTests(unittest.TestCase):
                 instance.close()
                 logs.close()
             self.assertEqual(ports[0].writes, [])
-            self.assertEqual(ports[1].writes, [b'R', b'P', b'E', b'X', b'A', b'S', b'T', b'V', b'u', b'h', b'f', b'j',
+            self.assertEqual(ports[1].writes, [b'R', b'P', b'E', b'\x1bX', b'A', b'\x1bS', b'T', b'V', b'u', b'h', b'f', b'j',
                                              b'i', b'k', b'r', b'p'])
             self.assertEqual(screen.getvalue().count('[HOST] WARNING:'), 11)
 
@@ -1110,6 +1551,57 @@ class MonitorTests(unittest.TestCase):
             self.assertEqual(session['screen_format'], 'plain')
             self.assertEqual(session['response_window_seconds'], 2.5)
             self.assertEqual(session['commands'][-1]['status'], 'eof')
+
+    def test_record_state_restart_restores_name_without_startup_or_exit_tx(self):
+        with tempfile.TemporaryDirectory() as folder:
+            ports = [FakeWritablePort(), FakeWritablePort()]
+            raw = (b'[REC_STATE] schema=1 side=r ui=NAME mode=HOLDING pwm=0 '
+                   b'ram_samples=234 entries=2 selected=1 playing=0 delete=0 unsaved=1\n')
+
+            def receive_status(instance):
+                self.assertEqual([port.writes for port in ports], [[], []])
+                instance.logs.feed('right', raw)
+                record = instance.logs.records['right']
+                self.assertTrue(record.name_prompt)
+                self.assertTrue(record.unsaved)
+                self.assertEqual(record.ram_samples, 234)
+                self.assertFalse(record.menu)
+                self.assertIn('RAM 234개 / SD 미저장', instance.logs.display.get_nowait())
+                instance.stop.set()
+
+            result = self.run_main(folder, ports, receive_status,
+                                   ['--interactive', '--filter', 'commands', '--no-video'])
+            self.assertEqual(result, 0)
+            self.assertEqual([port.writes for port in ports], [[], []])
+            self.assertTrue(all(port.closed for port in ports))
+            output = Path(folder) / 'session'
+            self.assertEqual((output / 'right_uart.raw').read_bytes(), raw)
+            self.assertEqual(json.loads((output / 'session.json').read_text())['commands'], [])
+
+    def test_record_ui_busy_restores_name_without_automatic_status_query(self):
+        with tempfile.TemporaryDirectory() as folder:
+            ports = [FakeWritablePort(), FakeWritablePort()]
+
+            def rejected_menu(instance):
+                record = instance.logs.records['left']
+                record.menu = True
+                record.entries = {1: 'old_record'}
+                instance.handle_input('l P')
+                instance.logs.feed('left', b'[REC] rejected UI_BUSY; finish naming or l record cancel\n'
+                                   b'[REC_STATE] schema=1 side=l ui=NAME mode=HOLDING pwm=1 '
+                                   b'ram_samples=100 entries=1 selected=0 playing=0 delete=0 unsaved=1\n')
+                self.assertTrue(record.name_prompt)
+                self.assertFalse(record.menu)
+                self.assertEqual([port.writes for port in ports], [[b'P'], []])
+                instance.stop.set()
+
+            result = self.run_main(folder, ports, rejected_menu,
+                                   ['--interactive', '--allow-motion-commands',
+                                    '--filter', 'commands', '--no-video'])
+            self.assertEqual(result, 0)
+            self.assertEqual([port.writes for port in ports], [[b'P'], []])
+            session = json.loads((Path(folder) / 'session/session.json').read_text())
+            self.assertEqual([event['command'] for event in session['commands']], ['P'])
 
 
 if __name__ == '__main__':

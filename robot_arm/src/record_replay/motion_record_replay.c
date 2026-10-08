@@ -168,13 +168,17 @@ static MotionRecordReplayReason validate_gripper_delta(
  * 뒤쪽 sample 하나라도 잘못됐으면 로봇을 Sample0으로 움직이기 전에 거부한다.
  * PLAY 중에도 같은 검사를 다시 수행하여 메모리 훼손 같은 실행 중 오류를 막는다.
  */
-static MotionRecordReplayReason preflight_replay(
+MotionRecordReplayReason motion_record_replay_validate_replay(
     const MotionRecordReplay *controller)
 {
     ForearmJointCommand before_previous;
     ForearmJointCommand previous;
     uint32_t i;
 
+    if (controller == NULL || controller->replay_count == 0U)
+        return MOTION_RR_REASON_EMPTY;
+    if (controller->replay_count > MOTION_RECORD_REPLAY_MAX_SAMPLES)
+        return MOTION_RR_REASON_RANGE;
     for (i = 0U; i < controller->replay_count; ++i) {
         ForearmJointCommand current = sample_to_command(&replay_buffer[i]);
         MotionRecordReplayReason reason = validate_command(&current);
@@ -305,6 +309,10 @@ static void resync_live(MotionRecordReplay *controller,
     }
     memset(&pipeline->command, 0, sizeof(pipeline->command));
     pipeline->command_valid = 0U;
+    memset(&pipeline->elbow_reentry, 0, sizeof(pipeline->elbow_reentry));
+    memset(&pipeline->elbow_return, 0, sizeof(pipeline->elbow_return));
+    memset(pipeline->wrist_return, 0, sizeof(pipeline->wrist_return));
+    pipeline->arm_tracking_started = 0U;
     forearm_motion_control_unwrap_state_init(&pipeline->unwrap);
     pipeline->target_ready = 0U;
 
@@ -313,6 +321,23 @@ static void resync_live(MotionRecordReplay *controller,
 }
 
 /* Replay 오류를 명시적인 HOLDING 상태로 고정하고 호출자에게 실패를 반환한다. */
+int motion_record_replay_hold_live(MotionRecordReplay *controller,
+                                   AgentPipelineContext *pipeline)
+{
+    if (controller == NULL || pipeline == NULL || controller->mode != MOTION_RR_LIVE ||
+        !pipeline->applied_command_valid ||
+        validate_command(&pipeline->applied_command) != MOTION_RR_REASON_NONE) return 0;
+    controller->last_applied_replay_command = pipeline->applied_command;
+    controller->last_applied_replay_valid = 1U;
+    controller->last_applied_replay_source = MOTION_RR_APPLIED_HAL;
+    controller->previous_applied_replay_valid = 0U;
+    controller->mode = MOTION_RR_HOLDING;
+    controller->gripper_catchup = 0U;
+    controller->reason = MOTION_RR_REASON_STOPPED;
+    pipeline->target_ready = 0U;
+    return 1;
+}
+
 static int enter_holding(MotionRecordReplay *controller,
                          MotionRecordReplayReason reason)
 {
@@ -515,7 +540,7 @@ int motion_record_replay_start_play(MotionRecordReplay *controller,
         return 0;
     }
 
-    reason = preflight_replay(controller);
+    reason = motion_record_replay_validate_replay(controller);
     if (reason != MOTION_RR_REASON_NONE) {
         controller->reason = reason;
         return 0;
@@ -559,6 +584,11 @@ int motion_record_replay_start_play(MotionRecordReplay *controller,
         controller->reason = MOTION_RR_REASON_DELTA;
         return 0;
     }
+    pipeline->command_valid = 0U;
+    memset(&pipeline->elbow_reentry, 0, sizeof(pipeline->elbow_reentry));
+    memset(&pipeline->elbow_return, 0, sizeof(pipeline->elbow_return));
+    memset(pipeline->wrist_return, 0, sizeof(pipeline->wrist_return));
+    pipeline->arm_tracking_started = 0U;
     forearm_calibration_set_target(&pipeline->motion, &sample0);
     pipeline->target_ready = 0U;
     return 1;

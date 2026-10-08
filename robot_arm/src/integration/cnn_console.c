@@ -69,6 +69,15 @@ static void prompt(void)
 
 int cnn_console_active(void) { return s_mode != MENU_NONE; }
 
+void cnn_console_cancel(void)
+{
+    if(s_mode!=MENU_NONE)
+        xil_printf("\r\nCNN configuration menu cancelled; settings unchanged\r\n");
+    s_mode=MENU_NONE;
+    s_field=s_digits=0U;
+    s_skip_lf=0;
+}
+
 void cnn_console_start_color(void)
 {
     u8 red,green,blue;
@@ -183,14 +192,12 @@ static void finish(void)
     s_mode=MENU_NONE;
 }
 
-void cnn_console_poll(void)
+void cnn_console_feed(unsigned char byte)
 {
-    unsigned budget=32U;
-    while(s_mode!=MENU_NONE && budget-- &&
-          XUartPs_IsReceiveData(STDIN_BASEADDRESS)) {
-        u8 c=XUartPs_ReadReg(STDIN_BASEADDRESS,XUARTPS_FIFO_OFFSET);
+    if(s_mode!=MENU_NONE) {
+        u8 c=byte;
         const MenuField *f=current_field();
-        if(s_skip_lf) { s_skip_lf=0; if(c=='\n') continue; }
+        if(s_skip_lf) { s_skip_lf=0; if(c=='\n') return; }
         if(c=='\r' || c=='\n') {
             unsigned parsed=0U,i;
             xil_printf("\r\n");
@@ -218,4 +225,12 @@ void cnn_console_poll(void)
             xil_printf("%c",c);
         }
     }
+}
+
+void cnn_console_poll(void)
+{
+    unsigned budget=32U;
+    while(s_mode!=MENU_NONE && budget-- &&
+          XUartPs_IsReceiveData(STDIN_BASEADDRESS))
+        cnn_console_feed((u8)XUartPs_ReadReg(STDIN_BASEADDRESS,XUARTPS_FIFO_OFFSET));
 }

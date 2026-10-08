@@ -1,5 +1,6 @@
 #include "integration/stereo_board.h"
 #include "integration/trace.h"
+#include "stereo_vision/robot_follow_protocol.h"
 
 #include <string.h>
 
@@ -23,39 +24,98 @@
 #define RX_IRQ_MASK (XUARTPS_IXR_RXOVR | XUARTPS_IXR_TOUT | XUARTPS_IXR_OVER | \
                      XUARTPS_IXR_FRAMING | XUARTPS_IXR_PARITY)
 #define RX_ERROR_MASK (XUARTPS_IXR_OVER | XUARTPS_IXR_FRAMING | XUARTPS_IXR_PARITY)
+#define COORDINATE_HISTORY 64U
+#define GRIPPER_REFERENCES 8U
 
 typedef struct {
     uint64_t received_us;
     uint8_t byte;
 } ReceivedByte;
 
+typedef struct {
+    RobotFollowPacket frame;
+    uint64_t observed_us;
+    uint32_t generation;
+    int ready;
+} PendingPacket;
+
+typedef struct {
+    uint32_t session, sequence, frame_id;
+    uint64_t observed_us, sent_us;
+} SentCoordinate;
+
+typedef struct {
+    uint32_t frame_id, session, sequence;
+    uint64_t left_us, right_us;
+    HumanGripper2D gripper;
+} SourceReference;
+
 static XUartPs s_uart;
 static ReceivedByte s_rx[RX_RING_SIZE];
 static volatile uint32_t s_head, s_tail, s_rx_overflows, s_rx_hw_errors;
 static uint32_t s_seen_overflows, s_seen_hw_errors;
-static StereoUartParser s_parser;
+static RobotFollowParser s_parser;
+static RobotFollowPacket s_decoded;
+static RobotFollowOrder s_follow_order, s_source_order[2];
 static StereoLink s_link;
-static StereoCoordinateFrame s_decoded;
 static StereoDepthResult s_depth;
-static uint8_t s_tx[STEREO_UART_PACKET_BYTES], s_pending[STEREO_UART_PACKET_BYTES];
-static unsigned s_tx_offset;
-static int s_pending_ready, s_ready, s_depth_ready;
-static uint32_t s_session, s_sequence;
+static uint8_t s_tx[STEREO_UART_PACKET_BYTES];
+static unsigned s_tx_offset, s_tx_length, s_next_data;
+static PendingPacket s_pending[3], s_active;
+static int s_ready, s_depth_ready, s_local_intent, s_remote_follow, s_remote_request;
+static uint32_t s_session, s_sequence, s_follow_sequence, s_generation;
+static uint64_t s_remote_request_us, s_last_request_us;
+static int s_have_request_tx;
+#ifdef ROBOT_STEREO_RIGHT
+static RobotFollowOrder s_coordinate_order;
+static SourceReference s_arm_source, s_gripper_sources[GRIPPER_REFERENCES];
+static unsigned s_gripper_source_next;
+#else
+static SentCoordinate s_sent[COORDINATE_HISTORY];
+static unsigned s_sent_next;
+static RobotFollowPacket s_target, s_gripper;
+static int s_target_ready, s_gripper_ready, s_gripper_new_session, s_have_target_epoch;
+static uint64_t s_target_coordinate_us, s_gripper_coordinate_us;
+static uint32_t s_received_epoch, s_received_input_epoch, s_target_session, s_gripper_session;
+#endif
 static StereoBoardStats s_stats;
 static uint64_t s_report_time;
 static uint64_t s_depth_time;
+static uint32_t s_request_tx, s_target_tx, s_gripper_tx, s_target_rx, s_gripper_rx;
+static uint32_t s_follow_expired, s_follow_rejected;
+
+static uint64_t local_time_us(void);
+static void service_tx(void);
+
+static void update_gate(uint64_t now)
+{
+#ifdef ROBOT_STEREO_RIGHT
+    int enabled;
+    if (s_remote_request && !robot_follow_fresh(now, s_remote_request_us)) {
+        s_remote_request = 0;
+        s_pending[1].ready = s_pending[2].ready = 0;
+    }
+    enabled = s_local_intent || s_remote_request;
+    if ((int)s_link.async_test_enabled == enabled) return;
+    stereo_link_set_async_test(&s_link, enabled);
+    input_pose_cnn_set_async_test(enabled);
+    s_depth_ready = 0;
+    s_depth_time = 0;
+    memset(&s_depth, 0, sizeof(s_depth));
+    memset(&s_arm_source, 0, sizeof(s_arm_source));
+    memset(s_gripper_sources, 0, sizeof(s_gripper_sources));
+#else
+    (void)now;
+#endif
+}
 
 int stereo_board_set_async_test(int enabled)
 {
 #ifdef ROBOT_STEREO_RIGHT
     if (!s_ready) return 0;
     enabled = enabled ? 1 : 0;
-    if ((int)s_link.async_test_enabled == enabled) return 1;
-    stereo_link_set_async_test(&s_link, enabled);
-    input_pose_cnn_set_async_test(enabled);
-    s_depth_ready = 0;
-    s_depth_time = 0;
-    memset(&s_depth, 0, sizeof(s_depth));
+    s_local_intent = enabled;
+    update_gate(local_time_us());
     return 1;
 #else
     (void)enabled;
@@ -65,7 +125,60 @@ int stereo_board_set_async_test(int enabled)
 
 int stereo_board_async_test_enabled(void)
 {
-    return s_ready && s_link.async_test_enabled;
+    return s_ready && s_local_intent;
+}
+
+int stereo_board_set_remote_follow(int enabled)
+{
+#ifdef ROBOT_STEREO_LEFT
+    PendingPacket *pending = &s_pending[0];
+    if (!s_ready) return 0;
+    enabled = enabled ? 1 : 0;
+    if (s_remote_follow == enabled) return 1;
+    s_remote_follow = enabled;
+    ++s_generation;
+    s_target_ready = s_gripper_ready = s_have_target_epoch = 0;
+    s_gripper_new_session = 1;
+    memset(s_sent, 0, sizeof(s_sent));
+    memset(s_source_order, 0, sizeof(s_source_order));
+    memset(pending, 0, sizeof(*pending));
+    pending->frame.type = ROBOT_FOLLOW_REQUEST;
+    pending->frame.data.requested = (uint8_t)enabled;
+    pending->ready = 1;
+    s_have_request_tx = 0;
+    service_tx();
+    return 1;
+#else
+    (void)enabled;
+    return 0;
+#endif
+}
+
+int stereo_board_remote_follow_enabled(void)
+{
+    return s_ready && s_remote_follow;
+}
+
+int stereo_board_remote_requested(void)
+{
+    if (!s_ready) return 0;
+    update_gate(local_time_us());
+    return s_remote_request;
+}
+
+int stereo_board_set_pixel_tau_us(uint32_t tau_us)
+{
+#ifdef ROBOT_STEREO_RIGHT
+    return s_ready && stereo_link_set_pixel_tau_us(&s_link, tau_us);
+#else
+    (void)tau_us;
+    return 0;
+#endif
+}
+
+uint32_t stereo_board_pixel_tau_us(void)
+{
+    return s_ready ? s_link.pixel_tau_us : STEREO_LINK_PIXEL_TAU_US;
 }
 
 static uint64_t local_time_us(void)
@@ -123,13 +236,35 @@ int stereo_board_init(void)
     XUartPs_SetOperMode(&s_uart, XUARTPS_OPER_MODE_NORMAL);
     XUartPs_SetFifoThreshold(&s_uart, 16);
     XUartPs_SetRecvTimeout(&s_uart, 8);
-    stereo_uart_parser_init(&s_parser);
+    s_ready = 0;
+    robot_follow_parser_init(&s_parser);
+    memset(&s_follow_order, 0, sizeof(s_follow_order));
+    memset(s_source_order, 0, sizeof(s_source_order));
+#ifdef ROBOT_STEREO_RIGHT
+    memset(&s_coordinate_order, 0, sizeof(s_coordinate_order));
+    memset(&s_arm_source, 0, sizeof(s_arm_source));
+    memset(s_gripper_sources, 0, sizeof(s_gripper_sources));
+    s_gripper_source_next = 0;
+#else
+    memset(s_sent, 0, sizeof(s_sent));
+    s_sent_next = 0;
+    s_target_ready = s_gripper_ready = s_have_target_epoch = 0;
+    s_gripper_new_session = 1;
+    s_received_epoch = s_received_input_epoch = s_target_session = s_gripper_session = 0;
+#endif
     if (!stereo_link_init(&s_link, &stereo_calibration_current)) return -1;
     memset(&s_stats, 0, sizeof(s_stats));
+    s_request_tx = s_target_tx = s_gripper_tx = s_target_rx = s_gripper_rx = 0;
+    s_follow_expired = s_follow_rejected = 0;
     s_head = s_tail = s_rx_overflows = s_rx_hw_errors = 0;
     s_seen_overflows = s_seen_hw_errors = 0;
-    s_tx_offset = STEREO_UART_PACKET_BYTES;
-    s_pending_ready = s_depth_ready = 0;
+    s_tx_offset = s_tx_length = s_next_data = 0;
+    memset(s_pending, 0, sizeof(s_pending));
+    memset(&s_active, 0, sizeof(s_active));
+    s_depth_ready = 0;
+    s_local_intent = s_remote_follow = s_remote_request = s_have_request_tx = 0;
+    s_remote_request_us = s_last_request_us = 0;
+    s_follow_sequence = s_generation = 0;
     s_session = (uint32_t)local_time_us();
     if (!s_session) s_session = 1;
     s_sequence = 0;
@@ -151,17 +286,183 @@ static void service_tx(void)
 {
     unsigned budget = 64;
     UINTPTR base = s_uart.Config.BaseAddress;
+    uint64_t now = local_time_us();
+    update_gate(now);
     while (budget && !XUartPs_IsTransmitFull(base)) {
-        if (s_tx_offset == STEREO_UART_PACKET_BYTES) {
-            if (!s_pending_ready) break;
-            memcpy(s_tx, s_pending, sizeof(s_tx));
-            s_pending_ready = 0;
+        if (s_tx_offset == s_tx_length) {
+            unsigned slot;
+#ifdef ROBOT_STEREO_LEFT
+            slot = s_pending[0].ready ? 0U : 1U;
+#else
+            slot = s_next_data ? 2U : 1U;
+            if (!s_pending[slot].ready) slot = slot == 1U ? 2U : 1U;
+#endif
+            if (!s_pending[slot].ready) break;
+            s_active = s_pending[slot];
+            s_pending[slot].ready = 0;
+            if (s_active.frame.type != ROBOT_FOLLOW_REQUEST &&
+                (!robot_follow_fresh(now, s_active.observed_us)
+#ifdef ROBOT_STEREO_RIGHT
+                 || !s_remote_request || s_active.frame.coordinate_session != s_follow_order.session
+#endif
+                 )) {
+                ++s_stats.tx_dropped;
+                continue;
+            }
+            if (s_active.frame.type == ROBOT_FOLLOW_COORDINATES) {
+                if (!stereo_uart_encode(&s_active.frame.data.coordinates, s_tx)) continue;
+                s_tx_length = STEREO_UART_PACKET_BYTES;
+            } else {
+                s_active.frame.session = s_session;
+                s_active.frame.sequence = ++s_follow_sequence;
+                s_tx_length = (unsigned)robot_follow_encode(&s_active.frame, s_tx, sizeof(s_tx));
+                if (!s_tx_length) {
+                    s_tx_offset = 0;
+                    ++s_stats.tx_dropped;
+                    continue;
+                }
+            }
+            s_active.frame.received_us = now;
+#ifdef ROBOT_STEREO_LEFT
+            if (slot == 0U) {
+                s_last_request_us = now;
+                s_have_request_tx = 1;
+            }
+#else
+            s_next_data = slot == 1U ? 1U : 0U;
+#endif
             s_tx_offset = 0;
         }
         XUartPs_WriteReg(base, XUARTPS_FIFO_OFFSET, s_tx[s_tx_offset++]);
         --budget;
-        if (s_tx_offset == STEREO_UART_PACKET_BYTES) ++s_stats.tx_frames;
+        if (s_tx_offset == s_tx_length) {
+            ++s_stats.tx_frames;
+            if (s_active.frame.type == ROBOT_FOLLOW_REQUEST) ++s_request_tx;
+            else if (s_active.frame.type == ROBOT_FOLLOW_TARGET) ++s_target_tx;
+            else if (s_active.frame.type == ROBOT_FOLLOW_GRIPPER) ++s_gripper_tx;
+#ifdef ROBOT_STEREO_LEFT
+            if (s_active.frame.type == ROBOT_FOLLOW_COORDINATES && s_remote_follow &&
+                s_active.generation == s_generation) {
+                const StereoCoordinateFrame *frame = &s_active.frame.data.coordinates;
+                SentCoordinate *sent = &s_sent[s_sent_next++ % COORDINATE_HISTORY];
+                *sent = (SentCoordinate){frame->session_id, frame->sequence, frame->frame_id,
+                    s_active.observed_us, s_active.frame.received_us};
+            }
+#endif
+        }
     }
+}
+
+#ifdef ROBOT_STEREO_LEFT
+static int coordinate_time(const RobotFollowPacket *packet, uint64_t now, uint64_t *observed)
+{
+    unsigned index;
+    uint32_t frame_id = packet->type == ROBOT_FOLLOW_TARGET
+        ? packet->data.target.human.frame_id : packet->data.gripper.frame_id;
+    if (packet->coordinate_session != s_session) return 0;
+    for (index = 0; index < COORDINATE_HISTORY; ++index) {
+        const SentCoordinate *sent = &s_sent[index];
+        if (sent->session == packet->coordinate_session && sent->sequence == packet->coordinate_sequence &&
+            sent->frame_id == frame_id && robot_follow_fresh(now, sent->sent_us) &&
+            robot_follow_fresh(now, sent->observed_us)) {
+            *observed = sent->observed_us;
+            return 1;
+        }
+    }
+    return 0;
+}
+#endif
+
+static void receive_packet(const RobotFollowPacket *packet, uint64_t now)
+{
+    if (!robot_follow_fresh(now, packet->received_us)) {
+        ++s_stats.expired_frames;
+        if (packet->type != ROBOT_FOLLOW_COORDINATES) ++s_follow_expired;
+        return;
+    }
+#ifdef ROBOT_STEREO_RIGHT
+    if (packet->type == ROBOT_FOLLOW_COORDINATES) {
+        const StereoCoordinateFrame *frame = &packet->data.coordinates;
+        if (!robot_follow_order_accept(&s_coordinate_order, frame->session_id, frame->sequence)) {
+            ++s_stats.rejected_frames;
+            return;
+        }
+        ++s_stats.rx_frames;
+        (void)stereo_link_push(&s_link, 0, frame, packet->received_us);
+    } else if (packet->type == ROBOT_FOLLOW_REQUEST) {
+        int new_session = s_follow_order.initialized && s_follow_order.session != packet->session;
+        if (!robot_follow_order_accept(&s_follow_order, packet->session, packet->sequence)) {
+            ++s_stats.rejected_frames;
+            ++s_follow_rejected;
+            return;
+        }
+        if (new_session || !packet->data.requested) {
+            s_pending[1].ready = s_pending[2].ready = 0;
+            if (new_session) {
+                memset(&s_arm_source, 0, sizeof(s_arm_source));
+                memset(s_gripper_sources, 0, sizeof(s_gripper_sources));
+            }
+        }
+        s_remote_request = packet->data.requested;
+        s_remote_request_us = packet->received_us;
+        update_gate(now);
+    } else {
+        ++s_stats.rejected_frames;
+        ++s_follow_rejected;
+    }
+#else
+    uint64_t observed;
+    unsigned stream;
+    RobotFollowOrder *source;
+    if (packet->type != ROBOT_FOLLOW_TARGET && packet->type != ROBOT_FOLLOW_GRIPPER) {
+        ++s_stats.rejected_frames;
+        return;
+    }
+    if (!s_remote_follow || !coordinate_time(packet, now, &observed)) {
+        ++s_stats.expired_frames;
+        ++s_follow_expired;
+        return;
+    }
+    if (!robot_follow_order_accept(&s_follow_order, packet->session, packet->sequence)) {
+        ++s_stats.rejected_frames;
+        ++s_follow_rejected;
+        return;
+    }
+    stream = packet->type == ROBOT_FOLLOW_TARGET ? 0U : 1U;
+    source = &s_source_order[stream];
+    if (source->initialized && source->session != packet->session) memset(source, 0, sizeof(*source));
+    if (!robot_follow_order_accept(source, packet->session, packet->coordinate_sequence)) {
+        ++s_stats.rejected_frames;
+        ++s_follow_rejected;
+        return;
+    }
+    if (s_target_session && s_target_session != packet->session) s_target_ready = 0;
+    if (s_gripper_session && s_gripper_session != packet->session) {
+        s_gripper_ready = 0;
+        s_gripper_new_session = 1;
+    }
+    if (packet->type == ROBOT_FOLLOW_TARGET) {
+        if (!s_have_target_epoch || s_target_session != packet->session ||
+            s_received_input_epoch != packet->data.target.input_epoch) {
+            ++s_received_epoch;
+            if (!s_received_epoch) ++s_received_epoch;
+        }
+        s_have_target_epoch = 1;
+        s_target_session = packet->session;
+        s_received_input_epoch = packet->data.target.input_epoch;
+        s_target = *packet;
+        s_target_coordinate_us = observed;
+        s_target_ready = 1;
+        ++s_target_rx;
+    } else {
+        if (s_gripper_session != packet->session) s_gripper_new_session = 1;
+        s_gripper_session = packet->session;
+        s_gripper = *packet;
+        s_gripper_coordinate_us = observed;
+        s_gripper_ready = 1;
+        ++s_gripper_rx;
+    }
+#endif
 }
 
 void stereo_board_service(void)
@@ -169,15 +470,23 @@ void stereo_board_service(void)
     unsigned budget = 512;
     uint64_t now;
     if (!s_ready) return;
+    now = local_time_us();
+    update_gate(now);
     if (s_seen_overflows != s_rx_overflows || s_seen_hw_errors != s_rx_hw_errors) {
         s_seen_overflows = s_rx_overflows;
         s_seen_hw_errors = s_rx_hw_errors;
         s_tail = s_head;
         s_parser.used = 0;
-        if (s_link.async_test_enabled) {
-            stereo_link_set_async_test(&s_link, 1);
-            input_pose_cnn_discard_stereo_pending();
-        }
+        s_link.count[0] = s_link.count[1] = 0;
+        s_link.ready = s_depth_ready = 0;
+        s_pending[1].ready = s_pending[2].ready = 0;
+#ifdef ROBOT_STEREO_RIGHT
+        memset(&s_arm_source, 0, sizeof(s_arm_source));
+        memset(s_gripper_sources, 0, sizeof(s_gripper_sources));
+#else
+        s_target_ready = s_gripper_ready = 0;
+#endif
+        input_pose_cnn_discard_stereo_pending();
     }
     while (budget-- && s_tail != s_head) {
         ReceivedByte received;
@@ -185,36 +494,40 @@ void stereo_board_service(void)
         received = s_rx[s_tail & (RX_RING_SIZE - 1U)];
         __sync_synchronize();
         ++s_tail;
-        if (stereo_uart_parser_push(&s_parser, received.byte, &s_decoded)) {
-            ++s_stats.rx_frames;
-#ifdef ROBOT_STEREO_RIGHT
-            now = local_time_us();
-            if (now >= received.received_us &&
-                now - received.received_us <= STEREO_LINK_MAX_AGE_US)
-                (void)stereo_link_push(&s_link, 0, &s_decoded, received.received_us);
-            else {
-                ++s_stats.expired_frames;
-                ++s_link.stale_frames;
-            }
-#endif
-        }
+        if (robot_follow_parser_push(&s_parser, received.byte, received.received_us, &s_decoded))
+            receive_packet(&s_decoded, local_time_us());
     }
+#ifdef ROBOT_STEREO_LEFT
+    now = local_time_us();
+    if (s_remote_follow && !s_pending[0].ready &&
+        (!s_have_request_tx || now < s_last_request_us || now - s_last_request_us >= ROBOT_FOLLOW_HEARTBEAT_US)) {
+        memset(&s_pending[0], 0, sizeof(s_pending[0]));
+        s_pending[0].frame.type = ROBOT_FOLLOW_REQUEST;
+        s_pending[0].frame.data.requested = 1;
+        s_pending[0].ready = 1;
+    }
+#endif
     service_tx();
 #ifdef ROBOT_STEREO_RIGHT
     if (stereo_link_take_at(&s_link, &s_depth, local_time_us())) {
         int accepted;
+        SourceReference reference = {s_depth.image_pose.frame_id, s_depth.left_session_id,
+            s_depth.left_sequence, s_depth.left_received_us, s_depth.right_received_us,
+            s_depth.image_pose.gripper_2d};
         s_depth_ready = 1;
         s_depth_time = s_depth.left_received_us < s_depth.right_received_us
             ? s_depth.left_received_us : s_depth.right_received_us;
         accepted = input_pose_cnn_publish_stereo(&s_depth);
+        s_gripper_sources[s_gripper_source_next++ % GRIPPER_REFERENCES] = reference;
         TRACE_PG(s_link.pairs, &s_depth, accepted, input_pose_cnn_admission_reason());
         TRACE_RQ(s_link.pairs, &s_depth, input_pose_cnn_tracking_state(),
             input_pose_cnn_reacquire_count(), input_pose_cnn_filter_epoch(), local_time_us());
         if (accepted) {
+            s_arm_source = reference;
             if (!s_depth.time_verified) ++s_stats.async_accepted;
         } else if (s_link.async_test_enabled && !s_depth.time_verified) {
             ++s_stats.async_rejected;
-            input_pose_cnn_discard_stereo_pending();
+            input_pose_cnn_discard_stereo_arm_pending();
         }
     }
 #endif
@@ -258,6 +571,19 @@ void stereo_board_service(void)
             (unsigned long)s_link.skipped_frames, (unsigned long)s_link.marker_rejects,
             (unsigned long)s_link.jump_rejects, (unsigned long)s_link.reacquired_points,
             s_link.async_test_enabled ? "RECEIPT_LATEST" : "STRICT");
+        xil_printf("[RF] role=%s local=%u requested=%u remote=%u gate=%u "
+                   "request_tx=%lu target_tx=%lu target_rx=%lu gripper_tx=%lu gripper_rx=%lu "
+                   "stale=%lu reject=%lu; receipt timing NOT exposure sync\r\n",
+#ifdef ROBOT_STEREO_RIGHT
+            "RIGHT",
+#else
+            "LEFT",
+#endif
+            (unsigned)s_local_intent, (unsigned)s_remote_follow, (unsigned)s_remote_request,
+            (unsigned)s_link.async_test_enabled, (unsigned long)s_request_tx,
+            (unsigned long)s_target_tx, (unsigned long)s_target_rx,
+            (unsigned long)s_gripper_tx, (unsigned long)s_gripper_rx,
+            (unsigned long)s_follow_expired, (unsigned long)s_follow_rejected);
     }
 }
 
@@ -266,6 +592,7 @@ int stereo_board_on_result(const cnn_result_t *result, const StereoFrameMetadata
     StereoCoordinateFrame frame;
     unsigned index;
     if (!s_ready || result == NULL) return 0;
+    update_gate(local_time_us());
     memset(&frame, 0, sizeof(frame));
     frame.session_id = s_session;
     frame.sequence = ++s_sequence;
@@ -288,9 +615,14 @@ int stereo_board_on_result(const cnn_result_t *result, const StereoFrameMetadata
             frame.markers[index] &= ~0x80000000U;
     TRACE_RAW(&frame);
 #ifdef ROBOT_STEREO_LEFT
-    if (s_pending_ready) ++s_stats.tx_dropped;
-    if (!stereo_uart_encode(&frame, s_pending)) return 0;
-    s_pending_ready = 1;
+    uint8_t validation[STEREO_UART_PACKET_BYTES];
+    if (!stereo_uart_encode(&frame, validation)) return 0;
+    if (s_pending[1].ready) ++s_stats.tx_dropped;
+    s_pending[1].frame.type = ROBOT_FOLLOW_COORDINATES;
+    s_pending[1].frame.data.coordinates = frame;
+    s_pending[1].observed_us = local_time_us();
+    s_pending[1].generation = s_generation;
+    s_pending[1].ready = 1;
     service_tx();
     return 1;
 #else
@@ -321,10 +653,143 @@ void stereo_board_stats(StereoBoardStats *stats)
     stats->crc_errors = s_parser.crc_errors;
     stats->format_errors = s_parser.format_errors;
     stats->range_errors = s_parser.range_errors;
-    stats->rejected_frames = s_link.rejected_frames;
+    stats->rejected_frames += s_link.rejected_frames;
     stats->expired_frames += s_link.expired_frames;
     stats->pairs = s_link.pairs;
     stats->unsynchronized_pairs = s_link.unsynchronized_pairs;
+}
+
+#ifdef ROBOT_STEREO_RIGHT
+static int prepare_data(RobotFollowPacket *packet, const SourceReference *source)
+{
+    uint64_t now = local_time_us();
+    update_gate(now);
+    if (!s_ready || !s_remote_request || !source->session ||
+        source->session != s_follow_order.session ||
+        !robot_follow_fresh(now, source->left_us) ||
+        !robot_follow_fresh(now, source->right_us)) return 0;
+    packet->session = s_session;
+    packet->coordinate_session = source->session;
+    packet->coordinate_sequence = source->sequence;
+    return 1;
+}
+
+static int queue_data(RobotFollowPacket *packet, unsigned slot, const SourceReference *reference)
+{
+    uint8_t bytes[ROBOT_FOLLOW_GRIPPER_BYTES];
+    RobotFollowOrder *source = &s_source_order[slot - 1U];
+    if (!robot_follow_encode(packet, bytes, sizeof(bytes)) ||
+        !robot_follow_order_accept(source, packet->coordinate_session, packet->coordinate_sequence)) return 0;
+    if (s_pending[slot].ready) ++s_stats.tx_dropped;
+    s_pending[slot].frame = *packet;
+    s_pending[slot].observed_us = reference->left_us < reference->right_us
+        ? reference->left_us : reference->right_us;
+    s_pending[slot].ready = 1;
+    service_tx();
+    return 1;
+}
+
+static int same_point(Point2D first, Point2D second)
+{
+    return first.valid == second.valid && first.x == second.x && first.y == second.y;
+}
+
+static int same_gripper(const HumanGripper2D *first, const HumanGripper2D *second)
+{
+    return first->source == second->source && first->reference_span_px == second->reference_span_px &&
+        same_point(first->wrist, second->wrist) && same_point(first->finger1, second->finger1) &&
+        same_point(first->finger2, second->finger2);
+}
+#endif
+
+int stereo_board_send_target(const HumanForearmTarget *target, int stationary,
+                             int wrist_fresh, uint32_t epoch)
+{
+#ifdef ROBOT_STEREO_RIGHT
+    RobotFollowPacket packet;
+    if (target == NULL || !target->valid || stationary < 0 || stationary > 1 ||
+        wrist_fresh < 0 || wrist_fresh > 1) return 0;
+    memset(&packet, 0, sizeof(packet));
+    packet.type = ROBOT_FOLLOW_TARGET;
+    if (!prepare_data(&packet, &s_arm_source) || target->frame_id != s_arm_source.frame_id) return 0;
+    packet.data.target.human = *target;
+    packet.data.target.stationary = (uint8_t)stationary;
+    packet.data.target.wrist_fresh = (uint8_t)wrist_fresh;
+    packet.data.target.input_epoch = epoch;
+    return queue_data(&packet, 1, &s_arm_source);
+#else
+    (void)target; (void)stationary; (void)wrist_fresh; (void)epoch;
+    return 0;
+#endif
+}
+
+int stereo_board_take_target(HumanForearmTarget *target, int *stationary,
+                             int *wrist_fresh, uint32_t *epoch)
+{
+#ifdef ROBOT_STEREO_LEFT
+    uint64_t now;
+    if (target == NULL || stationary == NULL || wrist_fresh == NULL || epoch == NULL ||
+        !s_ready || !s_target_ready) return 0;
+    s_target_ready = 0;
+    now = local_time_us();
+    if (!s_remote_follow || !robot_follow_fresh(now, s_target.received_us) ||
+        !robot_follow_fresh(now, s_target_coordinate_us)) {
+        ++s_follow_expired;
+        return 0;
+    }
+    *target = s_target.data.target.human;
+    *stationary = s_target.data.target.stationary;
+    *wrist_fresh = s_target.data.target.wrist_fresh;
+    *epoch = s_received_epoch;
+    return 1;
+#else
+    (void)target; (void)stationary; (void)wrist_fresh; (void)epoch;
+    return 0;
+#endif
+}
+
+int stereo_board_send_gripper(const HumanPose2D *pose)
+{
+#ifdef ROBOT_STEREO_RIGHT
+    RobotFollowPacket packet;
+    unsigned index;
+    if (pose == NULL) return 0;
+    for (index = 0; index < GRIPPER_REFERENCES; ++index) {
+        const SourceReference *source = &s_gripper_sources[index];
+        if (source->frame_id != pose->frame_id || !same_gripper(&source->gripper, &pose->gripper_2d)) continue;
+        memset(&packet, 0, sizeof(packet));
+        packet.type = ROBOT_FOLLOW_GRIPPER;
+        if (!prepare_data(&packet, source)) continue;
+        packet.data.gripper = *pose;
+        return queue_data(&packet, 2, source);
+    }
+    return 0;
+#else
+    (void)pose;
+    return 0;
+#endif
+}
+
+int stereo_board_take_gripper(HumanPose2D *pose, int *new_session)
+{
+#ifdef ROBOT_STEREO_LEFT
+    uint64_t now;
+    if (pose == NULL || new_session == NULL || !s_ready || !s_gripper_ready) return 0;
+    s_gripper_ready = 0;
+    now = local_time_us();
+    if (!s_remote_follow || !robot_follow_fresh(now, s_gripper.received_us) ||
+        !robot_follow_fresh(now, s_gripper_coordinate_us)) {
+        ++s_follow_expired;
+        return 0;
+    }
+    *pose = s_gripper.data.gripper;
+    *new_session = s_gripper_new_session;
+    s_gripper_new_session = 0;
+    return 1;
+#else
+    (void)pose; (void)new_session;
+    return 0;
+#endif
 }
 
 #else
@@ -332,6 +797,29 @@ void stereo_board_stats(StereoBoardStats *stats)
 int stereo_board_init(void) { return 0; }
 int stereo_board_set_async_test(int enabled) { (void)enabled; return 0; }
 int stereo_board_async_test_enabled(void) { return 0; }
+int stereo_board_set_remote_follow(int enabled) { (void)enabled; return 0; }
+int stereo_board_remote_follow_enabled(void) { return 0; }
+int stereo_board_remote_requested(void) { return 0; }
+int stereo_board_send_target(const HumanForearmTarget *target, int stationary,
+                             int wrist_fresh, uint32_t epoch)
+{
+    (void)target; (void)stationary; (void)wrist_fresh; (void)epoch;
+    return 0;
+}
+int stereo_board_take_target(HumanForearmTarget *target, int *stationary,
+                             int *wrist_fresh, uint32_t *epoch)
+{
+    (void)target; (void)stationary; (void)wrist_fresh; (void)epoch;
+    return 0;
+}
+int stereo_board_send_gripper(const HumanPose2D *pose) { (void)pose; return 0; }
+int stereo_board_take_gripper(HumanPose2D *pose, int *new_session)
+{
+    (void)pose; (void)new_session;
+    return 0;
+}
+int stereo_board_set_pixel_tau_us(uint32_t tau_us) { (void)tau_us; return 0; }
+uint32_t stereo_board_pixel_tau_us(void) { return STEREO_LINK_PIXEL_TAU_US; }
 void stereo_board_service(void) { }
 int stereo_board_on_result(const cnn_result_t *result, const StereoFrameMetadata *metadata)
 {

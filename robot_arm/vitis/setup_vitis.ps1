@@ -13,7 +13,8 @@
     - 기본 빌드는 ROBOT_ARM_PWM_ENABLE을 정의하여 로봇 서보 PWM을 실제 출력한다.
       보드에서 실행하기 전에 서보 전원과 기구 자세를 확인한다.
     - StereoRole Left/Right는 새 dual-arm UART0 XSA를 사용하며 로봇 PWM을 기본 비활성화한다.
-      Right의 EnableStereoRobotPwm은 별도 서보 시험용이다. 양팔 구동은 아직 구현하지 않는다.
+      각 보드가 자기 로봇을 제어한다(Left=로봇1 JC, Right=로봇0 JB).
+      EnableStereoRobotPwm은 Right의 별도 서보 시험용이며 기본 부팅은 PWM OFF다.
     - 워크스페이스 경로는 짧아야 한다(80자 이하, 예: D:\vws). Windows 경로 길이 제한(260자) 때문이다.
     - 이 스크립트를 돌리는 동안 Vitis IDE는 이 워크스페이스를 열지 않은 상태여야 한다.
     - xsct 임시폴더(.Xil)와 로그는 "<워크스페이스>_setup_logs" 폴더에 만들어져서 저장소를 더럽히지 않는다.
@@ -39,7 +40,7 @@ $ErrorActionPreference = "Stop"
 # Windows PowerShell 5.1 에서는 param 기본값 안의 $PSScriptRoot 가 비어 있어서 본문에서 계산한다.
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 if (-not $Xsa) {
-    $xsaName = if ($StereoRole -eq "Mono") { "cnn_camera_gimbal_rgby_pack77.xsa" } else { "cnn_rgby_pack77_dual_arm_uart0.xsa" }
+    $xsaName = if ($StereoRole -eq "Mono") { "cnn_camera_gimbal_rgby_pack77.xsa" } else { "final_uart0.xsa" }
     $Xsa = Join-Path $scriptDir "xsa\$xsaName"
 }
 if ($EnableStereoRobotPwm -and $StereoRole -ne "Right") { throw "Stereo robot PWM can only be enabled for the Right role." }
@@ -88,10 +89,12 @@ function Run-Xsct([string]$tclText, [string]$name) {
 $ws = ToTcl $Workspace; $repo = ToTcl $RepoRoot; $xsaT = ToTcl $Xsa
 $roleSymbols = ""
 if ($StereoRole -ne "Mono") {
-    $oneEuroEnabled = if ($StereoRole -eq "Right") { 1 } else { 0 }
     $roleSymbols = "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_$($StereoRole.ToUpperInvariant())`n" +
                    "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_UART_BAUD=$StereoBaud`n" +
-                   "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_ONE_EURO_ENABLE=$oneEuroEnabled"
+                   "app config -name $AppName -add define-compiler-symbols ROBOT_SPLIT_BOARD_CONTROL=1`n" +
+                   "app config -name $AppName -add define-compiler-symbols ROBOT_DUAL_ARM_ENABLE=0`n" +
+                   "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_ONE_EURO_ENABLE=1`n" +
+                   "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_ONE_EURO_TUNABLE=0"
 }
 $pwmSymbol = if ($StereoRole -eq "Mono" -or $EnableStereoRobotPwm) {
     "app config -name $AppName -add define-compiler-symbols ROBOT_ARM_PWM_ENABLE"
