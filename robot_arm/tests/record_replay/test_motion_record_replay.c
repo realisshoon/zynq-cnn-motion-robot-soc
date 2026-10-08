@@ -797,6 +797,76 @@ static void test_moving_live_to_align_preserves_command_velocity(void)
         &previous_success, &last_success, &pipeline.applied_command);
 }
 
+static void test_manual_output_change_reanchors_replay_history(void)
+{
+    AgentPipelineContext pipeline;
+    MotionRecordReplay controller;
+    ForearmJointCommand initial = command(90.0f, 90.0f, 90.0f, 90.0f, 0.5f);
+    ForearmJointCommand target = command(100.0f, 90.0f, 90.0f, 90.0f, 0.5f);
+    ForearmJointCommand last_written;
+    MotionSample replay = {89.0f, 90.0f, 90.0f, 90.0f, 0.5f};
+    MotionSample recorded;
+    uint32_t ticks_before;
+    unsigned axis;
+
+    init_context(&pipeline, &initial);
+    configure(&controller, 0.1f);
+    motion_record_replay_set_repeat(&controller, 1);
+    assert(motion_record_replay_load_replay(&controller, &replay, 1U));
+    forearm_calibration_set_target(&pipeline.motion, &target);
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(controller.previous_applied_replay_valid);
+    assert(pipeline.motion.axes[0].v > 0.0);
+    last_written = pipeline.applied_command;
+
+    reset_mock();
+    assert(agent_pipeline_set_output_enabled(&pipeline, 0));
+    motion_record_replay_on_output_change(&controller, &pipeline);
+    assert(!controller.previous_applied_replay_valid);
+    assert(controller.last_applied_replay_source == MOTION_RR_APPLIED_HAL);
+    assert(controller.replay_count == 1U && controller.repeat_play == 1U);
+    assert(!motion_record_replay_start_play(&controller, &pipeline, 0U));
+    ticks_before = pipeline.ticks;
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(pipeline.ticks == ticks_before + 1U);
+    assert(!controller.previous_applied_replay_valid);
+    assert_command_sample(&pipeline.output, &(MotionSample){
+        last_written.elbow_roll_deg, last_written.elbow_pitch_deg,
+        last_written.wrist_pitch_deg, last_written.wrist_roll_deg,
+        last_written.gripper_norm});
+
+    reset_mock();
+    assert(agent_pipeline_set_output_enabled(&pipeline, 1));
+    motion_record_replay_on_output_change(&controller, &pipeline);
+    assert(motion_record_replay_start_play(&controller, &pipeline, 0U));
+    for (axis = 0U; axis < FOREARM_MOTION_JOINT_COUNT; ++axis)
+        assert_near((float)pipeline.motion.axes[axis].v, 0.0f);
+    drive_align(&controller, &pipeline, 0U);
+
+    reset_mock();
+    assert(agent_pipeline_set_output_enabled(&pipeline, 0));
+    motion_record_replay_on_output_change(&controller, &pipeline);
+    assert(controller.mode == MOTION_RR_LIVE);
+    assert(controller.replay_count == 1U && controller.repeat_play == 1U);
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(!controller.previous_applied_replay_valid);
+    reset_mock();
+    assert(agent_pipeline_set_output_enabled(&pipeline, 1));
+    motion_record_replay_on_output_change(&controller, &pipeline);
+    assert(motion_record_replay_start_record(&controller));
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(controller.record_count == 1U);
+    reset_mock();
+    assert(agent_pipeline_set_output_enabled(&pipeline, 0));
+    motion_record_replay_on_output_change(&controller, &pipeline);
+    assert(controller.mode == MOTION_RR_LIVE && !controller.gripper_catchup);
+    assert(controller.replay_count == 1U);
+    assert(motion_record_replay_get_record_sample(&controller, 0U, &recorded));
+    assert(controller_tick(&controller, &pipeline, 0U));
+    assert(controller.record_count == 1U);
+}
+
 static void test_agent3_failure_preserves_pwm_and_aborts_play(void)
 {
     AgentPipelineContext pipeline;
@@ -1063,6 +1133,7 @@ int main(void)
     test_record_stationary_lead_in_is_replayable();
     test_play_after_hal_failure_reseeds_from_last_success();
     test_moving_live_to_align_preserves_command_velocity();
+    test_manual_output_change_reanchors_replay_history();
     test_agent3_failure_preserves_pwm_and_aborts_play();
     test_agent3_command_freshness();
     test_play_button_toggle_and_button_exclusion();

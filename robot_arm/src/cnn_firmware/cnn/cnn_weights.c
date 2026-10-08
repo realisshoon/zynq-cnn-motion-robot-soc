@@ -9,58 +9,69 @@ static FATFS weight_fs;
 static int weight_fs_mounted;
 static int weight_loaded;
 
-static const u8 expected_digest[32]={
-    0x77,0xd4,0xe3,0xbb,0x0e,0x74,0x7a,0xb5,
-    0xdf,0x62,0xaa,0xa4,0x1a,0x85,0x78,0x4b,
-    0xe3,0x21,0x54,0x89,0x94,0x1c,0x6d,0x27,
-    0x1f,0x40,0x1a,0x50,0x21,0x8e,0x7d,0xe3
-};
-
-static FRESULT open_weight_file(FIL *file,char *opened_path)
+static int hex_value(u8 character)
 {
+    if(character >= '0' && character <= '9') return character - '0';
+    if(character >= 'a' && character <= 'f') return character - 'a' + 10;
+    if(character >= 'A' && character <= 'F') return character - 'A' + 10;
+    return -1;
+}
+
+static cnn_error_t read_expected_digest(u8 expected_digest[32])
+{
+    FIL file;
     FRESULT fr;
-    DIR directory;
-    FILINFO info;
+    FRESULT close_result;
+    u8 text[78];
+    UINT length;
+    UINT got=0;
+    unsigned int index;
 
-    strcpy(opened_path,CNN_WEIGHT_PATH);
-    fr=f_open(file,CNN_WEIGHT_PATH,FA_READ);
-    if(fr==FR_OK) return FR_OK;
-    xil_printf("CNN: open %s failed (%d)\r\n",CNN_WEIGHT_PATH,(int)fr);
-
-#if FF_USE_LFN
-    strcpy(opened_path,CNN_WEIGHT_LONG_PATH);
-    fr=f_open(file,CNN_WEIGHT_LONG_PATH,FA_READ);
-    if(fr==FR_OK) return FR_OK;
-    xil_printf("CNN: open %s failed (%d)\r\n",CNN_WEIGHT_LONG_PATH,(int)fr);
-#endif
-
-    fr=f_opendir(&directory,"0:/");
-    if(fr!=FR_OK) return fr;
-    for(;;) {
-        fr=f_readdir(&directory,&info);
-        if(fr!=FR_OK || info.fname[0]=='\0') break;
-        if((info.fattrib&AM_DIR)!=0U) continue;
-        xil_printf("CNN: SD file %-12s %lu bytes\r\n",info.fname,(unsigned long)info.fsize);
-        if((u32)info.fsize!=CNN_WEIGHT_BYTES) continue;
-        opened_path[0]='0'; opened_path[1]=':'; opened_path[2]='/';
-        strcpy(&opened_path[3],info.fname);
-        fr=f_open(file,opened_path,FA_READ);
-        if(fr==FR_OK) {
-            f_closedir(&directory);
-            xil_printf("CNN: discovered weight candidate by exact size\r\n");
-            return FR_OK;
-        }
+    fr=f_open(&file,CNN_WEIGHT_SHA_PATH,FA_READ);
+    if(fr!=FR_OK) {
+        xil_printf("CNN: open %s failed (%d)\r\n",CNN_WEIGHT_SHA_PATH,(int)fr);
+        return CNN_ERR_WEIGHT_SHA;
     }
-    f_closedir(&directory);
-    return fr==FR_OK?FR_NO_FILE:fr;
+    if(f_size(&file)<76U || f_size(&file)>sizeof(text)) {
+        xil_printf("CNN: invalid %s size %lu\r\n",CNN_WEIGHT_SHA_PATH,
+                   (unsigned long)f_size(&file));
+        f_close(&file);
+        return CNN_ERR_WEIGHT_SHA;
+    }
+    length=(UINT)f_size(&file);
+    fr=f_read(&file,text,length,&got);
+    close_result=f_close(&file);
+    if(fr!=FR_OK || got!=length || close_result!=FR_OK) {
+        xil_printf("CNN: invalid %s read (%d, %u bytes, close %d)\r\n",
+                   CNN_WEIGHT_SHA_PATH,(int)fr,(unsigned int)got,(int)close_result);
+        return CNN_ERR_WEIGHT_SHA;
+    }
+    if(text[64]!=' ' || text[65]!=' ' ||
+       memcmp(&text[66],"WGT_V4.BIN",10U)!=0 ||
+       (length==77U && text[76]!='\n') ||
+       (length==78U && (text[76]!='\r' || text[77]!='\n'))) {
+        xil_printf("CNN: invalid %s format\r\n",CNN_WEIGHT_SHA_PATH);
+        return CNN_ERR_WEIGHT_SHA;
+    }
+    for(index=0;index<32U;++index) {
+        int high=hex_value(text[index*2U]);
+        int low=hex_value(text[index*2U+1U]);
+        if(high<0 || low<0) {
+            xil_printf("CNN: invalid %s hex at column %u\r\n",
+                       CNN_WEIGHT_SHA_PATH,index*2U+1U);
+            return CNN_ERR_WEIGHT_SHA;
+        }
+        expected_digest[index]=(u8)((high<<4)|low);
+    }
+    xil_printf("CNN: loaded expected SHA256 from %s\r\n",CNN_WEIGHT_SHA_PATH);
+    return CNN_OK;
 }
 
 cnn_error_t cnn_sd_mount(void)
 {
     FRESULT fr;
 
-    if(weight_fs_mounted)
-        return CNN_OK;
+    if(weight_fs_mounted) return CNN_OK;
     fr=f_mount(&weight_fs,"0:/",1);
     if(fr!=FR_OK) {
         xil_printf("CNN: SD mount failed (%d)\r\n",(int)fr);
@@ -74,35 +85,50 @@ cnn_error_t cnn_weights_load_from_sd(void)
 {
     FIL file;
     FRESULT fr;
-    char opened_path[20];
-    UINT got;
+    cnn_error_t result;
+    UINT got=0;
     u32 total=0;
     u8 digest[32];
+    u8 expected_digest[32];
 
     weight_loaded=0;
-    if(cnn_sd_mount()!=CNN_OK)
-        return CNN_ERR_SD_MOUNT;
-    fr=open_weight_file(&file,opened_path);
+    result=cnn_sd_mount();
+    if(result!=CNN_OK) return result;
+    result=read_expected_digest(expected_digest);
+    if(result!=CNN_OK) return result;
+    fr=f_open(&file,CNN_WEIGHT_PATH,FA_READ);
     if(fr!=FR_OK) {
-        xil_printf("CNN: no %lu-byte weight file found in SD root (%d)\r\n",
-                   (unsigned long)CNN_WEIGHT_BYTES,(int)fr);
+        xil_printf("CNN: open %s failed (%d)\r\n",CNN_WEIGHT_PATH,(int)fr);
         return CNN_ERR_WEIGHT_OPEN;
     }
-    xil_printf("CNN: opened %s\r\n",opened_path);
-    if((u32)f_size(&file)!=CNN_WEIGHT_BYTES) {
+    xil_printf("CNN: opened %s\r\n",CNN_WEIGHT_PATH);
+    if(f_size(&file)!=CNN_WEIGHT_BYTES) {
         xil_printf("CNN: weight size %lu, expected %lu\r\n",
                    (unsigned long)f_size(&file),(unsigned long)CNN_WEIGHT_BYTES);
-        f_close(&file); return CNN_ERR_WEIGHT_SIZE;
+        f_close(&file);
+        return CNN_ERR_WEIGHT_SIZE;
     }
     while(total<CNN_WEIGHT_BYTES) {
         UINT chunk=(UINT)((CNN_WEIGHT_BYTES-total)>65536U?65536U:(CNN_WEIGHT_BYTES-total));
         fr=f_read(&file,(void *)(UINTPTR)(CNN_WEIGHT_ADDRESS+total),chunk,&got);
-        if(fr!=FR_OK || got!=chunk) { f_close(&file); return CNN_ERR_WEIGHT_READ; }
+        if(fr!=FR_OK || got!=chunk) {
+            xil_printf("CNN: weight read failed at %lu (%d, %u/%u bytes)\r\n",
+                       (unsigned long)total,(int)fr,(unsigned int)got,(unsigned int)chunk);
+            f_close(&file);
+            return CNN_ERR_WEIGHT_READ;
+        }
         total+=(u32)got;
     }
-    f_close(&file);
+    fr=f_close(&file);
+    if(fr!=FR_OK) {
+        xil_printf("CNN: weight close failed (%d)\r\n",(int)fr);
+        return CNN_ERR_WEIGHT_READ;
+    }
     cnn_sha256((const void *)(UINTPTR)CNN_WEIGHT_ADDRESS,CNN_WEIGHT_BYTES,digest);
-    if(!cnn_sha256_equal(digest,expected_digest)) return CNN_ERR_WEIGHT_SHA;
+    if(!cnn_sha256_equal(digest,expected_digest)) {
+        xil_printf("CNN: weight SHA256 mismatch with %s\r\n",CNN_WEIGHT_SHA_PATH);
+        return CNN_ERR_WEIGHT_SHA;
+    }
     Xil_DCacheFlushRange((INTPTR)CNN_WEIGHT_ADDRESS,CNN_WEIGHT_BYTES);
     weight_loaded=1;
     return CNN_OK;

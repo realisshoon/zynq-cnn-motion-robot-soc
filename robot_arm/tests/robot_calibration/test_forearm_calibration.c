@@ -2,8 +2,10 @@
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "robot_calibration/forearm_calibration.h"
+#include "robot_calibration/forearm_calibration_config.h"
 
 static void near(float actual, float expected)
 {
@@ -221,46 +223,129 @@ static ForearmJointCommand raw_command(float roll, float pitch, float wp, float 
 }
 
 /*
- * 2026-09-22 좌표계 수정(elbow_pitch=90=수직, wrist_pitch=90=전완 기준
- * 90도 굽힘) 이후: [20,160] 클램프 범위 안에서는 전역 최소 높이가
- * -1.79cm로, 어떤 조합도 테이블(-5cm)에는 닿지 않는다(스크립트로 전수
- * 탐색 확인. wrist_pitch가 90도 굽힘 기준으로 바뀌면서 여유가
- * +0.548cm에서 줄었지만 아직은 안전하다). 즉 지금 확정된 관절범위에서는
- * 테이블 충돌이 실제로 도달 불가능한 상태다 -- 기구 실측으로 범위가
- * 넓어지거나 테이블 높이가 낮아지면 다시 도달 가능해진다. 이 사실 자체를
- * 회귀로 남겨두고, 중간경로 차단 메커니즘은 클램프 밖 값으로 직접
- * ForearmJointCommand를 만들어 계속 검증한다(apply()가 아니라
- * set_target()/step()을 직접 호출 -- 이 둘은 clamp를 하지 않는다).
- * 자기충돌(wrist_pitch>155)은 반대로 클램프 범위 안에서 도달 가능해졌다
- * -- test_forearm_safety_check.c의 test_self_collision 참고.
+ * 2026-10-04 사용자 확인된 16cm/20cm 링크에서는 [20,160] 안에서도
+ * 테이블(-10cm) 충돌이 가능하다. roll=90,pitch=160,wp=110,wr=90이면
+ * 손목 z=5.472cm, 손끝 z=-14.528cm다. 안전한 조합과 테이블 충돌 조합을
+ * 함께 확인하고 각 FK 높이에 대응하는 테이블 충돌 플래그를 검증한다.
  */
-static void test_clamped_envelope_never_reaches_table(void)
+static void test_clamped_envelope_contains_table_collisions(void)
 {
     float min_height = 1e9f;
+    int safe_count = 0, table_collision_count = 0;
     for (int roll = 20; roll <= 160; roll += 20)
     for (int pitch = 20; pitch <= 160; pitch += 20)
     for (int wp = 20; wp <= 160; wp += 20)
     for (int wr = 20; wr <= 160; wr += 20) {
-        ForearmJointCommand c = raw_command((float)roll, (float)pitch, (float)wp, (float)wr);
-        ForearmJointPositions3D p;
-        assert(forearm_robot_forward_kinematics_3d(&c, &p));
-        if (p.wrist.z_cm < min_height) min_height = p.wrist.z_cm;
-        if (p.tip.z_cm < min_height) min_height = p.tip.z_cm;
+        ForearmJointCommand candidate = raw_command((float)roll, (float)pitch, (float)wp, (float)wr);
+        ForearmJointPositions3D positions;
+        ForearmSafetyCheckFlags flags = UINT32_MAX;
+        int safe = forearm_safety_check_apply(&candidate, &flags);
+        assert(forearm_robot_forward_kinematics_3d(&candidate, &positions));
+        assert(safe == (flags == FOREARM_SAFETY_CHECK_OK));
+        assert(!!(flags & FOREARM_SAFETY_CHECK_TABLE_COLLISION) ==
+               (positions.wrist.z_cm <= -10.0f || positions.tip.z_cm <= -10.0f));
+        if (safe) safe_count++;
+        if (flags & FOREARM_SAFETY_CHECK_TABLE_COLLISION) table_collision_count++;
+        if (positions.wrist.z_cm < min_height) min_height = positions.wrist.z_cm;
+        if (positions.tip.z_cm < min_height) min_height = positions.tip.z_cm;
     }
-    assert(min_height > -5.0f); /* 지금 범위에서는 항상 테이블 위 */
+    assert(min_height < -10.0f);
+    assert(safe_count > 0 && table_collision_count > 0);
+    {
+        ForearmJointCommand candidate = raw_command(90, 160, 110, 90);
+        ForearmJointPositions3D positions;
+        ForearmSafetyCheckFlags flags = UINT32_MAX;
+        assert(forearm_robot_forward_kinematics_3d(&candidate, &positions));
+        near(positions.wrist.z_cm, 5.472322f);
+        near(positions.tip.z_cm, -14.527678f);
+        assert(!forearm_safety_check_apply(&candidate, &flags));
+        assert(flags == FOREARM_SAFETY_CHECK_TABLE_COLLISION);
+    }
+}
+
+static void test_geometry_targets_use_safety_checks(void)
+{
+    const ForearmJointCommand commands[] = {
+        {90, 90, 90, 90, 0.5f, 1},
+        {90, 160, 52, 90, 0.5f, 1},
+        {90, 160, 70, 90, 0.5f, 1},
+        {90, 160, 71, 90, 0.5f, 1}
+    };
+    for (int index = 0; index < 4; index++) {
+        const ForearmJointCommand *expected = &commands[index];
+        const ForearmCalibrationConfig *config = &forearm_calibration_config;
+        HumanForearmTarget input = target(
+            (expected->elbow_roll_deg - config->elbow_roll.zero_offset_deg) /
+                (config->elbow_roll.scale * (float)config->elbow_roll.direction),
+            (expected->elbow_pitch_deg - config->elbow_pitch.zero_offset_deg) /
+                (config->elbow_pitch.scale * (float)config->elbow_pitch.direction),
+            (expected->wrist_pitch_deg - config->wrist_pitch.zero_offset_deg) /
+                (config->wrist_pitch.scale * (float)config->wrist_pitch.direction),
+            (expected->wrist_roll_deg - config->wrist_roll.zero_offset_deg) /
+                (config->wrist_roll.scale * (float)config->wrist_roll.direction),
+            expected->gripper_norm);
+        ForearmJointCommand output;
+        int accepted = forearm_calibration_apply(&input, &output);
+        assert(accepted == (index < 3));
+        assert(output.valid == accepted);
+        near(output.elbow_roll_deg, expected->elbow_roll_deg);
+        near(output.elbow_pitch_deg, expected->elbow_pitch_deg);
+        near(output.wrist_pitch_deg, expected->wrist_pitch_deg);
+        near(output.wrist_roll_deg, expected->wrist_roll_deg);
+        near(output.gripper_norm, expected->gripper_norm);
+    }
+}
+
+static void test_table_collision_stops_ramp(void)
+{
+    ForearmMotionState state;
+    ForearmJointCommand start = raw_command(90, 160, 70, 90);
+    ForearmJointCommand end = raw_command(90, 160, 110, 90);
+    ForearmJointCommand output = start, previous;
+    ForearmSafetyCheckFlags flags = UINT32_MAX;
+    int blocked = 0;
+
+    assert(forearm_safety_check_apply(&start, &flags));
+    assert(flags == FOREARM_SAFETY_CHECK_OK);
+    assert(!forearm_safety_check_apply(&end, &flags));
+    assert(flags == FOREARM_SAFETY_CHECK_TABLE_COLLISION);
+    forearm_calibration_state_init(&state);
+    forearm_calibration_set_target(&state, &start);
+    forearm_calibration_set_target(&state, &end);
+    for (int tick = 0; tick < 200; tick++) {
+        previous = output;
+        forearm_calibration_step(&state, &output);
+        assert(output.valid && forearm_safety_check_apply(&output, NULL));
+        assert(fabsf(output.wrist_pitch_deg - previous.wrist_pitch_deg) <= 0.6001f);
+        near(output.elbow_roll_deg, start.elbow_roll_deg);
+        near(output.elbow_pitch_deg, start.elbow_pitch_deg);
+        near(output.wrist_roll_deg, start.wrist_roll_deg);
+        if (state.blocked_flags) {
+            assert(state.blocked_flags == FOREARM_SAFETY_CHECK_TABLE_COLLISION);
+            near(output.wrist_pitch_deg, previous.wrist_pitch_deg);
+            blocked++;
+        }
+    }
+    assert(blocked > 0 && state.held);
+    assert(output.wrist_pitch_deg > start.wrist_pitch_deg && output.wrist_pitch_deg < 71.0f);
+
+    end = raw_command(90, 160, 20, 90);
+    forearm_calibration_set_target(&state, &end);
+    assert(state.blocked_flags == FOREARM_SAFETY_CHECK_OK && !state.held);
+    for (int tick = 0; tick < 100; tick++) {
+        previous = output;
+        forearm_calibration_step(&state, &output);
+        assert(forearm_safety_check_apply(&output, NULL));
+        assert(state.blocked_flags == FOREARM_SAFETY_CHECK_OK && !state.held);
+        assert(fabsf(output.wrist_pitch_deg - previous.wrist_pitch_deg) <= 0.6001f);
+    }
+    near(output.wrist_pitch_deg, end.wrist_pitch_deg);
 }
 
 /*
- * motion.c(Motion/SPEED_ACCEL) 도입 후 재작성(2026-09-23). 예전에는 pitch=170
- * (클램프 밖) 값으로 [20,160] 안에서는 도달 불가능한 테이블충돌 구간을 직접
- * 뚫고 지나가며 차단을 검증했는데, forearm_calibration_set_target()이 이제
- * motion_init()에 넘기기 전에 값을 [min,max]로 clamp한다(motion_init은 범위
- * 밖 initial을 그냥 거부하고 그 축의 Motion을 0으로 방치하므로, set_target()도
- * 항상 clamp하는 motion_set_target()과 동작을 맞추기 위해서다 -- 위
- * forearm_calibration_set_target() 주석 참고). 그래서 클램프 밖 값을 이 API에
- * 직접 넣는 시나리오 자체가 더 이상 의미가 없다. 대신 [20,160] 안에서 실제로
- * 도달 가능한 자기충돌(wrist_pitch>155, test_forearm_safety_check.c의
- * test_self_collision 참고)로 같은 차단 메커니즘을 검증한다.
+ * 안전한 시작 자세에서 자기충돌 목표(wrist_pitch>155)로 이동할 때
+ * 중간 후보를 차단하고 마지막 안전 자세를 유지한다. 16cm/20cm 링크에서도
+ * roll=90,pitch=90,wr=90에서는 내각 25도 제한이 먼저 발동한다.
  *
  * 실행해서 확인한 값(never guessed): roll=90,pitch=90,wr=90 고정, wp를
  * 20->160으로 보내면 tick=230에서 wp=154.544도까지 갔을 때 자기충돌로
@@ -270,13 +355,18 @@ static void test_clamped_envelope_never_reaches_table(void)
  * 다시 제안하므로 blocked_flags는 OK로 돌아간다. 이게 예전 설계와 다른 점:
  * 예전엔 ticks_elapsed만 멈추고 target은 안 바뀌어서 매틱 다시 막혔다).
  */
-static void test_safe_endpoints_do_not_allow_unsafe_ramp(void)
+static void test_self_collision_stops_ramp(void)
 {
     ForearmMotionState s;
     ForearmJointCommand start=raw_command(90,90,20,90);
     ForearmJointCommand end=raw_command(90,90,160,90);
     ForearmJointCommand output=start, previous;
     int blocked=0;
+    ForearmSafetyCheckFlags flags = UINT32_MAX;
+    assert(forearm_safety_check_apply(&start, &flags));
+    assert(flags == FOREARM_SAFETY_CHECK_OK);
+    assert(!forearm_safety_check_apply(&end, &flags));
+    assert(flags == FOREARM_SAFETY_CHECK_SELF_COLLISION);
     forearm_calibration_state_init(&s);
     forearm_calibration_set_target(&s,&start);
     forearm_calibration_set_target(&s,&end);
@@ -309,15 +399,24 @@ static void test_safe_endpoints_do_not_allow_unsafe_ramp(void)
     near(output.wrist_roll_deg,end.wrist_roll_deg);
 }
 
-int main(void)
+int main(int argument_count, char **arguments)
 {
+    int geometry_only = argument_count == 2 && strcmp(arguments[1], "--geometry-only") == 0;
+    if (argument_count > 1 && !geometry_only) {
+        fprintf(stderr, "Usage: %s [--geometry-only]\n", arguments[0]);
+        return 2;
+    }
     setvbuf(stdout, NULL, _IONBF, 0);
+    test_clamped_envelope_contains_table_collisions();
+    test_geometry_targets_use_safety_checks();
+    test_table_collision_stops_ramp();
+    test_self_collision_stops_ramp();
+    puts("test_forearm_calibration: 16/20cm geometry and collision ramps PASS");
+    if (geometry_only) return 0;
     test_validate();
     test_map_and_limits();
     test_unwrap();
     test_ramp_speed_and_retarget();
-    test_clamped_envelope_never_reaches_table();
-    test_safe_endpoints_do_not_allow_unsafe_ramp();
     puts("test_forearm_calibration: PASS (validate, mapping, limits, unwrap, ramp speed/retarget)");
     return 0;
 }

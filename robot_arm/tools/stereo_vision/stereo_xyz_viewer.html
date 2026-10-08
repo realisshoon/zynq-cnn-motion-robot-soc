@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stereo UART · XYZ review</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10151e;color:#e8edf5}
+body{margin:0;padding:18px;width:1430px;box-sizing:border-box;margin-inline:auto}h1{font-size:22px;margin:0 0 8px}p{margin:6px 0;font-size:13px;color:#aebad0}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}button,input,select{background:#202d40;border:1px solid #4b5e7b;border-radius:6px;padding:6px;color:inherit}button{cursor:pointer}input[type=range]{flex:1;min-width:180px}input[type=number]{width:75px}
+.grid{display:grid;grid-template-columns:690px 690px;gap:14px}.panel{padding:12px;background:#192231;border:1px solid #2d3c53;border-radius:10px;min-width:0;box-sizing:border-box}h2{font-size:15px;margin:0 0 8px}canvas{width:664px;height:auto;background:#111a28;border-radius:6px}#space{touch-action:none;cursor:grab}
+.badge{display:inline-block;padding:5px 10px;border-radius:5px;background:#344156;font:13px monospace}.pass{background:#14523e}.fail{background:#68352f}
+table{border-collapse:collapse;width:100%;table-layout:fixed;font:12px ui-monospace,monospace;margin:8px 0}th,td{text-align:right;padding:6px 3px;border-bottom:1px solid #344156;overflow-wrap:anywhere}th:first-child,td:first-child{text-align:left}.orange{color:#ffae56}.green{color:#75f2b2}.red{color:#ff7777}.muted{color:#8e9cb2}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}video{display:block;width:664px;height:373.5px;object-fit:contain;background:#000}details{margin-top:12px}label{font-size:13px}
+</style>
+<h1>스테레오 영상 · 3D 좌표 · 각도 검토</h1>
+<p>실제 PAIR의 세션·순번·프레임 ID로 연결합니다. 영상 시각은 <b>호스트 수신 기준 근사치</b>이며 노출 동기화나 로봇 위치 피드백이 아닙니다.</p>
+<div class="bar">
+<button id="previous">◀ 이전</button><button id="play">▶ 재생</button><button id="next">다음 ▶</button>
+<input id="slider" type="range" min="0" step="1" value="0"><span id="time"></span>
+<label>속도 <select id="speed"><option value="0.5">0.5×</option><option selected value="1">1×</option><option value="2">2×</option></select></label>
+</div>
+<div class="bar"><span id="identity" class="badge"></span><span id="gate" class="badge"></span><span id="safety" class="badge"></span></div>
+<div class="bar">
+<label>영상 파일 <input id="file" type="file" accept="video/*,.mkv,.mp4,.mov"></label>
+<label>영상 시각 보정 <input id="offset" type="number" step="0.05" value="0"> 초</label>
+<span id="videoStatus" class="muted"></span>
+</div>
+<div class="grid">
+<section class="panel"><h2>OBS 원본 영상 · 좌우 카메라</h2><video id="video" muted controls preload="auto"></video><p>영상과 오른쪽 3D·아래 각도는 같은 PAIR 시각으로 대응합니다. 화면은 고정 크기이며 원본 영상의 종횡비를 유지합니다.</p><p>상단 재생·이전·다음·슬라이더로 함께 이동하세요. 영상 대응은 호스트 수신 기준 근사치입니다.</p></section>
+<section class="panel">
+<h2>3D · <span class="orange">삼각측량 후보</span> / <span class="green">로그 P3 유효·신규 좌표</span></h2>
+<div class="bar"><label><input id="rays" type="checkbox"> 카메라 / 광선</label><label>관절 <select id="focus"></select></label><button id="resetView">시점 초기화</button></div>
+<canvas id="space" width="720" height="440"></canvas>
+<p>드래그: 회전 · 휠: 확대. X=카메라 오른쪽, Y=위, Z=카메라에서 멀어짐 (mm). 사람 기준 각도축과는 다릅니다.</p>
+<table><thead><tr><th>관절</th><th class="orange">후보 XYZ / 재투영</th><th class="green">로그 P3 XYZ</th></tr></thead><tbody id="coordinates"></tbody></table>
+</section>
+<section class="panel">
+<h2>실제 펌웨어 로그 A1 → A2</h2>
+<p>각도를 뷰어에서 다시 계산하지 않습니다. A1은 사람 목표각, A2는 보정된 로봇 명령 후보입니다.</p>
+<table><thead><tr><th>축</th><th>A1 사람</th><th>A2 후보</th></tr></thead><tbody id="angles"></tbody></table>
+<p id="traceStatus"></p>
+<div class="bar"><label>추이 <select id="metric"><option value="elbow_z">팔꿈치 깊이 (mm)</option><option value="wrist_z">손목 깊이 (mm)</option><option value="0">elbow roll (°)</option><option value="1">elbow pitch (°)</option><option value="2">wrist pitch (°)</option><option value="3">wrist roll (°)</option><option value="4">gripper (0=닫힘, 1=열림)</option></select></label></div>
+<canvas id="chart" width="720" height="220"></canvas>
+<p>빈 구간은 로그 없음/보류입니다. 과거 좌표나 각도를 새 승인값으로 채우지 않습니다.</p>
+<details><summary>현재 프레임 상세</summary><pre id="detail"></pre></details>
+</section>
+<section class="panel"><h2>2D 검출 확인</h2><details><summary>LEFT · RAW / PIX</summary><canvas id="left" width="1280" height="720"></canvas><p id="leftCaption"></p></details><details><summary>RIGHT · RAW / PIX</summary><canvas id="right" width="1280" height="720"></canvas><p id="rightCaption"></p></details><p>영상 배치/crop이 검증되지 않으면 2D는 좌표만 표시합니다. 위 OBS 원본 영상은 계속 확인할 수 있습니다.</p></section>
+</div>
+<details><summary>입력·계산 경계·요약</summary><pre id="summary"></pre></details>
+<script id="data" type="application/json">__REVIEW_DATA__</script>
+<script>
+"use strict";
+const data = JSON.parse(document.getElementById("data").textContent);
+const frames = data.frames;
+const points = data.points;
+const element = identity => document.getElementById(identity);
+const video = element("video");
+const colors = ["#e8ae5d", "#ded26a", "#66cde8", "#8defae", "#ff6464", "#77dc73"];
+const links = [[0,1],[1,2],[2,3],[3,4],[3,5],[4,5]];
+const angleNames = ["elbow roll", "elbow pitch", "wrist pitch", "wrist roll", "gripper"];
+let currentIndex = 0;
+let playing = false;
+let clockOrigin = 0;
+let timelineOrigin = 0;
+let yaw = -0.6;
+let pitch = 0.35;
+let zoom = 1;
+let dragging = null;
+let objectURL = null;
+let desiredVideoTime = null;
+let chartSamples = [];
+let chartLimits = [0, 1];
+const format = value => value === null || value === undefined ? "--" : value.toFixed(1);
+const xyzText = coordinate => coordinate ? coordinate.map(format).join(", ") : "--";
+const approved = frame => Boolean(frame.PG && frame.PG.accepted);
+const freshPoint = (frame, name) => approved(frame) && frame.P3 && frame.P3.points[name].fresh ? frame.P3.points[name].xyz : null;
+const measuredCloud = frames.flatMap(frame => points.map(name => freshPoint(frame,name)).filter(Boolean));
+const candidateCloud = frames.flatMap(frame => points.map(name => {
+    const geometry = frame.geometry && frame.geometry[name];
+    return geometry && geometry.status === "OK" ? geometry.xyz : null;
+}).filter(Boolean));
+const cloud = measuredCloud.length ? measuredCloud : candidateCloud;
+const minima = [0,1,2].map(axis => cloud.length ? cloud.reduce((value,coordinate) => Math.min(value,coordinate[axis]),Infinity) : axis === 2 ? 800 : -200);
+const maxima = [0,1,2].map(axis => cloud.length ? cloud.reduce((value,coordinate) => Math.max(value,coordinate[axis]),-Infinity) : axis === 2 ? 1200 : 200);
+const center = minima.map((value,axis) => (value + maxima[axis])/2);
+const span = Math.max(300,...minima.map((value,axis) => maxima[axis]-value))*1.2;
+let viewCenter = [...center];
+let viewSpan = span;
+element("slider").max = frames.length - 1;
+points.forEach(name => { const option = document.createElement("option"); option.value = name; option.textContent = name; element("focus").append(option); });
+element("focus").value = "wrist";
+element("summary").textContent = JSON.stringify(data.summary,null,2);
+
+function videoSeconds(receipt){
+    const samples = data.recording && data.recording.samples || [];
+    if (!samples.length) return null;
+    const first = samples[0], last = samples[samples.length-1];
+    if (receipt < first.utc - first.seconds || receipt > last.utc) return null;
+    if (receipt <= first.utc) return first.active && !first.paused ? first.seconds + receipt-first.utc : null;
+    let lower = 0, upper = samples.length-1;
+    while (upper-lower>1){ const middle = (lower+upper)>>1; if(samples[middle].utc<=receipt) lower=middle; else upper=middle; }
+    const before = samples[lower], after = samples[upper];
+    if (!before.active || !after.active || before.paused || after.paused || after.utc<=before.utc || after.seconds<=before.seconds) return null;
+    return before.seconds + (receipt-before.utc)/(after.utc-before.utc)*(after.seconds-before.seconds);
+}
+
+function cameraPanel(side){
+    const canvas = element(side === "L" ? "left" : "right");
+    const context = canvas.getContext("2d");
+    const frame = frames[currentIndex];
+    context.fillStyle="#101926"; context.fillRect(0,0,canvas.width,canvas.height);
+    const rect = data.recording && data.recording.rects[side];
+    let available = false;
+    const size = data.recording && data.recording.video_size;
+    if(rect && size && video.videoWidth===size[0] && video.videoHeight===size[1] && desiredVideoTime!==null && video.readyState>=2 && !video.seeking && Math.abs(video.currentTime-desiredVideoTime)<0.1){
+        context.drawImage(video,...rect,0,0,1280,720); available=true;
+    }
+    if (!available){ context.fillStyle="#8e9cb2"; context.font="24px system-ui"; context.fillText("Video unavailable / approximate timing only",30,50); }
+    for(const stage of ["raw","pix"]){
+        const observation=frame[stage][side];
+        if(!observation) continue;
+        points.forEach((name,index) => {
+            const point=observation[name];
+            if(!point.valid || !point.xy) return;
+            context.beginPath(); context.arc(...point.xy,stage==="raw" ? 6 : 9,0,Math.PI*2);
+            context.strokeStyle=stage==="raw" ? "#a0a7b2" : colors[index]; context.lineWidth=3; context.stroke();
+            if(stage==="pix"){ context.fillStyle=colors[index]; context.font="20px system-ui"; context.fillText(name,point.xy[0]+12,point.xy[1]-9); }
+        });
+    }
+    const caption = element(side === "L" ? "leftCaption" : "rightCaption");
+    caption.textContent = (!rect ? "영상 crop/출처를 확인할 수 없어 좌표만 표시합니다. " : "영상과 점은 근사 시각 대응입니다. ") +
+        (!frame.raw[side] ? "RAW 누락. " : "") + (!frame.pix[side] ? "PIX 누락." : "");
+}
+
+function project(coordinate,canvas){
+    const displacement = coordinate.map((value,axis) => value-viewCenter[axis]);
+    const horizontal=displacement[0]*Math.cos(yaw)+displacement[2]*Math.sin(yaw);
+    const depth=-displacement[0]*Math.sin(yaw)+displacement[2]*Math.cos(yaw);
+    const vertical=displacement[1]*Math.cos(pitch)-depth*Math.sin(pitch);
+    const scale=Math.min(canvas.width,canvas.height)*0.75/viewSpan*zoom;
+    return [canvas.width/2+horizontal*scale,canvas.height/2-vertical*scale];
+}
+
+function drawSpace(){
+    const canvas=element("space"), context=canvas.getContext("2d"), frame=frames[currentIndex];
+    const lower = minima.map((value,axis) => element("rays").checked ? data.cameras.reduce((limit,camera) => Math.min(limit,camera[axis]),value) : value);
+    const upper = maxima.map((value,axis) => element("rays").checked ? data.cameras.reduce((limit,camera) => Math.max(limit,camera[axis]),value) : value);
+    viewCenter = lower.map((value,axis) => (value+upper[axis])/2);
+    viewSpan = Math.max(300,...lower.map((value,axis) => upper[axis]-value))*1.2;
+    context.clearRect(0,0,canvas.width,canvas.height);
+    function segment(first,second,color,width=1){ const start=project(first,canvas), end=project(second,canvas); context.beginPath(); context.moveTo(...start); context.lineTo(...end); context.strokeStyle=color; context.lineWidth=width; context.stroke(); }
+    ["X camera-right","Y up","Z away"].forEach((label,axis) => {
+        const endpoint=[...viewCenter]; endpoint[axis]+=viewSpan*0.22; segment(viewCenter,endpoint,colors[axis]);
+        context.fillStyle=colors[axis]; context.font="12px system-ui"; context.fillText(label,...project(endpoint,canvas));
+    });
+    for(const stage of ["geometry","filtered"]){
+        const coordinates=points.map(name => stage==="filtered" ? freshPoint(frame,name) : frame.geometry && frame.geometry[name].status==="OK" ? frame.geometry[name].xyz : null);
+        const color=stage==="filtered" ? "#75f2b2" : "#ffae56";
+        links.forEach(([first,second]) => { if(coordinates[first] && coordinates[second]) segment(coordinates[first],coordinates[second],color,stage==="filtered" ? 3 : 1); });
+        coordinates.forEach((coordinate,index) => {
+            if(!coordinate) return;
+            const screen=project(coordinate,canvas);
+            context.beginPath(); context.arc(...screen,stage==="filtered" ? 5 : 3,0,Math.PI*2); context.fillStyle=color; context.fill();
+            if(stage==="filtered"){ context.font="12px system-ui"; context.fillText(points[index],screen[0]+6,screen[1]-5); }
+        });
+    }
+    if(element("rays").checked){
+        const geometry=frame.geometry && frame.geometry[element("focus").value];
+        data.cameras.forEach((camera,index) => {
+            const screen=project(camera,canvas); context.fillStyle=colors[index]; context.fillRect(screen[0]-4,screen[1]-4,8,8);
+            context.fillText(index===0 ? "LEFT camera" : "RIGHT camera",screen[0]+6,screen[1]);
+            if(geometry && geometry.status==="OK") segment(camera,geometry.xyz,colors[index]);
+        });
+    }
+    context.fillStyle="#8e9cb2"; context.fillText("Candidate != PG approval != A2 acceptance",12,canvas.height-12);
+}
+
+function fillTable(identity,rows){
+    const table=element(identity); table.replaceChildren();
+    rows.forEach(cells => { const row=document.createElement("tr"); cells.forEach(value => { const cell=document.createElement("td"); cell.textContent=value; row.append(cell); }); table.append(row); });
+}
+
+function rebuildChart(){
+    const metric=element("metric").value;
+    chartSamples=frames.map(frame => {
+        if(metric.endsWith("_z")){ const point=freshPoint(frame,metric.replace("_z","")); return point ? point[2] : null; }
+        return approved(frame) && frame.A1 && frame.A1.output_valid ? frame.A1.angles[Number(metric)] : null;
+    });
+    const valid=chartSamples.filter(value => value!==null);
+    const minimum=valid.length ? valid.reduce((previous,value) => Math.min(previous,value),Infinity) : 0;
+    const maximum=valid.length ? valid.reduce((previous,value) => Math.max(previous,value),-Infinity) : 1;
+    const padding=Math.max(0.1,(maximum-minimum)*0.15);
+    chartLimits=[minimum-padding,maximum+padding];
+    drawChart();
+}
+
+function drawChart(){
+    const canvas=element("chart"), context=canvas.getContext("2d");
+    context.clearRect(0,0,canvas.width,canvas.height);
+    const start=frames[0].seconds, duration=Math.max(0.001,frames[frames.length-1].seconds-start);
+    const horizontal=seconds => 55+(seconds-start)/duration*(canvas.width-75);
+    const vertical=value => canvas.height-32-(value-chartLimits[0])/(chartLimits[1]-chartLimits[0])*(canvas.height-55);
+    context.fillStyle="#8e9cb2"; context.font="12px monospace";
+    context.fillText(format(chartLimits[1]),4,22); context.fillText(format(chartLimits[0]),4,canvas.height-32);
+    context.fillText("Host receipt time (s), gaps are not filled",55,canvas.height-8);
+    context.beginPath(); let continuous=false;
+    chartSamples.forEach((value,index) => {
+        if(value===null){continuous=false;return;}
+        if(index && (frames[index].seconds-frames[index-1].seconds>0.5 || frames[index].pair.rsid!==frames[index-1].pair.rsid || frames[index].pair.lsid!==frames[index-1].pair.lsid)) continuous=false;
+        if(continuous) context.lineTo(horizontal(frames[index].seconds),vertical(value)); else context.moveTo(horizontal(frames[index].seconds),vertical(value));
+        continuous=true;
+    });
+    context.strokeStyle="#75f2b2";context.lineWidth=1.5;context.stroke();
+    const cursor=horizontal(frames[currentIndex].seconds);context.beginPath();context.moveTo(cursor,15);context.lineTo(cursor,canvas.height-30);context.strokeStyle="#ffae56";context.stroke();
+}
+
+function showFrame(index,syncVideo=true){
+    currentIndex=Math.max(0,Math.min(frames.length-1,index));
+    const frame=frames[currentIndex], pair=frame.pair;
+    element("slider").value=currentIndex;
+    element("time").textContent=`${frame.seconds.toFixed(3)} s · ${currentIndex+1}/${frames.length}`;
+    element("identity").textContent=`PAIR ${pair.rsid}:${pair.pair} | L ${pair.lsid}/${pair.lseq}/${pair.lfid} ↔ R ${pair.rsid}/${pair.rseq}/${pair.rfid}`;
+    element("gate").textContent=`PG ${frame.PG ? frame.PG.accepted ? "APPROVED" : frame.PG.reason : "missing"} | gap ${(pair.gap_us/1000).toFixed(1)} ms`;
+    element("gate").className=`badge ${approved(frame) ? "pass" : "fail"}`;
+    const safety=frame.A2 ? `${frame.A2.state} flags=0x${frame.A2.flags.toString(16)}` : "missing (no new command)";
+    element("safety").textContent=`A2 ${safety}`;
+    element("safety").className=`badge ${frame.A2 && ["N","S"].includes(frame.A2.state) ? "pass" : "fail"}`;
+    fillTable("coordinates",points.map(name => {
+        const candidate=frame.geometry && frame.geometry[name];
+        const filtered=freshPoint(frame,name);
+        const held=frame.P3 && frame.P3.points[name].xyz && !filtered;
+        return [name,candidate ? `${candidate.status}: ${xyzText(candidate.xyz)}${candidate.errors ? " / "+candidate.errors.map(format).join(",")+"px" : ""}` : "geometry not replayed",filtered ? xyzText(filtered) : held ? "held / not fresh" : "--"];
+    }));
+    fillTable("angles",angleNames.map((name,axis) => [name,frame.A1 ? format(frame.A1.angles[axis]) : "--",frame.A2 ? format(frame.A2.command[axis]) : "--"]));
+    element("traceStatus").textContent=`A1 output_valid=${frame.A1 ? frame.A1.output_valid : "--"}, mask=${frame.A1 ? "0x"+frame.A1.valid_mask.toString(16) : "--"}. A2 N=신규, S=동일, R/V=거부. 거부 후보는 로봇에 적용됐다는 뜻이 아닙니다.`;
+    element("detail").textContent=JSON.stringify({utc:frame.receipt_utc,PAIR:pair,PG:frame.PG,RQ:frame.RQ,P3:frame.P3,A1:frame.A1,A2:frame.A2},null,2);
+    const mapped=videoSeconds(frame.receipt_seconds);
+    desiredVideoTime=mapped===null ? null : mapped+Number(element("offset").value);
+    if(desiredVideoTime!==null && (desiredVideoTime<0 || Number.isFinite(video.duration) && desiredVideoTime>=video.duration)) desiredVideoTime=null;
+    element("videoStatus").textContent=desiredVideoTime===null ? "영상 시각 대응 없음" : `근사 영상 시각 ${desiredVideoTime.toFixed(3)}s`;
+    if(syncVideo && desiredVideoTime!==null && video.readyState>=1 && Math.abs(video.currentTime-desiredVideoTime)>0.02) video.currentTime=desiredVideoTime;
+    cameraPanel("L");cameraPanel("R");drawSpace();drawChart();
+}
+
+function stop(){playing=false;element("play").textContent="▶ 재생";}
+element("previous").onclick=() => {stop();showFrame(currentIndex-1);};
+element("next").onclick=() => {stop();showFrame(currentIndex+1);};
+element("slider").oninput=() => {stop();showFrame(Number(element("slider").value));};
+element("offset").onchange=() => showFrame(currentIndex);
+element("metric").onchange=rebuildChart;
+element("rays").onchange=() => {zoom=1;drawSpace();};element("focus").onchange=drawSpace;
+element("resetView").onclick=() => {yaw=-0.6;pitch=0.35;zoom=1;drawSpace();};
+element("play").onclick=() => {if(playing){stop();return;}playing=true;clockOrigin=performance.now();timelineOrigin=frames[currentIndex].seconds;element("play").textContent="❚❚ 일시정지";};
+element("speed").onchange=() => {clockOrigin=performance.now();timelineOrigin=frames[currentIndex].seconds;};
+function animate(now){
+    if(playing){
+        const target=timelineOrigin+(now-clockOrigin)/1000*Number(element("speed").value);
+        let index=currentIndex;while(index+1<frames.length && frames[index+1].seconds<=target) index++;
+        if(index!==currentIndex) showFrame(index);if(index===frames.length-1) stop();
+    }
+    requestAnimationFrame(animate);
+}
+element("space").onpointerdown=event => {dragging=[event.clientX,event.clientY];element("space").setPointerCapture(event.pointerId);};
+element("space").onpointermove=event => {if(!dragging)return;yaw+=(event.clientX-dragging[0])*0.01;pitch=Math.max(-1.4,Math.min(1.4,pitch+(event.clientY-dragging[1])*0.01));dragging=[event.clientX,event.clientY];drawSpace();};
+element("space").onpointerup=() => {dragging=null;};
+element("space").onwheel=event => {event.preventDefault();zoom=Math.max(0.1,Math.min(10,zoom*Math.exp(-event.deltaY*0.001)));drawSpace();};
+element("file").onchange=() => {const file=element("file").files[0];if(!file)return;if(objectURL)URL.revokeObjectURL(objectURL);objectURL=URL.createObjectURL(file);video.src=objectURL;video.load();};
+video.onloadeddata=() => showFrame(currentIndex);video.onseeked=() => {cameraPanel("L");cameraPanel("R");};
+video.onerror=() => {element("videoStatus").textContent="영상 재생 실패: OBS remux 후 MP4 선택";};
+video.onplay=() => {stop();};
+video.ontimeupdate=() => {
+    if(playing || video.seeking) return;
+    const target=video.currentTime-Number(element("offset").value);
+    let selected=null, distance=Infinity;
+    frames.forEach((frame,index) => {
+        const mapped=videoSeconds(frame.receipt_seconds);
+        if(mapped!==null && Math.abs(mapped-target)<distance){selected=index;distance=Math.abs(mapped-target);}
+    });
+    if(selected!==null && distance<=0.5 && selected!==currentIndex) showFrame(selected,false);
+};
+if(data.recording && data.recording.url) video.src=data.recording.url;
+rebuildChart();showFrame(Number.parseInt(location.hash.slice(1),10)||0);requestAnimationFrame(animate);
+</script>
+</html>

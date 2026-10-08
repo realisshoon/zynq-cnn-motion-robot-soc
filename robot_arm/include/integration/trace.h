@@ -21,6 +21,7 @@
 #include <stdint.h>
 
 #include "integration/agent_pipeline.h"
+#include "stereo_vision/stereo_link.h"
 
 /* trace를 켠 빌드의 UART 속도. 끈 빌드는 115200을 유지한다(PC 스크립트의 기본값과 같다). */
 #define ROBOT_TRACE_UART_BAUD 921600U
@@ -62,6 +63,7 @@ void trace_a1(const AgentPipelineContext *ctx);
 
 /* agent2_run 직후. A2 줄(결과, 거부 사유, 보정된 명령)을 쌓는다. */
 void trace_a2(const AgentPipelineContext *ctx);
+void trace_gripper(const AgentPipelineContext *ctx, const StereoDepthResult *depth, int result);
 
 /* agent3_run 직후(제어 틱 1회 뒤). TK 줄을 쌓는다. */
 void trace_tick(const AgentPipelineContext *ctx);
@@ -76,6 +78,14 @@ void trace_camera(uint32_t frame_id, uint32_t state,
                   uint32_t pan_us, uint32_t tilt_us,
                   uint32_t pan_target_us, uint32_t tilt_target_us);
 void trace_input(const HumanPose2D *pose);
+void trace_cnn_coordinates(const StereoCoordinateFrame *frame);
+void trace_stereo_pair(uint32_t pair_id, const StereoDepthResult *depth,
+                       const Point2D *left_points, const Point2D *right_points);
+void trace_stereo_admission(uint32_t pair_id, const StereoDepthResult *depth,
+                            int accepted, const char *reason);
+void trace_stereo_tracking(uint32_t pair_id, const StereoDepthResult *depth,
+                           const char *state, unsigned candidates, uint32_t epoch,
+                           uint64_t now_us);
 /* Discard pending TRACE lines while muted; resume with a fresh schema. */
 void trace_set_output_enabled(int enabled);
 /* Suppress only robot-pipeline records; CNN/camera records remain visible. */
@@ -86,6 +96,7 @@ int trace_robot_output_enabled(void);
 #define TRACE_MARK()   trace_mark()
 #define TRACE_A1(p)    trace_a1(p)
 #define TRACE_A2(p)    trace_a2(p)
+#define TRACE_GR(p, depth, result) trace_gripper(p, depth, result)
 #define TRACE_TK(p)    trace_tick(p)
 #define TRACE_POLL(p)  trace_poll(p)
 #define TRACE_CN(fid, seq, irq, dur, flags, overwritten) \
@@ -94,6 +105,11 @@ int trace_robot_output_enabled(void);
 #define TRACE_CAM(fid, state, pan, tilt, pan_target, tilt_target) \
     trace_camera((fid), (state), (pan), (tilt), (pan_target), (tilt_target))
 #define TRACE_IN(p) trace_input(p)
+#define TRACE_RAW(frame) trace_cnn_coordinates(frame)
+#define TRACE_PAIR(pair, depth, left, right) trace_stereo_pair(pair, depth, left, right)
+#define TRACE_PG(pair, depth, accepted, reason) trace_stereo_admission(pair, depth, accepted, reason)
+#define TRACE_RQ(pair, depth, state, candidates, epoch, now) \
+    trace_stereo_tracking(pair, depth, state, candidates, epoch, now)
 #define TRACE_SET_OUTPUT_ENABLED(on) trace_set_output_enabled(on)
 #define TRACE_SET_ROBOT_OUTPUT_ENABLED(on) trace_set_robot_output_enabled(on)
 #define TRACE_ROBOT_OUTPUT_ENABLED() trace_robot_output_enabled()
@@ -104,12 +120,17 @@ int trace_robot_output_enabled(void);
 #define TRACE_MARK()   ((void)0)
 #define TRACE_A1(p)    ((void)0)
 #define TRACE_A2(p)    ((void)0)
+#define TRACE_GR(p, depth, result) ((void)0)
 #define TRACE_TK(p)    ((void)0)
 #define TRACE_POLL(p)  ((void)0)
 #define TRACE_CN(fid, seq, irq, dur, flags, overwritten) ((void)0)
 #define TRACE_CNN_ERROR(fid, error, irq) ((void)0)
 #define TRACE_CAM(fid, state, pan, tilt, pan_target, tilt_target) ((void)0)
 #define TRACE_IN(p) ((void)0)
+#define TRACE_RAW(frame) ((void)0)
+#define TRACE_PAIR(pair, depth, left, right) ((void)0)
+#define TRACE_PG(pair, depth, accepted, reason) ((void)0)
+#define TRACE_RQ(pair, depth, state, candidates, epoch, now) ((void)0)
 #define TRACE_SET_OUTPUT_ENABLED(on) ((void)0)
 #define TRACE_SET_ROBOT_OUTPUT_ENABLED(on) ((void)0)
 #define TRACE_ROBOT_OUTPUT_ENABLED() 0

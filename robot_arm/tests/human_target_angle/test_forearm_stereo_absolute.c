@@ -89,6 +89,7 @@ static void targets_near(HumanForearmTarget actual, HumanForearmTarget expected)
     assert(actual.valid == expected.valid);
     assert(actual.hand_fresh == expected.hand_fresh);
     assert(actual.wrist_valid == expected.wrist_valid);
+    assert(actual.gripper_valid == expected.gripper_valid);
     assert(actual.elbow_roll_observable == expected.elbow_roll_observable);
 }
 
@@ -246,6 +247,38 @@ static void test_hand_missing_and_degenerate(void)
     assert(isfinite(target.wrist_pitch_deg) && isfinite(target.wrist_roll_deg));
 }
 
+static void test_gripper_without_hand_depth(void)
+{
+    ForearmMappingContext context;
+    HumanForearmTarget target, previous;
+    StereoFixture input = fixture(30.0f, 15.0f, 10.0f, 20.0f);
+    unsigned index;
+    input.measured.finger1.valid = input.measured.finger2.valid = 0U;
+    input.image.wrist = (Point2D){900.0f, 400.0f, 1U};
+    input.image.finger1 = (Point2D){940.0f, 380.0f, 1U};
+    input.image.finger2 = (Point2D){940.0f, 420.0f, 1U};
+    assert(forearm_mapping_init(&context) == 0);
+    assert(update(&context, &input, 0.1f, &target) == 1);
+    assert(target.gripper_valid && !target.wrist_valid);
+    near(target.gripper_norm, 1.0f, 0.0f);
+    input.image.finger1 = input.image.finger2 = (Point2D){940.0f, 400.0f, 1U};
+    for (index = 0; index < 12; ++index) {
+        input.image.frame_id++;
+        assert(update(&context, &input, 0.1f, &target) == 1);
+        assert(target.gripper_valid && !target.wrist_valid && !target.hand_fresh);
+    }
+    near(target.gripper_norm, 0.0f, 0.0f);
+    previous = target;
+    input.image.finger2.valid = 0U;
+    input.image.frame_id++;
+    assert(update(&context, &input, 0.1f, &target) == 1);
+    near(target.gripper_norm, previous.gripper_norm, 0.0f);
+    assert(target.gripper_valid && context.pose.gripper_last_hold);
+    assert(forearm_mapping_init(&context) == 0);
+    assert(update(&context, &input, 0.1f, &target) == 1);
+    assert(!target.gripper_valid && !target.wrist_valid);
+}
+
 static void test_invalid_and_duplicate(void)
 {
     ForearmMappingContext context;
@@ -320,8 +353,10 @@ static void test_stage_and_mono_mode_isolation(void)
     ForearmMappingContext stereo_context, mono_context;
     HumanForearmTarget stereo_target, mono_target;
     StereoFixture input = fixture(25.0f, 20.0f, 10.0f, 20.0f);
-    HumanPose2D mono = {{528, 238, 1}, {535, 278, 1}, {445, 225, 1},
-                        {500, 255, 1}, {250, 190, 1}, {390, 190, 1}, 123, 1};
+    HumanPose2D mono = {.finger1 = {528, 238, 1}, .finger2 = {535, 278, 1},
+        .elbow = {445, 225, 1}, .wrist = {500, 255, 1},
+        .shoulder_l = {250, 190, 1}, .shoulder_r = {390, 190, 1},
+        .frame_id = 123, .valid = 1};
     unsigned index;
     assert(agent1_forearm_stage_init() == 0);
     assert(agent1_forearm_stage_run_stereo(&input.image, &input.measured,
@@ -354,9 +389,10 @@ int main(void)
     test_depth_and_translation();
     test_continuity_and_poles();
     test_hand_missing_and_degenerate();
+    test_gripper_without_hand_depth();
     test_invalid_and_duplicate();
     test_person_axes_and_recorded_pose();
     test_stage_and_mono_mode_isolation();
-    puts("test_forearm_stereo_absolute: PASS (8 groups, person right/up/forward axes)");
+    puts("test_forearm_stereo_absolute: PASS (9 groups, independent 2D gripper)");
     return 0;
 }

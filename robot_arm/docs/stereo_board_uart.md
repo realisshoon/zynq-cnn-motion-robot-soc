@@ -1,5 +1,7 @@
 # 보드 간 CNN 좌표 UART 및 오른쪽 보드 depth 처리
 
+> 아래는 2026-10-02 통신 통합 이력이다. 현행 승열3의 XSA는 `vitis/xsa/final_uart0.xsa`이며 LEFT=로봇1/JC, RIGHT=로봇0/JB로 분리한다. 양안 depth는 RIGHT에서 계산하고 LEFT 추종 요청에는 승인된 목표를 UART0로 전달한다. 현재 역할·명령은 [Unity UART 계약](uart_protocol_unity.md), [로봇0/1 사용 안내](robot0_robot1_commands.md)를 따른다.
+
 ## 실행 경로
 
 2026-10-02 통합. 왼쪽 카메라 보드는 CNN 결과를 **PS UART0**로 전송하고,
@@ -52,6 +54,60 @@ UART0 추가 후 `XPAR_XUARTPS_0_DEVICE_ID`는 UART1이 아닌 UART0를 가리�
 새 XSA에서는 **두 카메라를 물리적으로 고정해야 한다**.
 
 ## 패킷 v1
+
+### 2026-10-04 픽셀 흔들림 진단 로그
+
+콘솔 UART1의 다음 레코드는 로봇 PWM을 켜지 않아도 기록한다. UART0의 170-byte
+좌표 패킷이나 프레임 매칭 정책은 변경하지 않는다. `z`로 로봇 TRACE를 끄더라도
+아래 진단 레코드는 유지하며, 모니터 `--filter commands`는 화면에서만 숨긴다.
+
+| 레코드 | 의미 |
+|---|---|
+| `RAW` | 각 보드의 필터 전 CNN 좌표. 양쪽 어깨, 오른팔 팔꿈치·손목, 빨강·초록 손가락 마커만 기록 |
+| `PAIR` | 오른쪽에서 실제 삼각측량한 좌우 프레임쌍. 좌우 session/sequence/frame ID를 각각 보존 |
+| `PIX` | 해당 쌍에서 실제 사용한 각 카메라의 2D EMA 후 좌표. `L`/`R` 두 줄 |
+| `PG` | 해당 쌍의 로봇 입력 승인 여부와 거절 사유. A2 안전검사나 PWM 적용 성공을 의미하지 않음 |
+
+```text
+RAW,t_ms,sid,seq,fid,slx,sly,sls,slv,srx,sry,srs,srv,ex,ey,es,ev,wx,wy,ws,wv,redx,redy,redv,greenx,greeny,greenv
+PAIR,t_ms,rsid,pair,lsid,lseq,lfid,rseq,rfid,sync,gap_us,control,async,es,ws,red_s,green_s
+PIX,rsid,pair,side,sid,seq,fid,slx,sly,slv,srx,sry,srv,ex,ey,ev,wx,wy,wv,redx,redy,redv,greenx,greeny,greenv
+PG,rsid,pair,accepted,reason
+```
+
+좌표 단위는 원본 1280×720 영상의 픽셀이다. `s`는 관절 score, `v`는 유효 플래그다.
+마커에는 관절 score를 만들어 붙이지 않는다. `sl/sr`은 사람의 좌/우 어깨이고,
+`e/w`는 현재 제어하는 사람 오른팔이다. 팔꿈치는 150 mm 검사와 전완 기하 진단을 위해 포함한다.
+
+쌍의 키는 **`(rsid,pair)`**다. 왼쪽 RAW는 `(lsid,lseq,lfid)`, 오른쪽 RAW는
+`(rsid,rseq,rfid)`로 연결한다. 예를 들어 `L fid=507`, `R fid=9019`여도
+PAIR에 명시된 조합이면 실제 처리된 같은 쌍이다. 번호가 같다고 매칭하거나 보드 간
+부팅 후 `t_ms`를 직접 빼서 촬영 시차로 해석하지 않는다. 재부팅 시 session이 바뀌며,
+쌍 번호는 현재 오른쪽 실행에서 단조 증가한다. 로그 누락 시 원시 좌표를 추정해서 채우지 않는다.
+
+`gap_us`는 오른쪽 보드 시각계에서 두 결과를 받은 시각의 절댓값 차이이고, 최대
+4294967295로 포화한다. **실제 카메라 노출 시차가 아니다.** `sync=0`이면 노출 동기화 미검증이다.
+`control/async`는 StereoPoseStatus, `es/ws/red_s/green_s`는 각 점의 StereoStatus다.
+PIX는 gripper용 좌우 뷰 선택으로 합치기 전의 각 카메라 좌표다.
+
+PG 사유는 `OK`, `OFF`, `GEOMETRY`, `CLOCK`, `INVALID`, `SEQUENCE`, `STALE`,
+`MATCH_GAP`, `JUMP_HOLD`, `REACQ_WAIT`, `REACQ_ACCEPT`, `UNVERIFIED`, `METADATA`,
+`TIME_SEQUENCE`, `FILTER_GEOMETRY`다. 같은 세션에서 이전 승인 위치 대비 elbow/wrist
+변화 ≤150 mm인 신선한 기하 유효 입력은 승인한다. 세션 변경·150 mm 초과는 첫 후보의
+50 mm 이내인 서로 다른 3개 쌍으로 재획득한다. 후보 간 간격은 ≤250 ms다.
+
+운영 소스는 외부 G 제작 당시로 복원했다. 승인 공백 >250 ms이면 filter epoch 초기화와
+dt=0.1초를 사용한다. 무효점/기하 탈락 초기화도 그 당시 방식이다. 최근 500 ms 승인 경계,
+실제 갱신 시각 분리, 짧은 누락 이력 보존, 이동 예측 재획득은 적용되지 않는다.
+복원 전 자료는 `captures/restore_G_baseline_20261004/before/`에 보관하며 SD는 변경하지 않았다.
+
+`RQ,rsid,pair,state,candidates,filter_epoch,l_age_us,r_age_us,gap_us`는 재획득 상태·후보 수·
+필터 세대·좌우 수신 나이·간격을 기록한다. 입력 거부 시 마지막 승인 궤적은 완료 후 유지하며
+재획득도 기존 A2/FK/20 ms 검사를 우회하지 않는다. `X`는 별도의 명시적 토크 해제 명령이다.
+
+가만히 유지한 구간의 PAIR 범위를 골라 좌우 RAW/PIX의 표준편차·픽셀 범위·프레임 간
+점프를 비교한다. 유효점만 통계에 포함하되 invalid/누락 개수를 함께 확인한다.
+실제 정지 여부는 실험자가 기록해야 하며 통계가 정지 상태를 자동 보증하지 않는다.
 
 170 bytes 고정 길이, little-endian, 115200 8N1 기본값. C 구조체를 memcpy해서 보내지 않는다.
 전체 166 bytes에 CRC-32/ISO-HDLC(반사 다항식 0xEDB88320, 초기/최종 XOR 0xFFFFFFFF)를 적용한다.
@@ -117,18 +173,19 @@ CNN 완료 시각, UART 도착 시각, PC 명령 송신 간격도 노출 동기�
 
 - 기본 비동기 입력(시험 OFF): 오른쪽 보드에서 측정한 UART 수신 시각과 로컬 CNN 완료 시각으로
   후보를 매칭하고 **진단용 depth**를 계산한다. `sync=0`, `control=-2`이며 A1/A2 목표를 갱신하지 않는다.
-- 명시적 비동기 시험 ON: 카메라별 8-frame FIFO의 가장 오래된 매칭 가능 후보부터 한 쌍씩
-  순차 소비한다. 미검증 프레임의 수신 나이/좌우 수신 간격 제한은 없고 1초 초과 지연도
-  시간만으로 거부하지 않는다. 용량 초과 시 해당 카메라의 가장 오래된 프레임을 버리고
-  `qdrop`을 증가시킨다. `sync=0`, `control=-2`와 원본 메타데이터를 유지하며,
-  별도 `async_status`/기하/이전 승인 측정 대비 150 mm 이동 gate를 통과한 입력만 A1에 전달한다.
+- 명시적 비동기 시험 ON: 수신 나이 250 ms 이내인 최근 RIGHT 프레임에 대해 수신 시각이
+  가장 가까운 LEFT 프레임을 선택한다. 좌우 수신 시각 차이는 100 ms 이하여야 한다.
+  사용한 프레임보다 오래된 미사용 큐 항목은 버리고 각 프레임은 한 쌍에만 사용한다.
+  순서대로 모두 처리하는 것은 저장 로그의 오프라인 재생이며 LIVE 정책과 구분한다.
+  `sync=0`, `control=-2`와 원본 메타데이터를 유지한다. 기하/150 mm 이동 또는
+  3-frame 재획득을 통과한 입력만 A1에 전달하고, 실제 노출 동기화로 주장하지 않는다.
 - 검증된 입력: 공통 epoch의 실제 노출 시각으로 매칭한다. 임시 skew 한계는 1000 µs다.
   고정된 보정 기하와 검출 품질까지 검증되고 elbow/wrist 삼각측량이 성공한 경우에만
   `HumanPose3D` → `agent1_run_stereo()` → 기존 A2/20 ms 제어 경로로 전달한다.
   skew=1000 µs는 구현 검증용 설정이지 움직이는 손의 허용 오차를 실측 인증한 값이 아니다.
 
 카메라별 8-frame 큐, sequence 중복/역행 검사, 검증된 노출 시각의 단조 증가 검사를 둔다.
-250 ms 로컬 보관 시간 한계는 기본 strict 모드와 노출 시각이 검증된 프레임에 유지한다.
+250 ms 로컬 보관 시간 한계는 strict와 비동기 LIVE 모두에 적용한다.
 비동기 시험에서도 양쪽에 검증된 노출 메타데이터가 있으면 epoch/skew 기준을 우회하지 않는다.
 각 좌우 프레임은 한 쌍에만 사용한다. 비동기 A1 dt는 수신기 로컬 CNN 완료 시각의 차이이며
 노출 간격이 아니다. UART 수신 완료 시각과 CNN 완료 시각으로 동기화를 주장하지 않는다.
@@ -146,10 +203,13 @@ quality 검증은 같은 사람/같은 해부학적 관절, 마커 색 대응, �
 
 모든 stereo 경로는 카메라별 21점 픽셀 좌표를 push 시점에 τ=0.10 s EMA로 처리한 뒤
 삼각측량한다. 미검증 입력은 수신기 시각, 검증된 입력은 노출 시각으로 필터 dt를 계산한다.
-invalid 점, session/시험 모드/시각 검증 상태 변경, 0.5초 초과 간격은 이력을 초기화한다.
-직전 필터 좌표 대비 30 px 초과 변화는 원래 좌표를 통과시키고 필터 이력을 재설정하므로
-실제 큰 움직임을 clamp하지 않는다. 원본 패킷/메타데이터와 기존 각도 계산 후 EMA/출력 필터는 보존한다.
-미검증 FIFO에는 오래된 프레임이나 서로 다른 노출 순간이 결합될 위험이 있다.
+불량 점은 해당 EMA 이력을 갱신하지 않는다. 팔꿈치·손목의 30 px 초과 도약,
+session/시험 모드/시각 검증 상태 변경·250 ms 초과 입력 간격은 임시 후보로 분리한다.
+고정 최초 후보와 직전 후보 양쪽에서 30 px 미만인 3개 서로 다른 입력이 모이면
+새 앵커로 재획득한다. 빨강·초록은 손목 거리 ≤2×max(전완 픽셀 길이,80 px)를
+검사하고 실패하면 invalid 처리한다. 정상 범위의 손가락 개폐는 도약 후보로 묶지 않는다.
+원본 패킷/메타데이터와 기존 각도 계산 후 EMA/출력 필터는 보존한다.
+최근 수신 기준 매칭에서도 서로 다른 노출 순간이 결합될 위험은 남는다.
 픽셀 EMA/재투영/거리 gate는 동기화나 실제 손 정확도를 보장하지 않는다.
 
 계산부는 현행 `captures/stereo_pairs_20261001_151719/calibration_20mm` 보정값을 사용한다.
@@ -202,24 +262,28 @@ Mono는 종전 XSA와 PWM 기본 정책을 유지한다. 양쪽 StereoBaud는 �
 `EnableStereoRobotPwm`은 Right에서만 허용하지만 실제 동기화·검출 품질 공급과
 별도의 사용자 서보 시험 승인이 없으면 사용하지 않는다.
 
-현재 검증용 workspace는 `captures/st_l`, `captures/st_r`이며 ELF는
+2026-10-02 초기 검증용 workspace는 `captures/st_l`, `captures/st_r`이며 ELF는
 `captures/st_l/st_left/Debug/st_left.elf`, `captures/st_r/st_right/Debug/st_right.elf`다.
-BOOT.BIN 생성/SD 교체/보드 flash/실제 서보 구동은 이 작업에서 하지 않는다.
+당시에는 BOOT.BIN 생성/SD 교체/보드 flash/실제 서보 구동을 하지 않았다.
+현행 소스 기반 LEFT 공통·RIGHT 필터별 배포 파일은 `vitis/boot/stereo_live_filters_*`에
+별도로 생성하며 각 폴더의 `manifest.json`에서 파일 검증/실제 보드 부팅 상태를 구분한다.
 
 UART1에서 1초마다 `[ST]` 통계를 출력한다. `L/R`은 마지막 쌍의 CNN ID,
-`fresh`는 마지막 depth 결과의 250 ms 이내 갱신 여부이며 비동기 시험에서는 진단값으로만 사용한다.
+`fresh`는 마지막 쌍에서 더 오래된 쪽의 수신 나이가 250 ms 이내인지의 진단값이다.
 `sync`는 노출 시각 정합 여부,
 `control`은 승인 상태(0=승인, -2=검증 정보 없음)다.
 `qL`/`qR`은 좌우 FIFO 잔량, `qdrop`은 양쪽 큐 용량 초과로 버린 프레임의 누적 수다.
-송신 대체 `drop`과 RX `overflow`와 구분한다. `time_gate=OFF_FIFO`는 비동기 시험,
+송신 대체 `drop`과 RX `overflow`와 구분한다. `time_gate=RECEIPT_LATEST`는 비동기 LIVE,
 `STRICT`는 기본 시간 gate 모드다.
-`Zmm(wrist,red,green)`은 mm 정수 진단값이며 없는/불량 점과 strict 모드의 오래된 결과는 0을 출력한다.
-비동기 시험에서는 `fresh=0`이어도 마지막 depth가 표시될 수 있으며 오래된 결과를 재승인한다는 뜻은 아니다.
+`stale/gap/skip`은 만료 입력·매칭 간격 거부 평가·오래된 큐 항목 폐기를 구분한다.
+`marker_bad/jump_bad/reacquire`는 마커 품질 거부·2D 도약 후보 보류·2D 점 재획득 수다.
+`Zmm(wrist,red,green)`은 mm 정수 진단값이며 없는/불량 점과 오래된 결과는 0을 출력한다.
 이 0은 실제 거리 0 mm가 아니다. 전체 21점 XYZ와 상태는 `stereo_board_take_depth()`로 확인한다.
 
 좌우 USB 콘솔을 한 터미널에서 보려면 ComPortMaster의 양쪽 포트를 닫고
 `robot_arm`에서 다음을 실행한다. 명령을 보드에 보내지 않는 수신 전용 도구이며
-현재 SD의 BOOT.BIN을 다시 만들 필요는 없다.
+모니터만 사용하는 경우 현재 SD의 BOOT.BIN을 다시 만들 필요는 없다.
+운영 소스의 One Euro 등 펌웨어 변경을 적용하려면 해당 소스를 다시 빌드한 BOOT가 필요하다.
 
 ```powershell
 python tools/stereo_vision/monitor_stereo_uart.py --left COM3 --right COM4 --filter stereo
@@ -233,7 +297,8 @@ python tools/stereo_vision/monitor_stereo_uart.py --left COM3 --right COM4 --fil
 호스트 회귀: `python robot_arm/tests/robot_calibration/run_tests.py`.
 추가 시험은 프로토콜 복원/CRC, 좌우 큐·시간/품질 게이트·A1 실측 XYZ,
 LEFT TX 혼합 방지/드롭, RIGHT IRQ 수신·overflow 복구·strict 오래된 입력 거부,
-비동기 FIFO 순차 소비/8-frame overflow/지연 허용/검증된 epoch·skew 유지,
+비동기 최신 쌍 선택/8-frame overflow/250 ms 만료·100 ms 수신 간격 제한/
+2D 품질 게이트·3D 재획득/검증된 epoch·skew 유지,
 카메라 PWM 누락 시 MMIO 금지를 포함한다. C/OpenCV 하네스도 동일 계산 소스와
 펌웨어 보정 상수가 원본 JSON과 정확히 일치하는지 검사한다.
 
@@ -254,3 +319,10 @@ PASS이며 최대 XYZ 성분 차이는 9.095e-13 mm다. 이는 실제 손 정확
 - XSA: `5FF83E0C2D4D8B8330E422A5CF47088C8BF5E1A026172FF15947F258D10DE0FF`
 - LEFT ELF: `D6590CEAD489A6CAD53DDA3F2DBEA599BEEEA704B4E4256466C13F749C2998E4`
 - RIGHT ELF: `0D264DF606F99EC62673A284D236F7FF1E8C57E0AD2414E6EFFDC396D02A8B4B`
+
+2026-10-04 안정화 소스 호스트 회귀: 28 suites 중 23 PASS/5 기존 FAIL.
+수정 전 소스에서도 동일한 integration_smoke/trace/axis_replay/forearm_calibration/
+forearm_replay 실패를 확인했다(재생 자료는 현행 원본 자료로 다시 실행).
+신규 재획득·최신 매칭·2D 품질·RQ·16/20 cm FK와 테이블 -10 cm·충돌 궤적 검사는 PASS다.
+필터 세대 초기화는 4개 실제 C 변형에서 검증했고 모니터/빌드 계약 Python 검사도 PASS다.
+이 결과는 실제 보드 부팅·노출 동기화·실물 추종 정확도 검증을 대체하지 않는다.

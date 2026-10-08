@@ -19,6 +19,81 @@ typedef enum {
 } Agent2Result;
 #endif
 
+typedef enum {
+    AGENT_OUTPUT_RESULT_NONE = 0,
+    AGENT_OUTPUT_RESULT_ENABLED,
+    AGENT_OUTPUT_RESULT_DISABLED,
+    AGENT_OUTPUT_RESULT_REFERENCE_INVALID,
+    AGENT_OUTPUT_RESULT_REFERENCE_LIMITS,
+    AGENT_OUTPUT_RESULT_REFERENCE_UNSAFE,
+    AGENT_OUTPUT_RESULT_REFERENCE_STATE,
+    AGENT_OUTPUT_RESULT_CONVERSION_FAILED,
+    AGENT_OUTPUT_RESULT_HAL_APPLY_FAILED,
+    AGENT_OUTPUT_RESULT_HAL_ENABLE_FAILED,
+    AGENT_OUTPUT_RESULT_HAL_DISABLE_FAILED,
+    AGENT_OUTPUT_RESULT_HAL_RECOVERY_DISABLE_FAILED
+} AgentPipelineOutputResult;
+
+#define AGENT_GRIPPER_CONFIRM_SAMPLES 3U
+#define AGENT_GRIPPER_SAMPLE_MAX_GAP_US 250000U
+#define AGENT_GRIPPER_CLOSE_HOLD_US 1500000U
+#define AGENT_GRIPPER_CLOSE_MAX_WAIT_US 2000000U
+#define AGENT_GRIPPER_CLOSE_START_PX 18.0f
+#define AGENT_GRIPPER_CANCEL_PX 20.0f
+#define AGENT_GRIPPER_CANCEL_SAMPLES 2U
+#define AGENT_GRIPPER_CANDIDATE_WINDOW_US 600000U
+#define AGENT_GRIPPER_STRONG_OPEN_NORM 0.8f
+#define AGENT_GRIPPER_STRONG_OPEN_US 800000U
+#define AGENT_GRIPPER_OPEN_MISSING_GRACE_US 200000U
+
+typedef struct {
+    float candidate;
+    uint32_t time_us, candidate_time_us, frame_id;
+    uint8_t seen, outside, pending, ramping;
+} AgentElbowReentry;
+
+typedef struct {
+    float goal;
+    uint32_t time_us;
+    uint8_t valid, held, pending_epoch, active;
+} AgentElbowReturn;
+
+typedef struct {
+    float goal, candidate;
+    uint32_t time_us, candidate_us, candidate_frame, last_fresh_us, last_fresh_frame;
+    uint32_t candidate_epoch;
+    uint8_t valid, held, outside, active, pending, have_candidate, have_fresh, need_two;
+} AgentWristReturn;
+
+typedef struct {
+    uint32_t frame_id;
+    uint32_t sample_time_us;
+    uint32_t confirmed_time_us;
+    uint32_t applied_time_us;
+    uint32_t candidate_started_us;
+    uint8_t candidate_active;
+    uint8_t cancel_count;
+    uint8_t have_frame;
+    uint8_t source;
+    uint8_t close_count;
+    uint8_t open_count;
+    uint8_t latched;
+    uint8_t closed_applied;
+} AgentGripperLatch;
+
+typedef struct {
+    uint32_t started_us, fresh_us, frame_id;
+    uint8_t pending, have_frame, source, count;
+} AgentGripperOpenConfirm;
+
+typedef struct {
+    float angles[7][4], speed;
+    uint32_t times[7], low_since_us, frame_id, fresh_us;
+    uint8_t samples, speed_valid, moving, low_valid;
+    uint8_t armed, locked, open_count, have_frame, source, manual_open;
+    AgentGripperOpenConfirm strong_open;
+} AgentGripperMotionHold;
+
 /*
  * 2026-09-22: Agent1(agent1_forearm_stage_*)/Agent3(ForearmJointCommand PWM
  * 변환)가 새 5축(팔꿈치부터 시작하는 수평 설치)으로 전환하면서, Agent3의
@@ -40,6 +115,18 @@ typedef struct {
     /* Agent 상태 (프레임 간 유지) */
     ForearmAngleUnwrapState unwrap;
     ForearmMotionState motion;
+    AgentGripperLatch gripper_latch;
+    AgentGripperMotionHold gripper_motion_hold;
+    AgentElbowReentry elbow_reentry;
+    AgentElbowReturn elbow_return;
+    AgentWristReturn wrist_return[2];
+    uint8_t wrist_observation_fresh;
+    uint8_t gripper_independent;
+    uint8_t arm_stationary, arm_tracking_started;
+    uint32_t arm_input_epoch;
+    uint8_t gripper_fresh;
+    float gripper_desired;
+    float gripper_distance_px;
 
     /* 프레임 경로 */
     HumanPose2D pose;
@@ -54,11 +141,14 @@ typedef struct {
     /* PWM enabled면 마지막 HAL 성공값, disabled면 마지막 변환 성공값. */
     ServoPwmCommand pwm;
     uint8_t output_enabled;    /* 0: compute/trace only; robot PWM remains disabled */
+    uint8_t output_parked;
+    uint8_t output_faulted;
     ForearmJointCommand agent3_command; /* 가장 최근 Agent3 전달 시도 명령(TK trace용) */
     uint8_t agent3_command_valid;
     uint32_t agent3_command_tick; /* 위 명령을 전달하려 한 실행 control step 번호 */
     ForearmJointCommand applied_command; /* HAL 적용까지 성공한 마지막 관절 명령 */
     uint8_t applied_command_valid;
+    AgentPipelineOutputResult output_result;
 
     /* 디버그용 통계 */
     uint32_t frames_in;
@@ -87,6 +177,8 @@ typedef struct {
 int agent_pipeline_init(AgentPipelineContext *ctx);
 int agent_pipeline_init_mode(AgentPipelineContext *ctx, int enable_robot_pwm);
 int agent_pipeline_set_output_enabled(AgentPipelineContext *ctx, int enabled);
+void agent_pipeline_reset_gripper_latch(AgentPipelineContext *ctx);
+const char *agent_pipeline_output_result_name(const AgentPipelineContext *ctx);
 
 /* HumanPose2D -> HumanForearmTarget. Agent1이 valid 타겟을 냈으면 1. */
 int agent1_run(AgentPipelineContext *ctx, const HumanPose2D *pose, float dt_sec);
@@ -95,6 +187,9 @@ int agent1_run_stereo(AgentPipelineContext *ctx, const HumanPose2D *image_pose,
 
 /* validate -> 대표각 정규화 -> 범위 밖 축 HOLD -> 안전검사 -> set_target. 승인했으면 1. */
 int agent2_run(AgentPipelineContext *ctx);
+void agent_pipeline_sync_arm_motion(AgentPipelineContext *ctx, int stationary, uint32_t input_epoch);
+int agent_gripper_run(AgentPipelineContext *ctx, const HumanPose2D *pose);
+int agent_pipeline_gripper_manual(AgentPipelineContext *ctx, int open);
 
 /* LIVE/RECORD/ALIGN 제어 틱 1회: 전체 tick을 세고 램프를 한 틱 진행한다.
  * Direct PLAY는 Agent2를 우회하므로 Record/Replay controller가 같은 counter를 센다. */

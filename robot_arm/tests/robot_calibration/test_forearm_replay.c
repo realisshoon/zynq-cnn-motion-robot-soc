@@ -168,8 +168,8 @@ int main(int argc, char **argv)
                        flags==(FOREARM_SAFETY_CHECK_TABLE_COLLISION|FOREARM_SAFETY_CHECK_SELF_COLLISION)));
                 reject_flags_seen|=flags;
                 if (flags & FOREARM_SAFETY_CHECK_SELF_COLLISION) self_collision++;
-                if (positions.wrist.z_cm<=-5) wrist_below++;
-                else if (positions.tip.z_cm<=-5) tip_only++;
+                if (positions.wrist.z_cm<=-10) wrist_below++;
+                else if (positions.tip.z_cm<=-10) tip_only++;
             }
             if (csv) fprintf(csv,"%u,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d,%u\n",
                 (unsigned)frame_id,time_sec,raw.elbow_roll_deg,raw.elbow_pitch_deg,

@@ -18,6 +18,17 @@ typedef struct {
 int stereo_board_init(void);
 int stereo_board_set_async_test(int enabled);
 int stereo_board_async_test_enabled(void);
+int stereo_board_set_remote_follow(int enabled);
+int stereo_board_remote_follow_enabled(void);
+int stereo_board_remote_requested(void);
+int stereo_board_send_target(const HumanForearmTarget *target, int stationary,
+                             int wrist_fresh, uint32_t epoch);
+int stereo_board_take_target(HumanForearmTarget *target, int *stationary,
+                             int *wrist_fresh, uint32_t *epoch);
+int stereo_board_send_gripper(const HumanPose2D *pose);
+int stereo_board_take_gripper(HumanPose2D *pose, int *new_session);
+int stereo_board_set_pixel_tau_us(uint32_t tau_us);
+uint32_t stereo_board_pixel_tau_us(void);
 void stereo_board_service(void);
 int stereo_board_on_result(const cnn_result_t *result, const StereoFrameMetadata *metadata);
 int stereo_board_take_depth(StereoDepthResult *result);

@@ -1,4 +1,5 @@
 #include "robot_calibration/forearm_safety_check.h"
+#include "dual_arm_config.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -6,22 +7,19 @@
 #define DEG_TO_RAD 0.01745329251994329577f
 
 /*
- * *** 사용자가 사진으로 준 실측값(2026-09-22): 두 구간이 24cm/10cm ***.
- * 어느 쪽이 "팔꿈치-손목(전완)"이고 어느 쪽이 "손목-그리퍼(손)"인지는
- * 사진만으로 확정할 수 없어서, 일반적으로 전완이 손보다 긴 점을 근거로
- * 24cm=전완, 10cm=손으로 가정했다. *** 이 가정은 사용자 확인이 필요하다 ***
- * (반대라면 아래 두 상수만 바꾸면 된다. FK 형태 자체는 안 바뀐다).
+ * 사용자 확인 실측값(2026-10-04): 팔꿈치-손목(전완) 16cm,
+ * 손목-그리퍼 끝(손) 20cm. 이전 사진 기반 24cm/10cm 가정을 대체한다.
  */
-#define LINK_ELBOW_WRIST_CM 24.0f
-#define LINK_WRIST_TIP_CM 10.0f
+#define LINK_ELBOW_WRIST_CM 16.0f
+#define LINK_WRIST_TIP_CM 20.0f
 
 /*
- * 사용자 확인(2026-09-22): 팔꿈치(원점)가 테이블면보다 +5cm 위에 있다.
+ * 사용자 확인(2026-10-04): 팔꿈치(원점)가 테이블면보다 +10cm 위에 있다.
  * 좌표계가 원점=팔꿈치, +Z=위(테이블에서 멀어지는 방향)이므로 테이블면은
- * z=-5cm. 링크 두께(팔 굵기)는 여전히 모델에 없다 -- 중심선만 검사하므로
+ * z=-10cm. 링크 두께(팔 굵기)는 여전히 모델에 없다 -- 중심선만 검사하므로
  * 실제로는 이보다 일찍 접촉할 수 있다.
  */
-#define TABLE_SURFACE_Z_CM -5.0f
+#define TABLE_SURFACE_Z_CM -10.0f
 
 /* 기존 6축 safety_check.c와 같은 개념의 여유(기계적 간섭 방지, 토크/하중
  * 보호 아님). */
@@ -41,8 +39,7 @@ static int command_is_finite(const ForearmJointCommand *c)
            isfinite(c->gripper_norm);
 }
 
-/* safety_check.c의 것과 동일한 순수 기하 helper. 기존 legacy 경로를 전혀
- * 건드리지 않기 위해 export 대신 그대로 복제했다(코드량이 작다). */
+/* 전완 FK/안전검사 내부에서 사용하는 순수 기하 helper. */
 static RobotPoint3D sub(RobotPoint3D a, RobotPoint3D b)
 {
     RobotPoint3D r = {a.x_cm-b.x_cm, a.y_cm-b.y_cm, a.z_cm-b.z_cm};
@@ -106,7 +103,7 @@ static RobotPoint3D rotate_about_axis(RobotPoint3D v, RobotPoint3D axis, float c
     return r;
 }
 
-int forearm_robot_forward_kinematics_3d(const ForearmJointCommand *c, ForearmJointPositions3D *p)
+static int right_forward_kinematics_3d(const ForearmJointCommand *c, ForearmJointPositions3D *p)
 {
     float roll, pitch, wroll, wpitch;
     RobotPoint3D forward0, up0;
@@ -171,16 +168,98 @@ static int has_self_collision(const ForearmJointCommand *command, const ForearmJ
     return 0;
 }
 
+#if !ROBOT_SPLIT_BOARD_CONTROL || !defined(ROBOT_STEREO_LEFT)
 static int has_table_collision(const ForearmJointPositions3D *p)
 {
     /* 직선 구간이므로 두 끝점만 확인하면 충분하다(테이블은 수평면이고
      * z는 구간을 따라 선형이라 최솟값이 항상 끝점에서 나온다). */
     return p->wrist.z_cm <= TABLE_SURFACE_Z_CM || p->tip.z_cm <= TABLE_SURFACE_Z_CM;
 }
+#endif
+
+int forearm_robot_forward_kinematics_geometry(const ForearmJointCommand *command,
+    const ForearmRobotGeometry *geometry, ForearmJointPositions3D *positions,
+    RobotPoint3D *roll_motor_end)
+{
+    ForearmJointPositions3D reference;
+    RobotPoint3D forearm_direction, hand_direction;
+    if (geometry == NULL || positions == NULL || roll_motor_end == NULL ||
+        !isfinite(geometry->elbow_wrist_cm) || !isfinite(geometry->wrist_roll_end_cm) ||
+        !isfinite(geometry->roll_end_tip_cm) || !isfinite(geometry->table_z_cm) ||
+        geometry->elbow_wrist_cm <= 0.0f || geometry->wrist_roll_end_cm <= 0.0f ||
+        geometry->roll_end_tip_cm <= 0.0f ||
+        !right_forward_kinematics_3d(command, &reference)) return 0;
+    forearm_direction = sub(reference.wrist, reference.elbow);
+    forearm_direction.x_cm /= LINK_ELBOW_WRIST_CM;
+    forearm_direction.y_cm /= LINK_ELBOW_WRIST_CM;
+    forearm_direction.z_cm /= LINK_ELBOW_WRIST_CM;
+    hand_direction = sub(reference.tip, reference.wrist);
+    hand_direction.x_cm /= LINK_WRIST_TIP_CM;
+    hand_direction.y_cm /= LINK_WRIST_TIP_CM;
+    hand_direction.z_cm /= LINK_WRIST_TIP_CM;
+    positions->elbow = reference.elbow;
+    positions->wrist = along(reference.elbow, forearm_direction, geometry->elbow_wrist_cm);
+    *roll_motor_end = along(positions->wrist, hand_direction, geometry->wrist_roll_end_cm);
+    positions->tip = along(positions->wrist, hand_direction,
+                          geometry->wrist_roll_end_cm + geometry->roll_end_tip_cm);
+    return 1;
+}
+
+const ForearmRobotGeometry *forearm_robot_selected_geometry(void)
+{
+#if ROBOT_SPLIT_BOARD_CONTROL && defined(ROBOT_STEREO_LEFT)
+    static const ForearmRobotGeometry geometry = {
+        ROBOT_LEFT_FOREARM_CM, ROBOT_LEFT_WRIST_ROLL_END_CM,
+        ROBOT_LEFT_ROLL_END_TIP_CM, ROBOT_LEFT_TABLE_Z_CM
+    };
+#else
+    static const ForearmRobotGeometry geometry = {
+        ROBOT_RIGHT_FOREARM_CM, ROBOT_RIGHT_WRIST_ROLL_END_CM,
+        ROBOT_RIGHT_ROLL_END_TIP_CM, ROBOT_RIGHT_TABLE_Z_CM
+    };
+#endif
+    return &geometry;
+}
+
+int forearm_robot_forward_kinematics_3d(const ForearmJointCommand *command,
+                                      ForearmJointPositions3D *positions)
+{
+#if ROBOT_SPLIT_BOARD_CONTROL && defined(ROBOT_STEREO_LEFT)
+    RobotPoint3D roll_motor_end;
+    return forearm_robot_forward_kinematics_geometry(command,
+        forearm_robot_selected_geometry(), positions, &roll_motor_end);
+#else
+    return right_forward_kinematics_3d(command, positions);
+#endif
+}
+
+int forearm_safety_check_geometry(const ForearmJointCommand *command,
+    const ForearmRobotGeometry *geometry, uint32_t *issues)
+{
+    ForearmJointPositions3D positions;
+    RobotPoint3D roll_motor_end;
+    uint32_t flags = FOREARM_SAFETY_CHECK_OK;
+    if (command == NULL || !command->valid || !command_is_finite(command) ||
+        !forearm_robot_forward_kinematics_geometry(command, geometry,
+                                                  &positions, &roll_motor_end)) {
+        if (issues != NULL) *issues = FOREARM_SAFETY_CHECK_INVALID_COMMAND;
+        return 0;
+    }
+    if (has_self_collision(command, &positions)) flags |= FOREARM_SAFETY_CHECK_SELF_COLLISION;
+    if (positions.wrist.z_cm <= geometry->table_z_cm ||
+        positions.tip.z_cm <= geometry->table_z_cm ||
+        roll_motor_end.z_cm <= geometry->table_z_cm) flags |= FOREARM_SAFETY_CHECK_TABLE_COLLISION;
+    if (issues != NULL) *issues = flags;
+    return flags == FOREARM_SAFETY_CHECK_OK;
+}
 
 int forearm_safety_check_apply(const ForearmJointCommand *command,
                                ForearmSafetyCheckFlags *issues_out)
 {
+#if ROBOT_SPLIT_BOARD_CONTROL && defined(ROBOT_STEREO_LEFT)
+    return forearm_safety_check_geometry(command,
+        forearm_robot_selected_geometry(), issues_out);
+#else
     ForearmJointPositions3D p;
     ForearmSafetyCheckFlags issues = FOREARM_SAFETY_CHECK_OK;
 
@@ -196,4 +275,5 @@ int forearm_safety_check_apply(const ForearmJointCommand *command,
 
     if (issues_out != NULL) *issues_out = issues;
     return issues == FOREARM_SAFETY_CHECK_OK;
+#endif
 }

@@ -1,6 +1,8 @@
 #include "drivers/servo_pwm_driver.h"
 
 #include <stddef.h>
+#include <string.h>
+#include "dual_arm_config.h"
 
 
 /* Fixed six-channel AXI IP. Five logical servos use CH0..CH4.
@@ -34,6 +36,14 @@
 #include "xparameters.h"
 #include "xil_io.h"
 #include "xil_types.h"
+
+#if ROBOT_DUAL_ARM_ENABLE || ROBOT_SPLIT_BOARD_CONTROL
+#if !defined(XPAR_SERVO_PWM_ARM2_0_S00_AXI_BASEADDR) || !defined(XPAR_SERVO_PWM_NUM_INSTANCES)
+#error "Dual-arm or split-board build requires the dual-PWM XSA BSP."
+#elif XPAR_SERVO_PWM_ARM2_0_S00_AXI_BASEADDR != 0x43CA0000 || XPAR_SERVO_PWM_NUM_INSTANCES != 2
+#error "Dual-arm or split-board PWM hardware map differs from the approved XSA."
+#endif
+#endif
 
 
 /*
@@ -73,6 +83,8 @@
 
 
 static uint32_t g_servo_pwm_mock_regs[
+    SERVO_PWM_BANK_COUNT
+][
     SERVO_PWM_REGISTER_COUNT
 ];
 
@@ -83,6 +95,9 @@ static ServoPwmDriverMockWrite g_servo_pwm_mock_log[
 
 
 static uint32_t g_servo_pwm_mock_log_count = 0U;
+static int mock_fail_pending;
+static ServoPwmDriverBank mock_fail_bank;
+static uint32_t mock_fail_offset;
 
 
 #endif
@@ -102,24 +117,34 @@ static uint8_t g_servo_pwm_driver_initialized = 0U;
  * Internal AXI Write
  * ============================================================
  */
-static int servo_pwm_driver_write32(
+static int servo_pwm_driver_write32_bank(
+    ServoPwmDriverBank bank,
     uint32_t offset,
     uint32_t value
 )
 {
-    if (!g_servo_pwm_driver_initialized) {
+    if (!g_servo_pwm_driver_initialized || (unsigned)bank >= SERVO_PWM_BANK_COUNT) {
         return 0;
     }
 
 
 #ifdef SERVO_PWM_DRIVER_USE_XILINX
 
+    UINTPTR base = (UINTPTR)SERVO_PWM_DRIVER_BASEADDR;
+    if (bank == SERVO_PWM_BANK_LEFT) {
+#ifdef XPAR_SERVO_PWM_ARM2_0_S00_AXI_BASEADDR
+        base = (UINTPTR)XPAR_SERVO_PWM_ARM2_0_S00_AXI_BASEADDR;
+#else
+        return 0;
+#endif
+    }
+
     /*
      * Actual Zybo / AXI Write
      */
     Xil_Out32(
         (UINTPTR)(
-            SERVO_PWM_DRIVER_BASEADDR
+            base
             +
             offset
         ),
@@ -132,6 +157,11 @@ static int servo_pwm_driver_write32(
 #else
 
     uint32_t register_index;
+
+    if (mock_fail_pending && bank == mock_fail_bank && offset == mock_fail_offset) {
+        mock_fail_pending = 0;
+        return 0;
+    }
 
 
     /*
@@ -167,6 +197,8 @@ static int servo_pwm_driver_write32(
      * Mock Register Write.
      */
     g_servo_pwm_mock_regs[
+        bank
+    ][
         register_index
     ] = value;
 
@@ -183,6 +215,8 @@ static int servo_pwm_driver_write32(
         g_servo_pwm_mock_log_count
     ].value = value;
 
+    g_servo_pwm_mock_log[g_servo_pwm_mock_log_count].bank = bank;
+
 
     g_servo_pwm_mock_log_count++;
 
@@ -190,6 +224,33 @@ static int servo_pwm_driver_write32(
     return 1;
 
 #endif
+}
+
+static int servo_pwm_driver_write32(uint32_t offset, uint32_t value)
+{
+    return servo_pwm_driver_write32_bank(SERVO_PWM_BANK_RIGHT, offset, value);
+}
+
+int servo_pwm_driver_enable_bank(ServoPwmDriverBank bank)
+{
+    return servo_pwm_driver_write32_bank(bank, SERVO_PWM_CONTROL_OFFSET, 1U);
+}
+
+int servo_pwm_driver_disable_bank(ServoPwmDriverBank bank)
+{
+    return servo_pwm_driver_write32_bank(bank, SERVO_PWM_CONTROL_OFFSET, 0U);
+}
+
+int servo_pwm_driver_write_channel_bank(ServoPwmDriverBank bank,
+                                       ServoPwmDriverChannel channel, uint16_t pwm_us)
+{
+    if ((unsigned)channel >= SERVO_PWM_DRIVER_CHANNEL_COUNT) return 0;
+    return servo_pwm_driver_write32_bank(bank, (uint32_t)channel * 4U, pwm_us);
+}
+
+int servo_pwm_driver_update_bank(ServoPwmDriverBank bank)
+{
+    return servo_pwm_driver_write32_bank(bank, SERVO_PWM_UPDATE_OFFSET, 1U);
 }
 
 
@@ -213,7 +274,8 @@ void servo_pwm_driver_init(void)
          i < SERVO_PWM_REGISTER_COUNT;
          ++i) {
 
-        g_servo_pwm_mock_regs[i] = 0U;
+        g_servo_pwm_mock_regs[SERVO_PWM_BANK_RIGHT][i] = 0U;
+        g_servo_pwm_mock_regs[SERVO_PWM_BANK_LEFT][i] = 0U;
     }
 
 
@@ -230,6 +292,7 @@ void servo_pwm_driver_init(void)
 
 
     g_servo_pwm_mock_log_count = 0U;
+    mock_fail_pending = 0;
 
 #endif
 
@@ -364,7 +427,8 @@ void servo_pwm_driver_mock_reset(void)
          i < SERVO_PWM_REGISTER_COUNT;
          ++i) {
 
-        g_servo_pwm_mock_regs[i] = 0U;
+        g_servo_pwm_mock_regs[SERVO_PWM_BANK_RIGHT][i] = 0U;
+        g_servo_pwm_mock_regs[SERVO_PWM_BANK_LEFT][i] = 0U;
     }
 
 
@@ -378,12 +442,26 @@ void servo_pwm_driver_mock_reset(void)
 
 
     g_servo_pwm_mock_log_count = 0U;
+    mock_fail_pending = 0;
 
 
     /*
      * 완전한 Power-On Reset 상태처럼 만든다.
      */
     g_servo_pwm_driver_initialized = 0U;
+}
+
+void servo_pwm_driver_mock_clear_log(void)
+{
+    memset(g_servo_pwm_mock_log, 0, sizeof(g_servo_pwm_mock_log));
+    g_servo_pwm_mock_log_count = 0U;
+}
+
+void servo_pwm_driver_mock_fail_next(ServoPwmDriverBank bank, uint32_t offset)
+{
+    mock_fail_bank = bank;
+    mock_fail_offset = offset;
+    mock_fail_pending = 1;
 }
 
 

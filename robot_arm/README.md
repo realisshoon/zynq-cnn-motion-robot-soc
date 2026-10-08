@@ -1,5 +1,15 @@
 # robot_arm
 
+## 현행 승열3 (2026-10-08)
+
+- 현재 펌웨어 소스는 이 폴더의 `src/`, `include/`, `config/`다. `captures/`의 예전 스냅샷은 빌드 입력이 아니다.
+- RIGHT는 로봇0(JB), LEFT는 로봇1(JC)을 독립 제어한다. LEFT 집게 출력 상한은 2400 µs다. 두 보드 모두 기본 PWM OFF다.
+- Unity 연동은 [UART 계약](docs/uart_protocol_unity.md), 콘솔 사용은 [로봇별 명령](docs/robot0_robot1_commands.md)을 따른다.
+- 녹화 준비·정착·이름·SD 저장은 보드 `[REC_STATE]`로 확인한다. 동작·검증 범위는 [승열3 릴리스](docs/seungyeol3_release.md)를 참고한다.
+- 최신 스테레오 XSA는 `vitis/xsa/final_uart0.xsa`다. `vitis/setup_vitis.ps1 -StereoRole Left` 또는 `Right`로 해당 역할을 빌드한다.
+- 메뉴/녹화 경계 회귀: `powershell -NoProfile -ExecutionPolicy Bypass -File tests/record_replay/boundaries/run.ps1`.
+- 아래 문서는 날짜별 개발 이력을 포함한다. 몸통 좌표계·LEFT 송신 전용·과거 One Euro 기본값 설명은 현행 동작과 구분한다.
+
 > 현재 CNN + 5축 로봇 통합 빌드와 검증 상태는 [CNN 통합 안내](docs/cnn_integration.md)를 보세요. 아래의 UART 입력·옛 XSA 설명은 이전 개발 단계의 기록입니다.
 > 현행 통합 작업의 결정과 Agent1~4 수정 경계는 [통합 작업 기준](docs/integration_work_plan.md)을 보세요.
 
@@ -269,6 +279,16 @@ Vitis 빌드에서는 컴파일 심볼 `SERVO_PWM_DRIVER_USE_XILINX`가 켜져 �
 - Zybo Z7-20 + USB(JTAG/UART) 케이블
 
 ### 빠른 시작 (저장소 루트에서)
+
+현재 양안 구성은 `-StereoRole Left` / `-StereoRole Right`를 사용한다. RIGHT는
+운영 소스에 통합된 3D One Euro를 기본 적용하며 외부 하네스/빌드 훅이 필요 없다.
+PWM과 비동기 추종은 OFF로 부팅한다. [One Euro 계약](docs/stereo_one_euro.md)과
+[양안 UART/구동 안내](docs/stereo_async_trial.md)를 먼저 확인한다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws_left -StereoRole Left
+powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws_right -StereoRole Right
+```
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws

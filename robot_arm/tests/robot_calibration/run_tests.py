@@ -5,6 +5,7 @@ Requires GCC and Python's standard library. Artifacts go to a temporary director
 No Vitis, board access, or tracked build output.
 """
 import os
+import argparse
 from pathlib import Path
 import shutil
 import subprocess
@@ -12,6 +13,9 @@ import tempfile
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--only", action="append", default=[], help="Run only named test suites")
+    options = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     compiler = shutil.which(os.environ.get("CC", "gcc"))
     if not compiler:
@@ -48,7 +52,22 @@ def main():
              "-Wl,--gc-sections"], []))
     stereo = [f"src/stereo_vision/{name}.c" for name in
               ("stereo_geometry", "stereo_calibration", "stereo_pose", "stereo_uart_protocol", "stereo_link")]
+    stereo_filter = [f"src/stereo_vision/{name}.c" for name in
+                     ("stereo_one_euro", "g_kalman3d", "stereo_pose_filter")]
+    stereo += stereo_filter
     cases += [
+        ("test_stereo_filter_command", ["src/stereo_vision/stereo_filter_command.c",
+         "tests/integration/test_stereo_filter_command.c"], [], []),
+        ("test_stereo_filter_console_dispatch", ["src/stereo_vision/stereo_filter_command.c",
+         "tests/integration/test_stereo_filter_console_dispatch.c"], [], []),
+        ("test_stereo_filter_runtime", stereo + ["src/integration/input_pose_cnn.c",
+         "tests/integration/test_stereo_filter_runtime.c"], ["-Itests/integration/stubs"], []),
+        ("test_stereo_one_euro", stereo_filter + ["tests/integration/test_stereo_one_euro.c"], [], []),
+        ("test_stereo_pose_filter", stereo_filter + ["tests/integration/test_stereo_pose_filter.c"], [], []),
+        ("test_stereo_filter_epoch", stereo_filter + ["src/integration/input_pose_cnn.c",
+         "tests/integration/test_stereo_filter_epoch.c"], ["-Itests/integration/stubs"], []),
+        ("test_stereo_filter_integration", stereo_filter + ["src/integration/input_pose_cnn.c",
+         "tests/integration/test_stereo_filter_integration.c"], ["-Itests/integration/stubs"], []),
         ("test_stereo_protocol", stereo + ["tests/integration/test_stereo_protocol.c"], [], []),
         ("test_stereo_link", stereo + forearm_a1 + ["src/integration/input_pose_cnn.c",
          "tests/integration/test_stereo_link.c"], ["-Itests/integration/stubs"], []),
@@ -74,7 +93,10 @@ def main():
         ["src/human_target_angle/agent1_forearm_stage.c",
          "tests/human_target_angle/test_forearm_stereo_absolute.c"], [], []))
     cases += [
-        ("test_input_pose_cnn", ["src/integration/input_pose_cnn.c",
+        ("test_stereo_reacquisition", stereo_filter + ["src/integration/input_pose_cnn.c",
+         "tests/integration/test_stereo_reacquisition.c"],
+         ["-Itests/integration/stubs", "-DROBOT_STEREO_ONE_EURO_ENABLE=0"], []),
+        ("test_input_pose_cnn", stereo_filter + ["src/integration/input_pose_cnn.c",
          "tests/integration/test_input_pose_cnn.c"],
          ["-Itests/integration/stubs"], []),
         ("test_cnn_app_event", ["src/integration/cnn_app_event.c",
@@ -95,17 +117,24 @@ def main():
         ("test_integration_smoke", pipeline + uart + ["tests/integration/test_integration_smoke.c"], [], []),
         ("test_major_only", pipeline + ["tests/integration/test_major_only.c"], [], []),
         ("test_trace", pipeline + ["tests/integration/test_trace.c"], ["-DROBOT_TRACE"], []),
+        ("test_pixel_trace", pipeline + ["tests/integration/test_trace.c"], ["-DROBOT_TRACE"], ["--pixel-only"]),
         ("test_motion_record_replay", pipeline +
          ["tests/record_replay/test_motion_record_replay.c"], [], []),
         ("test_axis_replay", pipeline + uart + ["tests/robot_calibration/test_axis_replay.c"], [],
          ["etc/uart_pose_stream.bin", str(output / "axis_replay.csv")]),
         ("test_forearm_calibration", forearm_a2 + ["tests/robot_calibration/test_forearm_calibration.c"], [], []),
+        ("test_forearm_geometry", forearm_a2 + ["tests/robot_calibration/test_forearm_calibration.c"], [], ["--geometry-only"]),
         ("test_forearm_safety_check", ["src/robot_calibration/forearm_safety_check.c",
          "tests/robot_calibration/test_forearm_safety_check.c"], [], []),
         ("test_forearm_replay", forearm_a1 + forearm_a2 + ["tests/robot_calibration/test_forearm_replay.c"], [],
          ["etc/example_pose2d_1280x720_20hz.csv"]),
     ]
     flags = [compiler, "-std=c99", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Iinclude", "-Iconfig"]
+    if options.only:
+        unknown = set(options.only) - {case[0] for case in cases}
+        if unknown:
+            raise SystemExit("Unknown test suites: " + ", ".join(sorted(unknown)))
+        cases = [case for case in cases if case[0] in options.only]
     failed = []
     for name, sources, extra, args in cases:
         print(f"\n{name}", flush=True)

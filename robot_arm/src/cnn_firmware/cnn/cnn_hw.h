@@ -56,12 +56,18 @@
 #define CNN_REG_YELLOW_RESULT       0x10CU
 
 /* Firmware power-up defaults. Change these values to tune color detection. */
-#define CNN_DEFAULT_RED_MARGIN       50U
+#define CNN_DEFAULT_RED_MARGIN       40U
+#ifdef ROBOT_STEREO_RIGHT
+#define CNN_DEFAULT_GREEN_MARGIN     20U
+#elif defined(ROBOT_STEREO_LEFT)
+#define CNN_DEFAULT_GREEN_MARGIN     25U
+#else
 #define CNN_DEFAULT_GREEN_MARGIN     30U
+#endif
 #define CNN_DEFAULT_BLUE_MARGIN      50U
 #define CNN_DEFAULT_YELLOW_RG_DELTA  40U
 #define CNN_DEFAULT_YELLOW_BGAP      40U
-#define CNN_DEFAULT_RED_MIN          160U
+#define CNN_DEFAULT_RED_MIN          100U
 #define CNN_DEFAULT_GREEN_MIN         96U
 #define CNN_DEFAULT_BLUE_MIN         160U
 #define CNN_DEFAULT_YELLOW_R_MIN     160U

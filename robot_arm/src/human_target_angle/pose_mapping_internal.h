@@ -70,6 +70,7 @@ int pm_calculate_major_angles(PoseMappingContext *ctx,
 /* pose_hand.c */
 int pm_update_gripper_from_2d(PoseMappingContext *ctx,
                               float shoulder_span_px, float *gripper_norm);
+uint8_t pm_gripper_all_fresh(const PoseMappingContext *ctx);
 /* Optional forearm-local roll reference; NULL preserves legacy BodyFrame. */
 int pm_calculate_hand_with_reference(PoseMappingContext *ctx,
                                      float shoulder_span_px, float dt_age_sec,

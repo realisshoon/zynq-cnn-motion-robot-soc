@@ -85,6 +85,12 @@ void pm_update_all_landmarks(
     if (ctx == NULL || pose == NULL) return;
 
     frame_valid = pose->valid ? 1U : 0U;
+    ctx->gripper_input = pose->gripper_2d;
+    if (!frame_valid) {
+        ctx->gripper_input.wrist.valid = 0U;
+        ctx->gripper_input.finger1.valid = 0U;
+        ctx->gripper_input.finger2.valid = 0U;
+    }
 
     update_landmark(&ctx->shoulder_l, pose->shoulder_l,
                     (uint8_t)(frame_valid && pose->shoulder_l.valid),
@@ -135,4 +141,14 @@ uint8_t pm_fingers_both_fresh(const PoseMappingContext *ctx)
 {
     if (ctx == NULL) return 0U;
     return (uint8_t)(ctx->finger1.fresh && ctx->finger2.fresh);
+}
+
+uint8_t pm_gripper_all_fresh(const PoseMappingContext *ctx)
+{
+    if (ctx == NULL) return 0U;
+    if (ctx->gripper_input.source)
+        return (uint8_t)(ctx->gripper_input.wrist.valid &&
+                         ctx->gripper_input.finger1.valid &&
+                         ctx->gripper_input.finger2.valid);
+    return (uint8_t)(ctx->wrist.fresh && pm_fingers_both_fresh(ctx));
 }

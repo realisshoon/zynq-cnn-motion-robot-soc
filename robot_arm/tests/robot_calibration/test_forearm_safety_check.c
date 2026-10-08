@@ -37,34 +37,51 @@ static void test_known_poses(void)
 
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
     near(p.elbow.x_cm, 0); near(p.elbow.y_cm, 0); near(p.elbow.z_cm, 0);
-    near(p.wrist.x_cm, 0); near(p.wrist.y_cm, 0); near(p.wrist.z_cm, 24); /* 똑바로 위 */
-    near(p.tip.x_cm, 0); near(p.tip.y_cm, 10); near(p.tip.z_cm, 24); /* wp=90=90도 굽힘 */
+    near(p.wrist.x_cm, 0); near(p.wrist.y_cm, 0); near(p.wrist.z_cm, 16); /* 똑바로 위 */
+    near(p.tip.x_cm, 0); near(p.tip.y_cm, 20); near(p.tip.z_cm, 16); /* wp=90=90도 굽힘 */
 
     c = command(90, 180, 90, 90); /* elbow_pitch +90: 수평(roll=90 방위, +Y) */
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
-    near(p.wrist.x_cm, 0); near(p.wrist.y_cm, 24); near(p.wrist.z_cm, 0);
-    near(p.tip.x_cm, 0); near(p.tip.y_cm, 24); near(p.tip.z_cm, -10);
+    near(p.wrist.x_cm, 0); near(p.wrist.y_cm, 16); near(p.wrist.z_cm, 0);
+    near(p.tip.x_cm, 0); near(p.tip.y_cm, 16); near(p.tip.z_cm, -20);
 
     /* 수평(pitch+90)에서 roll을 더 돌리면(+90) +Z RH 규칙대로 +Y -> -X. */
     c = command(180, 180, 90, 90);
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
-    near(p.wrist.x_cm, -24); near(p.wrist.y_cm, 0); near(p.wrist.z_cm, 0);
+    near(p.wrist.x_cm, -16); near(p.wrist.y_cm, 0); near(p.wrist.z_cm, 0);
 
     c = command(90, 90, 180, 90); /* wrist_pitch=180(완전히 접힘), roll 중립 */
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
-    near(p.tip.x_cm, 0); near(p.tip.y_cm, 0); near(p.tip.z_cm, 14);
+    near(p.tip.x_cm, 0); near(p.tip.y_cm, 0); near(p.tip.z_cm, -4);
 
     c = command(90, 90, 180, 180); /* wp=180 뒤 wroll+90: 완전 접힘이라 축 위라 roll 무관 */
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
-    near(p.tip.x_cm, 0); near(p.tip.y_cm, 0); near(p.tip.z_cm, 14);
+    near(p.tip.x_cm, 0); near(p.tip.y_cm, 0); near(p.tip.z_cm, -4);
 
     c = command(90, 90, 90, 180); /* wroll+90, wp=90(90도 굽음): 굽힘 평면이 옆으로 회전 */
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
-    near(p.tip.x_cm, -10); near(p.tip.y_cm, 0); near(p.tip.z_cm, 24);
+    near(p.tip.x_cm, -20); near(p.tip.y_cm, 0); near(p.tip.z_cm, 16);
 
     c = command(90, 90, 0, 90); /* wp=0: 완전히 폄 */
     assert(forearm_robot_forward_kinematics_3d(&c, &p));
-    near(p.tip.x_cm, 0); near(p.tip.y_cm, 0); near(p.tip.z_cm, 34);
+    near(p.tip.x_cm, 0); near(p.tip.y_cm, 0); near(p.tip.z_cm, 36);
+}
+
+static void test_home_pose(void)
+{
+    ForearmJointCommand home = command(90, 70, 100, 90);
+    ForearmJointPositions3D positions;
+    ForearmSafetyCheckFlags flags = UINT32_MAX;
+
+    assert(forearm_robot_forward_kinematics_3d(&home, &positions));
+    near(positions.wrist.x_cm, 0);
+    near(positions.wrist.y_cm, -5.472322f);
+    near(positions.wrist.z_cm, 15.035082f);
+    near(positions.tip.x_cm, 0);
+    near(positions.tip.y_cm, 14.223833f);
+    near(positions.tip.z_cm, 18.508045f);
+    assert(forearm_safety_check_apply(&home, &flags));
+    assert(flags == FOREARM_SAFETY_CHECK_OK);
 }
 
 static void test_link_lengths_and_rotations(void)
@@ -75,8 +92,8 @@ static void test_link_lengths_and_rotations(void)
             for (int wr = 20; wr <= 160; wr += 31) {
                 ForearmJointCommand c = command((float)roll, (float)pitch, 77.0f, (float)wr);
                 assert(forearm_robot_forward_kinematics_3d(&c, &p));
-                near(length(p.elbow, p.wrist), 24.0f);
-                near(length(p.wrist, p.tip), 10.0f);
+                near(length(p.elbow, p.wrist), 16.0f);
+                near(length(p.wrist, p.tip), 20.0f);
             }
         }
     }
@@ -112,16 +129,16 @@ static void test_independent_rotation_composition(void)
          * 부호로 돌린다 -- 다른 세 관절은 90도가 기준이라 오프셋을 뺀 값을 쓴다. */
         RobotPoint3D hand_dir = rotate(rotate(rotate(rotate((RobotPoint3D){0,0,1},
             x, -(90.0f+(float)w)), z, (float)r), x, (float)-p), z, (float)q);
-        RobotPoint3D wrist = {24.0f*forearm_dir.x_cm, 24.0f*forearm_dir.y_cm, 24.0f*forearm_dir.z_cm};
-        RobotPoint3D hand = {10.0f*hand_dir.x_cm, 10.0f*hand_dir.y_cm, 10.0f*hand_dir.z_cm};
+        RobotPoint3D wrist = {16.0f*forearm_dir.x_cm, 16.0f*forearm_dir.y_cm, 16.0f*forearm_dir.z_cm};
+        RobotPoint3D hand = {20.0f*hand_dir.x_cm, 20.0f*hand_dir.y_cm, 20.0f*hand_dir.z_cm};
         assert(forearm_robot_forward_kinematics_3d(&c,&actual));
         near(actual.wrist.x_cm,wrist.x_cm); near(actual.wrist.y_cm,wrist.y_cm);
         near(actual.wrist.z_cm,wrist.z_cm);
         near(actual.tip.x_cm,wrist.x_cm+hand.x_cm);
         near(actual.tip.y_cm,wrist.y_cm+hand.y_cm);
         near(actual.tip.z_cm,wrist.z_cm+hand.z_cm);
-        near(length(actual.elbow,actual.wrist),24);
-        near(length(actual.wrist,actual.tip),10);
+        near(length(actual.elbow,actual.wrist),16);
+        near(length(actual.wrist,actual.tip),20);
     }
 }
 
@@ -136,6 +153,11 @@ static void test_self_collision(void)
     assert(flags & FOREARM_SAFETY_CHECK_SELF_COLLISION);
     c.wrist_pitch_deg = 155.0f;
     assert(forearm_safety_check_apply(&c, &flags));
+    assert(flags == FOREARM_SAFETY_CHECK_OK);
+
+    c.wrist_pitch_deg = 180.0f;
+    assert(!forearm_safety_check_apply(&c, &flags));
+    assert(flags == FOREARM_SAFETY_CHECK_SELF_COLLISION);
 
     /* 정상 범위 내 자세는 자기충돌이 없어야 한다. */
     c = command(90, 90, 90, 90);
@@ -149,25 +171,38 @@ static void test_table_collision(void)
     ForearmJointCommand c;
 
     /* elbow_pitch=90(중립, 똑바로 위)에서 벗어나 수평 아래로 넘어가면 손목부터
-     * 테이블(-5cm)을 뚫는다. pitch=-13에서 wrist.z=-5.399. */
-    c = command(90, -13, 90, 90);
-    assert(!forearm_safety_check_apply(&c, &flags));
-    assert(flags & FOREARM_SAFETY_CHECK_TABLE_COLLISION);
-
-    /* 손목은 테이블 위(wrist.z=4.17)지만 손만 굽혀 테이블을 뚫는 경우:
-     * roll=0,pitch=170,wrist_roll=90(중립)에서 wp를 스윕해 실행으로 경계를
-     * 찾았다 -- wp=76 안전(tip.z=-4.97), wp=77 충돌(tip.z=-5.04). */
-    c = command(0, 170, 77.0f, 90);
+     * 테이블(-10cm)을 뚫는다. 16cm 전완은 pitch=-38에서 wrist.z=-9.851로
+     * 안전하지만 pitch=-39에서는 wrist.z=-10.069로 충돌한다. */
+    c = command(90, -20, 90, 90);
+    assert(forearm_safety_check_apply(&c, &flags));
+    assert(flags == FOREARM_SAFETY_CHECK_OK);
+    c.elbow_pitch_deg = -38.0f;
+    assert(forearm_safety_check_apply(&c, &flags));
+    assert(flags == FOREARM_SAFETY_CHECK_OK);
+    c.elbow_pitch_deg = -39.0f;
     assert(!forearm_safety_check_apply(&c, &flags));
     assert(flags == FOREARM_SAFETY_CHECK_TABLE_COLLISION);
-    c.wrist_pitch_deg = 76.0f;
+
+    /* 손목은 테이블 위(wrist.z=5.472)지만 20cm 손이 테이블을 뚫는 경우:
+     * roll=90,pitch=160,wrist_roll=90에서 wp=70은 안전(tip.z=-9.849),
+     * wp=71은 충돌(tip.z=-10.071)이다. 두 자세 모두 [20,160] 안이다. */
+    c = command(90, 160, 52.0f, 90);
     assert(forearm_safety_check_apply(&c, &flags));
-    c.wrist_pitch_deg = 77.0f;
+    assert(flags == FOREARM_SAFETY_CHECK_OK);
+    c.wrist_pitch_deg = 71.0f;
+    assert(!forearm_safety_check_apply(&c, &flags));
+    assert(flags == FOREARM_SAFETY_CHECK_TABLE_COLLISION);
+    c.wrist_pitch_deg = 70.0f;
+    assert(forearm_safety_check_apply(&c, &flags));
+    assert(flags == FOREARM_SAFETY_CHECK_OK);
+    c.wrist_pitch_deg = 71.0f;
     {
         ForearmJointPositions3D p;
         assert(forearm_robot_forward_kinematics_3d(&c, &p));
-        assert(p.wrist.z_cm > -5.0f); /* 손목 자체는 안전 */
-        assert(p.tip.z_cm <= -5.0f);  /* 손끝만 충돌 */
+        near(p.wrist.z_cm, 5.472322f);
+        near(p.tip.z_cm, -10.070597f);
+        assert(p.wrist.z_cm > -10.0f); /* 손목 자체는 안전 */
+        assert(p.tip.z_cm <= -10.0f);  /* 손끝만 충돌 */
     }
 
     /* 중립(똑바로 위)은 테이블과 무관해야 한다. */
@@ -199,6 +234,7 @@ static void test_invalid(void)
 int main(void)
 {
     test_known_poses();
+    test_home_pose();
     test_link_lengths_and_rotations();
     test_independent_rotation_composition();
     test_self_collision();

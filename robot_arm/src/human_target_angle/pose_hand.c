@@ -55,7 +55,7 @@ static void update_roll_zero_calibration(
 int pm_update_gripper_from_2d(PoseMappingContext *ctx,
                               float shoulder_span_px, float *gripper_norm)
 {
-    float d_finger, d_hand, ratio, used;
+    float d_finger, d_hand, ratio, used, close_ratio;
     Point2D w, f1, f2;
 
     if (ctx == NULL || gripper_norm == NULL) return -1;
@@ -70,6 +70,17 @@ int pm_update_gripper_from_2d(PoseMappingContext *ctx,
     w = ctx->wrist.value;
     f1 = ctx->finger1.value;
     f2 = ctx->finger2.value;
+    if (ctx->gripper_input.source) {
+        w = ctx->gripper_input.wrist;
+        f1 = ctx->gripper_input.finger1;
+        f2 = ctx->gripper_input.finger2;
+        if (!isfinite(ctx->gripper_input.reference_span_px)) {
+            ctx->gripper_hold_reason = PM_GRIPPER_HOLD_NONFINITE;
+            return -1;
+        }
+        shoulder_span_px = fmaxf(ctx->gripper_input.reference_span_px,
+                                PM_MIN_SHOULDER_WIDTH_PX);
+    }
     if (!w.valid || !f1.valid || !f2.valid) return -1;
     if (!isfinite(w.x) || !isfinite(w.y) ||
         !isfinite(f1.x) || !isfinite(f1.y) ||
@@ -102,6 +113,11 @@ int pm_update_gripper_from_2d(PoseMappingContext *ctx,
 
     /* Median of three valid ratios suppresses a single-frame spike without
      * rejecting all following movement. Two startup samples use their mean. */
+    /* A camera switch changes perspective. Start a new median history rather
+     * than mixing ratios from the two views; keep the command EMA continuous. */
+    if (ctx->gripper_last_source != ctx->gripper_input.source)
+        ctx->gripper_ratio_count = 0U;
+    ctx->gripper_last_source = ctx->gripper_input.source;
     used = ratio;
     if (ctx->gripper_ratio_count == 1U) {
         used = 0.5f * (ctx->gripper_ratio_history[1] + ratio);
@@ -125,12 +141,16 @@ int pm_update_gripper_from_2d(PoseMappingContext *ctx,
     ctx->gripper_hand_span_px = d_hand;
     ctx->gripper_open_ratio = ratio;
     ctx->gripper_ratio_used = used;
+    close_ratio = PM_GRIPPER_CLOSE_DISTANCE_PX / d_hand;
     ctx->gripper_norm_value = pm_clampf(
-        (used - PM_GRIPPER_CLOSE_THRESHOLD) /
-        (PM_GRIPPER_OPEN_THRESHOLD - PM_GRIPPER_CLOSE_THRESHOLD),
+        (used - close_ratio) /
+        fmaxf(PM_GRIPPER_OPEN_THRESHOLD - close_ratio, PM_EPS),
         0.0f, 1.0f);
 
-    if (!ctx->gripper_initialized) {
+    if (ctx->gripper_norm_value == 0.0f) {
+        ctx->gripper_state = 0U;
+        ctx->gripper_initialized = 1U;
+    } else if (!ctx->gripper_initialized) {
         ctx->gripper_state = (used >= PM_GRIPPER_OPEN_HYST_THRESHOLD) ? 1U : 0U;
         ctx->gripper_initialized = 1U;
     } else if (ctx->gripper_state) {

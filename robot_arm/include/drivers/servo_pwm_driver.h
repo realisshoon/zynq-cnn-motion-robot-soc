@@ -28,6 +28,18 @@ typedef enum {
 
 } ServoPwmDriverChannel;
 
+typedef enum {
+    SERVO_PWM_BANK_RIGHT = 0,
+    SERVO_PWM_BANK_LEFT,
+    SERVO_PWM_BANK_COUNT
+} ServoPwmDriverBank;
+
+int servo_pwm_driver_enable_bank(ServoPwmDriverBank bank);
+int servo_pwm_driver_disable_bank(ServoPwmDriverBank bank);
+int servo_pwm_driver_write_channel_bank(ServoPwmDriverBank bank,
+                                       ServoPwmDriverChannel channel, uint16_t pwm_us);
+int servo_pwm_driver_update_bank(ServoPwmDriverBank bank);
+
 
 /*
  * ============================================================
@@ -99,6 +111,8 @@ typedef struct {
     uint32_t offset;
     uint32_t value;
 
+    ServoPwmDriverBank bank;
+
 } ServoPwmDriverMockWrite;
 
 
@@ -114,6 +128,8 @@ typedef struct {
  * 순서로 사용한다.
  */
 void servo_pwm_driver_mock_reset(void);
+void servo_pwm_driver_mock_clear_log(void);
+void servo_pwm_driver_mock_fail_next(ServoPwmDriverBank bank, uint32_t offset);
 
 
 /*
