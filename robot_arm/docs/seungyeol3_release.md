@@ -1,6 +1,54 @@
 # 승열3 릴리스 준비 및 검증 기록
 
-작성일: 2026-10-08. **상태: 정상 루트 소스 통합·release_v3 좌우 ARM 빌드·native 회귀·호스트 131개 회귀 완료. 보드 부팅/SD 복사는 미수행.** 아래 결과는 실제 생성 아티팩트와 실행 로그에 근거한다. 이 문서는 새 BOOT 설치나 실제 서보 구동/녹화/재생 시험이 이루어졌다는 보고가 아니다.
+## 최신 승열3 — 2026-10-08 역할별 설정 통합
+
+현재 정상 루트와 외부 `D:/Working/robot-motion-harness/baselines/승열3/`의 복구 기준은
+최신 역할별 설정이다. 초기 승열3는 `승열3_original_20261008/`에 별도로 보존한다.
+이하 초기 릴리스 기록의 수치·BOOT 해시는 당시 이력이며 아래 최신 표와 구분한다.
+
+| 대상 | 최신 설정 |
+|---|---|
+| RIGHT / 로봇0 | elbow roll 거울 방향 +1, offset 90°, 범위 10~170°; elbow pitch 최고속도 30°/초·가속도 120°/초² 유지 |
+| LEFT / 로봇1 | elbow roll 방향 -1 유지; elbow pitch 최고속도 30°/초 유지·가속도 60°/초² |
+| LEFT 그리퍼 | 최종 PWM 1722~2400µs clamp; 열림 설정상 약 110°. LIVE·초기 자세·PLAY에 적용하며 저장 값을 재매핑하지 않음 |
+| 공통 유지 | 기존 녹화 메뉴·시작/종료 경계·REC_STATE·UART 바이트·20ms 틱·손목 35°/초·필터·FK 물리 축·안전검사 |
+| CNN/하드웨어 | fixed ABI `0x77D4E3BB`, `final_uart0.xsa`와 FSBL/PL 유지; SD BIN 전체 SHA256과 `WGT_V4.SHA` sidecar 비교 유지 |
+
+검증 근거는 외부 `experiments/seungyeol3_latest_20261008/`에 보존한다.
+역할별 실제 ARM compile/link/Bootgen 종료 코드 **0**, 경고 **0**, BOOT은 각각
+FSBL·PL·앱의 **3개 partition**이며 기존 FSBL/PL과 일치한다. SHA loader 호출도
+최종 ELF에서 확인했다. 가중치 1,287,680 byte와 기존 sidecar 쌍의 해시를 검증했으며
+가중치·XSA·비트스트림을 변경하지 않았다.
+
+| 역할 | `release/` 기준 파일 | 크기(byte) | SHA256 |
+|---|---|---|---|
+| RIGHT | `right/BOOT.BIN` | 4592208 | `eae671e5b7300921c41b119f572a764053c2455d5b273b11ebc0954a98825749` |
+| LEFT | `left/BOOT.BIN` | 4592208 | `f7e2e832d4949bda55876074802a2bff2aa2b79fa7982b2618a8573bf96b048f` |
+
+새 BOOT 두 파일은 이전에 역할별로 설치·파일 검증한 최신 BOOT과 해시까지 일치한다.
+이번 통합 작업에서는 **SD 재설치 미수행 / 실제 보드 부팅·물리 동작 미검증**이다.
+기존 설치 이력과 실제 부팅·발열·물리 위치 검증을 혼동하지 않는다.
+
+- 정상 루트 경계 회귀: LEFT 16 cases / 238803 checks / 4335 audited ticks,
+  RIGHT 16 cases / 242009 checks / 4362 audited ticks; 양쪽 실패 0·build/test exit 0.
+  근거: `tests/record_replay/boundaries/runs/20261008_163846_625/summary.json`.
+- 모니터 회귀: `python -m unittest discover -s robot_arm/tools/stereo_vision -p 'test*monitor*.py'`,
+  **131 통과, skip 0**. 직렬 포트·PWM을 열거나 자동 명령을 보내지 않았다.
+- native 비교: `full_stop`, `only_elbow_roll`, `test_hoon0`, 집게 녹화/재생,
+  `basic_1`의 5개 입력을 역할별 최신 설치 소스와 통합 소스에 동일하게 제공했다.
+  적용 각도·PWM·안전검사 결과가 일치했다. 이는 mock HAL의 소스 실행 비교이며
+  실제 모터·SD 지연·A1/CNN 전체·카메라 노출 동기화를 검증한 것은 아니다.
+- 기존 `basic_1`은 LEFT 새 가속도 60°/초²를 초과해 재생 사전검사에서 거부된다.
+  RIGHT 비교는 통과하며 LEFT 현재 설정으로 새로 녹화한 시험 clip의 3회 재생은 일치한다.
+  이전 파일은 보존하고 자동 재타이밍·안전검사 우회는 하지 않는다.
+
+현행 Unity 계약은 [uart_protocol_unity.md](uart_protocol_unity.md), 운영 명령은
+[robot0_robot1_commands.md](robot0_robot1_commands.md)를 따른다. Git 공유 범위는
+소스·설명서·회귀 코드이며 BOOT·가중치·사진·영상·외부 실험 산출물은 제외한다.
+
+## 초기 승열3 기록 (아래는 역할별 추가 설정 이전의 이력)
+
+작성일: 2026-10-08. **당시 상태: 정상 루트 소스 통합·release_v3 좌우 ARM 빌드·native 회귀·호스트 131개 회귀 완료. 보드 부팅/SD 복사는 미수행.** 아래 결과는 당시 실제 생성 아티팩트와 실행 로그에 근거한다. 이 문서는 실제 서보 구동/녹화/재생 시험이 이루어졌다는 보고가 아니다.
 
 ## 변경 목적과 경계
 

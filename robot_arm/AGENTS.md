@@ -19,7 +19,10 @@ CNN 통합의 현행 실행 흐름, 사용자 결정, 에이전트별 수정 경
 - 소스 삭제 시 include, CMake, 테스트 실행기, Vitis 소스 등록 안내를 함께 검토한다.
 - 서보 방향은 A2 direction에서 보정한다. 이를 위해 A1 각도 정의를 바꾸지 않는다.
   입력 매핑 direction과 FK의 물리 축 부호는 별개다. FK 부호를 자동 반전하지 않는다.
-- 현재 elbow_roll/elbow_pitch direction=-1, offset=90이다.
+- 분리 보드 빌드에서 elbow_roll은 로봇0/RIGHT direction=+1(거울 시연),
+  로봇1/LEFT direction=-1이며 offset=90이다. elbow_pitch는 direction=-1,
+  offset=120이다. LEFT elbow_pitch 가속도는 60도/초², 최고속도는 30도/초다.
+  LEFT 그리퍼 PWM은 1722~2400us로 제한한다. FK 물리 축은 반전하지 않는다.
   wrist 설정, PWM, 홈 자세 및 물리 가동범위는 이 결정으로 변경되지 않는다.
 - 검증: python tests/robot_calibration/run_tests.py (robot_arm에서 실행).
   실패는 수정 전 HEAD와 비교해 기존 실패/신규 회귀를 구분한다.

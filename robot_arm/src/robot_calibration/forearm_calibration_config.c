@@ -1,4 +1,17 @@
 #include "robot_calibration/forearm_calibration_config.h"
+#include "dual_arm_config.h"
+
+#if ROBOT_SPLIT_BOARD_CONTROL && defined(ROBOT_STEREO_RIGHT)
+#define ROBOT_ELBOW_ROLL_DIRECTION 1
+#else
+#define ROBOT_ELBOW_ROLL_DIRECTION -1
+#endif
+
+#if ROBOT_SPLIT_BOARD_CONTROL && defined(ROBOT_STEREO_LEFT)
+#define ROBOT_ELBOW_PITCH_AMAX_DEG_S2 60.0f
+#else
+#define ROBOT_ELBOW_PITCH_AMAX_DEG_S2 120.0f
+#endif
 
 /*
  * direction/zero_offset_deg 실측 현황(2026-09-23):
@@ -35,7 +48,7 @@
  */
 const ForearmCalibrationConfig forearm_calibration_config = {
     //중앙은 맞는데 기본적인 자세가 오른팔을 기준으로 안쪽으로 기울어져 있어서 왼쪽에 있는 경향성이 있음
-    .elbow_roll  = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 90.0f,
+    .elbow_roll  = { .scale = 1.0f, .direction = ROBOT_ELBOW_ROLL_DIRECTION, .zero_offset_deg = 90.0f,
                       .min_deg = 10.0f, .max_deg = 170.0f, .max_delta_deg = 0.60f },
     //마찬가지로 기본적인 자세가 로봇+방향(밑쪽)으로 기울어져 있어서 offset과 max를 높였음
     .elbow_pitch = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 120.0f,
@@ -47,5 +60,5 @@ const ForearmCalibrationConfig forearm_calibration_config = {
     .wrist_roll  = { .scale = 1.0f, .direction = -1, .zero_offset_deg = 87.0f,
                       .min_deg = 10.0f, .max_deg = 170.0f, .max_delta_deg = 0.70f },
     /* 순서: elbow_roll, elbow_pitch, wrist_pitch, wrist_roll. */
-    .amax_deg_s2 = { 120.0f, 120.0f, 120.0f, 120.0f },
+    .amax_deg_s2 = { 120.0f, ROBOT_ELBOW_PITCH_AMAX_DEG_S2, 120.0f, 120.0f },
 };
