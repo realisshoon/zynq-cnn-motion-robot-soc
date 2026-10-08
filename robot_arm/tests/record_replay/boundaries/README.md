@@ -16,7 +16,7 @@ the checked-in tests. Copy the authoring files below together when publishing.
 
 | Authoring file | Purpose |
 | --- | --- |
-| `test_record_boundaries.c` | Fourteen named regression cases and independent clip audits |
+| `test_record_boundaries.c` | Sixteen named regression cases and independent clip audits |
 | `run.ps1` | MSVC LEFT/RIGHT builds, input hashes, logs, failure exit codes |
 | `harness.h` | Shared platform and board test-double declarations |
 | `mocks/platform_cnn_stereo.c` | In-process platform/CNN/board boundaries |
@@ -46,6 +46,9 @@ preparation cancellation, preserved existing follow flags, rejected new A,
 and automatic tail reservation. Full-speed clips are independently audited
 for range, speed, delta, acceleration, terminal stopping, gripper delta,
 geometry safety, sample-by-sample HAL provenance, and byte-exact native replay.
+The board contract case checks RIGHT mirror direction, LEFT elbow-pitch
+acceleration 60 deg/s², unchanged speed limits, and a 1001-point gripper PWM
+sweep (LEFT 1722..2400 us, RIGHT 1500..2500 us).
 An actual main-loop capacity case injects fresh targets and gripper inputs
 throughout recording and proves their consumers stop during the reserved tail.
 

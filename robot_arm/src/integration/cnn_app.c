@@ -176,8 +176,9 @@ void cnn_app_report_pwm_result(unsigned enabled, const char *result, const char 
     xil_printf("[RF] version=1 role=%u local=%u remote=%u forearm_mm=%u tip_mm=%u\r\n",
 #ifdef ROBOT_STEREO_LEFT
         1U, (unsigned)stereo_board_remote_follow_enabled(), 0U, 135U, 190U);
-    xil_printf("[GRIP_PWM] robot=1 close_max_us=%u policy=CLAMP_ONLY; no current or temperature feedback\r\n",
-        (unsigned)ROBOT_LEFT_GRIPPER_CLOSE_MAX_US);
+    xil_printf("[GRIP_PWM] robot=1 close_max_us=%u open_min_us=%u policy=CLAMP_ONLY; no current or temperature feedback\r\n",
+        (unsigned)ROBOT_LEFT_GRIPPER_CLOSE_MAX_US,
+        (unsigned)ROBOT_LEFT_GRIPPER_OPEN_MIN_US);
 #else
         2U, (unsigned)stereo_board_async_test_enabled(),
         (unsigned)stereo_board_remote_requested(), 160U, 200U);

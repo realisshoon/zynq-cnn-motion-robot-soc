@@ -176,6 +176,9 @@ static uint16_t gripper_to_pwm_us(
         );
 
 #if ROBOT_SPLIT_BOARD_CONTROL && defined(ROBOT_STEREO_LEFT)
+    if (pwm_us < (float)ROBOT_LEFT_GRIPPER_OPEN_MIN_US) {
+        pwm_us = (float)ROBOT_LEFT_GRIPPER_OPEN_MIN_US;
+    }
     if (pwm_us > (float)ROBOT_LEFT_GRIPPER_CLOSE_MAX_US) {
         pwm_us = (float)ROBOT_LEFT_GRIPPER_CLOSE_MAX_US;
     }

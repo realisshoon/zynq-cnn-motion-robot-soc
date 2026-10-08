@@ -10,6 +10,7 @@
 #include "cnn_app_event.h"
 #include "drivers/servo_pwm_driver.h"
 #include "output_controller/servo_hal.h"
+#include "output_controller/servo_control.h"
 #include "record_replay/motion_library.h"
 #include "record_replay/motion_sd.h"
 #include "robot_calibration/forearm_calibration_config.h"
@@ -1072,9 +1073,58 @@ static void test_actual_main_rejected_async_preserves_state(void)
     CHECK(!pipeline.wrist_observation_fresh && mock.foreign_request == 1);
 }
 
+static void test_board_motion_and_gripper_contract(void)
+{
+    HumanForearmTarget target = {0};
+    ForearmJointCommand mapped;
+    uint16_t pwm, previous = 65535U;
+    unsigned index;
+#ifdef ROBOT_STEREO_LEFT
+    const int expected_direction = -1;
+    const float expected_acceleration = 60.0f;
+    const unsigned expected_open = 1722U, expected_close = 2400U;
+#else
+    const int expected_direction = 1;
+    const float expected_acceleration = 120.0f;
+    const unsigned expected_open = 1500U, expected_close = 2500U;
+#endif
+    CHECK(forearm_calibration_config.elbow_roll.direction == expected_direction);
+    CHECK(forearm_calibration_config.elbow_pitch.direction == -1);
+    CHECK(forearm_calibration_config.elbow_roll.zero_offset_deg == 90.0f);
+    CHECK(forearm_calibration_config.elbow_pitch.zero_offset_deg == 120.0f);
+    CHECK(forearm_calibration_config.amax_deg_s2[1] == expected_acceleration);
+    CHECK(forearm_calibration_config.elbow_roll.max_delta_deg == .60f);
+    CHECK(forearm_calibration_config.elbow_pitch.max_delta_deg == .60f);
+    CHECK(forearm_calibration_config.wrist_pitch.max_delta_deg == .70f);
+    CHECK(forearm_calibration_config.wrist_roll.max_delta_deg == .70f);
+    target.valid = 1U;
+    target.elbow_roll_deg = 40.0f;
+    target.elbow_pitch_deg = 50.0f;
+    target.wrist_pitch_deg = 20.0f;
+    target.wrist_roll_deg = -3.0f;
+    forearm_motion_control_map_target(&target, &mapped);
+    CHECK(mapped.elbow_roll_deg == 90.0f + 40.0f * (float)expected_direction);
+    CHECK(mapped.elbow_pitch_deg == 70.0f);
+    CHECK(mapped.wrist_pitch_deg == 100.0f);
+    CHECK(mapped.wrist_roll_deg == 90.0f);
+    REQUIRE(servo_control_convert_channel(SERVO_GRIPPER, 1.0f, &pwm));
+    CHECK(pwm == expected_open);
+    REQUIRE(servo_control_convert_channel(SERVO_GRIPPER, 0.0f, &pwm));
+    CHECK(pwm == expected_close);
+    for (index = 0U; index <= 1000U; ++index) {
+        REQUIRE(servo_control_convert_channel(SERVO_GRIPPER, (float)index / 1000.0f, &pwm));
+        CHECK(pwm >= expected_open && pwm <= expected_close && pwm <= previous);
+        previous = pwm;
+    }
+    pwm = 1234U;
+    CHECK(!servo_control_convert_channel(SERVO_GRIPPER, NAN, &pwm));
+    CHECK(pwm == 1234U);
+}
+
 int main(int argc, char **argv)
 {
     static const struct { const char *name; void (*run)(void); } tests[] = {
+        { "board_motion_and_gripper_contract", test_board_motion_and_gripper_contract },
         { "status_schema", test_status_schema },
         { "prepare_hal_settle_and_seed", test_prepare_hal_settle_and_seed },
         { "prepare_cancel_and_pwm_off", test_prepare_cancel_and_pwm_off },
