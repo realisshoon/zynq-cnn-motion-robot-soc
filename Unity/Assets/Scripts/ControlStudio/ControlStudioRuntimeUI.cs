@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
@@ -18,6 +18,7 @@ namespace HumanMotion.ControlStudio
         public InputField[] Inputs {get;}=new InputField[5];
         public Text[] Readings {get;}=new Text[5];
         Text status,preset,selected,pauseLabel,hardware,measurement;Font font;
+        Button pauseButton;
         Text sourceLabel,csvTime,csvFlags,csvMessage,loopLabel;
         readonly Text[] humanReadings=new Text[5];
         readonly List<Button> manualButtons=new List<Button>();
@@ -27,7 +28,7 @@ namespace HumanMotion.ControlStudio
         public CsvInputMode PendingMode {get;set;}
         readonly List<Text> modeLabels=new List<Text>();
         readonly string[] names={"ELBOW ROLL","ELBOW PITCH","WRIST PITCH","WRIST ROLL","GRIPPER"};
-        readonly Color ink=new Color(.87f,.91f,.95f), muted=new Color(.53f,.63f,.71f),accent=new Color(.25f,.91f,.65f);
+        readonly Color ink=new Color(.87f,.91f,.95f), muted=new Color(.58f,.63f,.69f),accent=new Color(.36f,.57f,.78f);
         Transform canvas;
         RectTransform servoPanel;GameObject servoContents;Text servoHeader;
         public bool ServoDetailsExpanded {get;private set;}
@@ -100,14 +101,14 @@ namespace HumanMotion.ControlStudio
             preset=Label("Preset status",side,12,542,400,28,"",13,muted);
             servoContents.SetActive(false);
             Button("Reset View",canvas,30,115,170,42,"Reset View",()=>orbit.ResetView());
-            var pause=Button("Pause virtual",canvas,215,115,195,42,"Pause virtual",()=>router.SetPaused(!router.Paused));pauseLabel=pause.GetComponentInChildren<Text>();
+            pauseButton=Button("Pause virtual",canvas,215,115,195,42,"Pause virtual",()=>router.SetPaused(!router.Paused));pauseLabel=pauseButton.GetComponentInChildren<Text>();
             // Cover pixels outside the reduced CSV camera viewport, including label backgrounds.
             csvBackdrop=Box("CSV lower backdrop",canvas,960,96,640,714,new Color(.035f,.055f,.075f)).gameObject;
             selected=Label("Selected joint",canvas,30,731,900,35,"",19,accent);
             Label("Camera help",canvas,30,766,890,28,"Right-drag: orbit   |   Middle-drag: pan   |   Wheel: zoom",17,muted);
             Box("Footer",canvas,0,810,1600,90,new Color(.035f,.055f,.075f));
             status=Label("Policy status",canvas,28,850,1540,25,"",17,ink);
-            measurement=Label("Measurement note",canvas,28,876,1540,20,"XYZ uses processed relative coordinates + stored BodyFrame. UART uses provisional XYZ input; TX remains separate and OFF.",13,muted);
+            measurement=Label("Measurement note",canvas,28,876,1540,20,"XYZ uses processed relative coordinates + stored BodyFrame. UART displays board servo commands/PWM, not measured joint positions.",13,muted);
             BuildCsvPanel();
             Tool1RuntimeUI.Attach(this,canvas);
             RobotVisualProfiles.Attach(this,canvas);
@@ -128,7 +129,7 @@ namespace HumanMotion.ControlStudio
             var bg=Box("CSV path",panel,20,145,600,42,new Color(.025f,.045f,.065f));
             CsvPath=bg.gameObject.AddComponent<InputField>();CsvPath.textComponent=Label("Path value",bg.transform,8,0,584,42,"",15,ink);CsvPath.targetGraphic=bg;
             CsvPath.characterLimit=2048;SetSample("cnn");
-            Button("Load CSV",panel,20,200,600,38,"Load CSV",()=>router.Csv.Load(CsvPath.text,PendingMode));
+            Button("Load CSV",panel,20,200,600,38,"Load CSV",()=>router.Csv.LoadAsync(CsvPath.text,PendingMode));
             Button("CSV Play Resume",panel,20,250,145,38,"Play / Resume",()=>router.Csv.Play());
             Button("CSV Pause",panel,175,250,110,38,"Pause",()=>router.Csv.Pause());
             Button("CSV Step",panel,295,250,110,38,"Step",()=>router.Csv.Step());
@@ -146,8 +147,8 @@ namespace HumanMotion.ControlStudio
         {
             message="";bool ok;
             if(input==0){ok=router.Source=="MANUAL"||router.Csv.SelectManual();if(ok){GetComponent<ControlStudioPresentationUI>()?.OpenServoControls();Sync();}}
-            else if(input==1){ok=router.Csv.Active||router.Csv.Load(router.Csv.Data?.Path??CsvPath.text,router.Csv.Data==null?PendingMode:router.Csv.Mode);if(ok){GetComponent<ControlStudioPresentationUI>()?.OpenSourceControls();}else message=router.Csv.Message;}
-            else if(input==2){var rx=GetComponent<UartPose3DSource>();ok=router.Source=="UART"||(rx!=null&&rx.SelectSource(rx.Mode));if(ok){GetComponent<ControlStudioPresentationUI>()?.OpenUartControls();}else message="UART unavailable; open the existing source controls.";}
+            else if(input==1){ok=router.Csv.Active||router.Csv.Load(router.Csv.Data?.Path??CsvPath.text,router.Csv.Data==null?PendingMode:router.Csv.Mode);if(!ok)ok=router.Csv.PrepareInput();if(ok){GetComponent<ControlStudioPresentationUI>()?.OpenSourceControls();}else message=router.Csv.Message;}
+            else if(input==2){var rx=GetComponent<BoardUartSource>();ok=router.Source=="BOARD"||(rx!=null&&rx.SelectSource());if(ok){GetComponent<ControlStudioPresentationUI>()?.OpenUartControls();}else message="UART unavailable; open the existing source controls.";}
             else {message="Unknown input";return false;}
             if(!ok&&message.Length==0)message=router.NativeError.Length>0?router.NativeError:router.Status;
             return ok;
@@ -161,24 +162,24 @@ namespace HumanMotion.ControlStudio
             if(status==null||router==null||sourceLabel==null||csvPanel==null||csvBackdrop==null)return;
             for(int i=0;i<5;i++)
                 if(Readings[i]==null||humanReadings[i]==null||Sliders[i]==null||Inputs[i]==null)return;
-            bool csv=router.Source=="CSV", uartInput=router.Source=="UART", observed=csv||uartInput;
+            bool csv=router.Source=="CSV", uartInput=router.Source=="UART", board=router.Source=="BOARD", observed=csv||uartInput, readonlyInput=observed||board;
             var visualSettings=GetComponent<RobotVisualProfiles>();var toolSettings=GetComponent<Tool1Runtime>();
-            sourceLabel.text=(visualSettings?.Selected==RobotVisualProfileId.HumanoidRobot?"HUMANOID ROBOT":"ROBOT ARM")+"  /  "+router.Source+(csv?" "+(router.Csv.Mode==CsvInputMode.RecordedHumanAngles?"Recorded":router.Csv.Mode==CsvInputMode.XyzStoredBodyAuxGripper?"XYZ-A":"XYZ-B"):uartInput?"":"")+"  /  "+toolSettings?.Gate.Tool+"  /  "+(visualSettings?.EnvironmentMode==EnvironmentViewMode.RobotOnly?"ROBOT ONLY":visualSettings?.EnvironmentMode==EnvironmentViewMode.Workcell?"WORKCELL":"AUTO")+"  /  VIRTUAL";
+            sourceLabel.text=(visualSettings?.Selected==RobotVisualProfileId.HumanoidRobot?"HUMANOID ROBOT":"ROBOT ARM")+"  /  "+router.Source+(csv?" "+(router.Csv.Mode==CsvInputMode.RecordedHumanAngles?"Recorded":router.Csv.Mode==CsvInputMode.XyzStoredBodyAuxGripper?"XYZ-A":"XYZ-B"):uartInput?"":"")+"  /  "+toolSettings?.Gate.Tool+"  /  "+(visualSettings?.EnvironmentMode==EnvironmentViewMode.RobotOnly?"ROBOT ONLY":visualSettings?.EnvironmentMode==EnvironmentViewMode.Workcell?"WORKCELL":"AUTO")+(board?"  /  BOARD TELEMETRY":csv?"  /  CSV PLAYBACK":"  /  VIRTUAL");
             for(int i=0;i<modeLabels.Count;i++)modeLabels[i].text=((int)PendingMode==i?"[ ":"")+new[]{"Recorded","XYZ A: CSV M4","XYZ B: HOLD M4"}[i]+((int)PendingMode==i?" ]":"");
-            csvPanel.SetActive(CsvPanelVisible);csvBackdrop.SetActive(CsvPanelVisible);
+            csvPanel.SetActive(CsvPanelVisible);csvBackdrop.SetActive(CsvPanelVisible&&GetComponent<ControlStudioDockLayout>()==null);
             for(int i=0;i<5;i++)
             {
                 string applied=router.HasApplied?router.Applied[i].ToString("F2",CultureInfo.InvariantCulture):"--";
                 string approved=router.HasApproved?router.Approved[i].ToString("F2",CultureInfo.InvariantCulture):"--";
                 string candidate=router.Candidate==null||i>=router.Candidate.Length?"--":router.Candidate[i].ToString("F2",CultureInfo.InvariantCulture);
-                Readings[i].text=observed?$"Candidate {candidate}   Approved {approved}   Applied {applied}":$"Requested {router.Requested[i]:F2}   Approved {approved}   Applied {applied}";
+                Readings[i].text=board?$"Board applied command {applied} (no feedback)":observed?$"Candidate {candidate}   Approved {approved}   Applied {applied}":$"Requested {router.Requested[i]:F2}   Approved {approved}   Applied {applied}";
                 humanReadings[i].gameObject.SetActive(observed);
                 humanReadings[i].text=router.Human==null?"Human -- / Wrapped --":$"Human {router.Human[i]:F2}   Wrapped {router.Wrapped[i]:F2}";
-                Sliders[i].gameObject.SetActive(!observed);Inputs[i].gameObject.SetActive(!observed);
+                Sliders[i].gameObject.SetActive(!readonlyInput);Inputs[i].gameObject.SetActive(!readonlyInput);
                 Readings[i].color=string.IsNullOrEmpty(manual.Errors[i])?muted:new Color(1f,.55f,.35f);
-                Sliders[i].interactable=Inputs[i].interactable=router.Ready&&!observed;
+                Sliders[i].interactable=Inputs[i].interactable=router.Ready&&!readonlyInput;
             }
-            foreach(var button in manualButtons)button.interactable=router.Ready&&!observed;
+            foreach(var button in manualButtons)button.interactable=router.Ready&&!readonlyInput;
             var presentation=GetComponent<ControlStudioPresentationUI>();
             status.text=presentation!=null&&!presentation.DebugExpanded
                 ?$"{router.Source}  |  {(router.Ready?"READY":"UNAVAILABLE")}  |  {(router.Paused?"PAUSED":"RUNNING")}  |  Applied M0-M4"
@@ -186,14 +187,18 @@ namespace HumanMotion.ControlStudio
             status.fontSize=presentation!=null&&!presentation.DebugExpanded?17:14;
             var uart=GetComponent<ControlStudioUartOutput>();var rx=GetComponent<UartPose3DSource>();
             hardware.text=$"RX: {(rx!=null&&rx.Connected?(rx.Mock?"MOCK":"COM"):"OFF")}  |  TX: {(uart!=null&&uart.Connected?(uart.TxEnabled?"ON":"OFF"):"OFF")}  |  REAL TX = {uart?.HardwareTxCount??0}";
+            var boards=GetComponent<BoardUartSource>();
+            if(board&&boards!=null)hardware.text=$"BOARD RX  R: {(boards.Right.Connected?(boards.IsFixture(BoardSide.Right)?"FIXTURE":"COM"):"OFF")}  L: {(boards.Left.Connected?(boards.IsFixture(BoardSide.Left)?"FIXTURE":"COM"):"OFF")}  |  status queries only";
+            if(csv&&boards!=null)hardware.text=$"CSV | PORT R: {(boards.IsPortOpen(BoardSide.Right)?"COM":"OFF")} L: {(boards.IsPortOpen(BoardSide.Left)?"COM":"OFF")} | CSV TX: 0 (unsupported)";
             measurement.gameObject.SetActive(presentation==null||presentation.DebugExpanded);
             var source=router.Csv;var row=source.Current;
             csvTime.text=source.Data==null?"No CSV loaded":$"{source.Timeline.Time:F3} / {source.Data.Duration:F3}s  row {source.ConsumedRows}/{source.Data.Rows.Count}  frame {(row==null?"--":row.FrameId.ToString())}  target {(row==null?"--":row.TargetFrameId.ToString())}";
-            csvFlags.text=row==null?"Flags: no observation":$"target {row.Flags[0]} / major {row.Flags[1]} / finger {row.Flags[2]} / observable {row.Flags[3]}\nhand_fresh {row.Flags[4]} / wrist_valid {row.Flags[5]} / gripper_hold {row.Flags[6]} / body {row.Flags[7]}";
+            csvFlags.text=row!=null&&row.Servo!=null?"Final M0~M4 / no human observation flags":row==null?"Flags: no observation":$"target {row.Flags[0]} / major {row.Flags[1]} / finger {row.Flags[2]} / observable {row.Flags[3]}\nhand_fresh {row.Flags[4]} / wrist_valid {row.Flags[5]} / gripper_hold {row.Flags[6]} / body {row.Flags[7]}";
             if(source.Mode!=CsvInputMode.RecordedHumanAngles){var solve=source.LastSolve;csvFlags.text="Source: "+csvFlags.text+"\nSolver: "+(solve==null?"--":solve.State+" valid="+solve.SolverInfo[0]+" wrist="+solve.SolverInfo[1]+" fresh="+solve.SolverInfo[2])+" | point quality UNKNOWN";csvFlags.fontSize=12;}else csvFlags.fontSize=14;
             csvMessage.text=source.Message+(source.Data==null?"":"\n"+Path.GetFileName(source.Data.Path)+"  SHA256 "+source.Data.Sha256.Substring(0,16));
             loopLabel.text=source.Loop?"Loop ON":"Loop OFF";
-            preset.text=profiles.Message;pauseLabel.text=router.Paused?"Resume virtual":"Pause virtual";
+            preset.text=profiles.Message;pauseLabel.text=board?"Board telemetry":csv?(router.Paused?"Resume CSV":"Pause CSV"):(router.Paused?"Resume virtual":"Pause virtual");pauseButton.interactable=!board;
+            if(board&&boards!=null)status.text="BOARD | RIGHT "+(boards.Right.AppliedCurrent(BoardUartTransport.Now)?"CURRENT COMMAND":"HELD / NO CURRENT COMMAND")+" | LEFT "+(boards.Left.AppliedCurrent(BoardUartTransport.Now)?"CURRENT COMMAND":"HELD / NO CURRENT COMMAND")+" | NO POSITION FEEDBACK";
             selected.text=$"SELECTED M{orbit.selectedAxis}  /  {names[orbit.selectedAxis]}  /  logical axis highlighted";
         }
     }

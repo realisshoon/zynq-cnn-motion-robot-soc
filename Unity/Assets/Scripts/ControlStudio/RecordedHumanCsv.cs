@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -13,9 +13,12 @@ namespace HumanMotion.ControlStudio
         public uint FrameId,TargetFrameId;
         public double Time;
         public float[] Human;
+        public float[] Servo; // Explicit final-command CSV, never human calibration input.
         public Pose3DFrame Pose;
         // target, major, finger, observable, hand, wrist, gripper_hold, body
         public int[] Flags;
+        // Historical CSV without gripper_valid retains the previous gripper command.
+        public bool GripperValid;
         public IReadOnlyDictionary<string,string> Fields;
     }
     public sealed class RecordedHumanCsv
@@ -27,6 +30,7 @@ namespace HumanMotion.ControlStudio
         public string Sha256 {get;private set;}
         public int Columns {get;private set;}
         public double Duration=>Rows[Rows.Count-1].Time;
+        internal static RecordedHumanCsv FromRows(List<RecordedHumanRow> rows,string path,string sha,int columns)=>new RecordedHumanCsv{Rows=rows.AsReadOnly(),Path=path,Sha256=sha,Columns=columns};
         static readonly CultureInfo CI=CultureInfo.InvariantCulture;
         public static RecordedHumanCsv Load(string path,CsvInputMode mode=CsvInputMode.RecordedHumanAngles)
         {
@@ -67,11 +71,13 @@ namespace HumanMotion.ControlStudio
                     pose=new Pose3DFrame{Xyz=xyzNames.Select(Float).ToArray(),BodyBasis=basisNames.Select(Float).ToArray(),SourceFlags=sf,AuxiliaryGripper=mode==CsvInputMode.XyzStoredBodyAuxGripper?Float("gripper_norm"):0};
                     if(pose.AuxiliaryGripper<0||pose.AuxiliaryGripper>1)throw new FormatException("Auxiliary gripper outside 0..1");
                 }
-                rows.Add(new RecordedHumanRow{FrameId=Id("frame_id"),TargetFrameId=Id("target_frame_id"),Time=time,Human=angles,Pose=pose,Flags=flags,Fields=fields});
+                bool gripperValid=false;
+                if(fields.ContainsKey("gripper_valid")){double v=Number("gripper_valid");if(v!=0&&v!=1)throw new FormatException("Invalid gripper_valid flag");gripperValid=v==1;}
+                rows.Add(new RecordedHumanRow{GripperValid=gripperValid,FrameId=Id("frame_id"),TargetFrameId=Id("target_frame_id"),Time=time,Human=angles,Pose=pose,Flags=flags,Fields=fields});
             }
             return new RecordedHumanCsv{Rows=rows.AsReadOnly(),Columns=header.Length,Path="memory",Sha256=""};
         }
-        static List<string[]> ReadRecords(string text)
+        internal static List<string[]> ReadRecords(string text)
         {
             var rows=new List<string[]>();var row=new List<string>();var field=new StringBuilder();bool quoted=false,closed=false;
             for(int i=0;i<text.Length;i++)

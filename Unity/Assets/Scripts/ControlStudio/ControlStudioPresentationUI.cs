@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -23,7 +23,7 @@ namespace HumanMotion.ControlStudio
         readonly Dictionary<Section,Text> headers=new Dictionary<Section,Text>();
         readonly bool[] expanded={false,false,false,false,false};
         ControlStudioRuntimeUI studio;ControlStudioOrbitCamera orbit;Tool1RuntimeUI toolUi;PresentationSprayDemo demo;G51PickPresentationDemo pickDemo;
-        GameObject canvasRoot,presentationStatusRoot;Text presentationStatus,controlsLabel;Transform design;bool presentation,previousCursor,controlsHidden;
+        GameObject canvasRoot,presentationStatusRoot;Text presentationStatus,controlsLabel;Transform design;bool presentation,previousCursor,controlsHidden,pendingPresentationExit;
         public ControlStudioBackgroundView Background {get;private set;}
         public bool ControlsVisible=>!controlsHidden;
         EnvironmentViewMode previousEnvironmentMode;
@@ -32,9 +32,9 @@ namespace HumanMotion.ControlStudio
         public bool ServoExpanded=>ControlsVisible&&studio!=null&&studio.router.Source=="MANUAL"&&studio.ServoDetailsExpanded;
         public bool ToolExpanded=>expanded[(int)Section.Tool];
         public bool DebugExpanded=>expanded[(int)Section.Status];
-        public bool UartExpanded=>ControlsVisible&&studio!=null&&studio.router.Source=="UART";
+        public bool UartExpanded=>ControlsVisible&&studio!=null&&(GetComponent<ControlStudioDockLayout>()?.WantsUart??(studio.router.Source=="UART"||studio.router.Source=="BOARD"));
         public bool WideCamera=>controlsHidden||(studio!=null&&studio.router.Source=="MANUAL"&&!studio.ServoDetailsExpanded);
-        public float CameraDesignWidth=>WideCamera?1600:studio!=null&&studio.router.Source=="MANUAL"?1140:960;
+        public float CameraDesignWidth=>GetComponent<ControlStudioDockLayout>()!=null?(ControlsVisible&&!PresentationMode?GetComponent<ControlStudioDockLayout>().ViewportDesignWidth:1600):WideCamera?1600:studio!=null&&studio.router.Source=="MANUAL"?1140:960;
         public void SetControlsVisible(bool visible){controlsHidden=!visible;ApplyInputLayout();}
         public void ToggleToolControls(){expanded[(int)Section.Tool]=!expanded[(int)Section.Tool];toolUi?.ShowToolPanel(ToolExpanded);ApplyInputLayout();}
         public void OpenSourceControls()=>ApplyInputLayout();
@@ -88,7 +88,7 @@ namespace HumanMotion.ControlStudio
         {
             if(studio==null||design==null)return;
             EnsureGroups();
-            foreach(var item in groups[Section.Source])item.SetActive(SourceExpanded);
+            foreach(var item in groups[Section.Source])item.SetActive(SourceExpanded&&(item.name!="CSV lower backdrop"||GetComponent<ControlStudioDockLayout>()==null));
             foreach(var item in groups[Section.Servo])item.SetActive(ServoExpanded);
             var uart=GetComponent<ControlStudioUartPanel>();if(uart!=null&&uart.Visible!=UartExpanded)uart.ShowPanel(UartExpanded);
             foreach(var item in groups[Section.Uart])item.SetActive(UartExpanded);
@@ -173,6 +173,7 @@ namespace HumanMotion.ControlStudio
         }
         public void SetPresentationMode(bool enabled)
         {
+            if(GetComponent<ControlStudioStartupMenu>()?.Visible==true)return;
             if(presentation==enabled)return;
             presentation=enabled;
             var visuals=GetComponent<RobotVisualProfiles>();
@@ -181,6 +182,7 @@ namespace HumanMotion.ControlStudio
         }
         void OnGUI()
         {
+            if(GetComponent<ControlStudioDockLayout>()!=null)return;
             if(!presentation||orbit==null||Event.current.type!=EventType.Repaint)return;
             // The unchanged camera viewport does not redraw its surrounding gutters.
             // Clear stale overlay pixels there without enlarging or reframing the camera.
@@ -199,10 +201,13 @@ namespace HumanMotion.ControlStudio
             var keyboard=Keyboard.current;
             if(keyboard==null)return;
             if(keyboard.f1Key.wasPressedThisFrame)SetPresentationMode(!presentation);
-            else if(presentation&&keyboard.escapeKey.wasPressedThisFrame)SetPresentationMode(false);
+            // Defer until all Update handlers finish so the unchanged startup menu
+            // does not also consume ESC as a request to reopen initial setup.
+            else if(presentation&&keyboard.escapeKey.wasPressedThisFrame)pendingPresentationExit=true;
         }
         void LateUpdate()
         {
+            if(pendingPresentationExit){pendingPresentationExit=false;SetPresentationMode(false);}
             if(presentation&&presentationStatus!=null)
             {
                 var visuals=GetComponent<RobotVisualProfiles>();var uart=GetComponent<ControlStudioUartOutput>();

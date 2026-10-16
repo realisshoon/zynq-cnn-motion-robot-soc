@@ -1,5 +1,7 @@
 # 로봇팀 UART 상세 인계
 
+> 과거 기록(2026-10-08): 아래 UART 연결 여부와 미구현 항목을 현재 버전의 상태로 해석하지 않는다. 최신 TK UART / CSV / Quick HUD / 관절점 토글은 [현재 README](../README.md) 및 [최신 공유 검증 기록](LATEST_SOURCE_HANDOFF.md)을 참고한다.
+
 2026-10-08 / 소스 감사 및 인계 준비. 실제 UART·실물 시험은 NOT TESTED. Git 업로드는 수행하지 않았다.
 
 ## 1. 근거와 버전 경계

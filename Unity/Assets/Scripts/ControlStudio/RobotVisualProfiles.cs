@@ -124,6 +124,15 @@ namespace HumanMotion.ControlStudio
         public void Sync()
         {
             if(tool==null||Adapter==null)return;
+            if(router.Source=="BOARD")
+            {
+                // Retain both independent commands even while another robot family is shown.
+                // Requested and applied preview values agree, so Manual resumes without easing
+                // towards an old preview target or implicitly returning either arm to Home.
+                if(router.HasApplied)Preview.RetainBoardPose(HumanoidArmSide.Right,router.Applied);
+                var left=GetComponent<BoardUartSource>()?.Left.LastApplied;
+                if(left!=null)Preview.RetainBoardPose(HumanoidArmSide.Left,left.Command);
+            }
             bool hand=tool.Gate.Tool==ToolKind.Gripper;
             var presentationUI=GetComponent<ControlStudioPresentationUI>();
             bool presentation=presentationUI!=null&&presentationUI.PresentationMode;
@@ -144,8 +153,18 @@ namespace HumanMotion.ControlStudio
                 Humanoid.gameObject.SetActive(active);
                 if(active)
                 {
-                    Humanoid.ApplyArmTarget(HumanoidArmSide.Right,Preview.RightTarget(router.Applied));
-                    Humanoid.ApplyArmTarget(HumanoidArmSide.Left,Preview.LeftTarget());
+                    if(router.Source=="BOARD")
+                    {
+                        var boards=GetComponent<BoardUartSource>();
+                        // Servo-to-rig adapter only; LEFT comes from its own board, never human mirroring.
+                        if(router.HasApplied)Humanoid.ApplyArmTarget(HumanoidArmSide.Right,HumanoidJointAdapter.FromSingleArmRight(router.Applied));
+                        if(boards?.Left.LastApplied!=null)Humanoid.ApplyArmTarget(HumanoidArmSide.Left,HumanoidJointAdapter.FromSingleArmRight(boards.Left.LastApplied.Command));
+                    }
+                    else
+                    {
+                        Humanoid.ApplyArmTarget(HumanoidArmSide.Right,Preview.RightTarget(router.Applied));
+                        Humanoid.ApplyArmTarget(HumanoidArmSide.Left,Preview.LeftTarget());
+                    }
                     Humanoid.SetTool(tool.Gate.Tool);
                     Humanoid.presentationMode=presentation;
                 }
@@ -170,16 +189,17 @@ namespace HumanMotion.ControlStudio
                 string family=Selected==RobotVisualProfileId.G51?"G51 ORIGINAL":Selected==RobotVisualProfileId.MechanicalDualTable?"MECHANICAL DUAL TABLE":Selected==RobotVisualProfileId.HumanoidRobot?"HUMANOID ROBOT":"MECHANICAL HUMANOID";
                 string shell=Selected==RobotVisualProfileId.HumanoidRobot?"DEMO_01 ARMS / WHITE TORSO":Current==null?"ORIGINAL G51":Current.ShellName(tool.Gate.Tool);
                 string cell=Environment?.Current==null?"UNAVAILABLE":Environment.Current.displayName;
-                string left=Selected==RobotVisualProfileId.G51?"LEFT N/A":Selected==RobotVisualProfileId.MechanicalDualTable&&tool.Gate.Tool==ToolKind.Gripper?"LEFT FEEDER / DISABLED; LAYOUT CHECK":Selected==RobotVisualProfileId.MechanicalDualTable?"LEFT VIRTUAL HANDLER / SCRIPTED; HANDLER GRIPPER":(Preview.LeftEdited?"LEFT MANUAL PREVIEW / NO UART":"LEFT REST PREVIEW / NO UART");
+                string left=Selected==RobotVisualProfileId.G51?"LEFT N/A":Selected==RobotVisualProfileId.MechanicalDualTable&&tool.Gate.Tool==ToolKind.Gripper?"LEFT FEEDER / DISABLED; LAYOUT CHECK":Selected==RobotVisualProfileId.MechanicalDualTable?"LEFT VIRTUAL HANDLER / SCRIPTED; HANDLER GRIPPER":(Preview.LeftHeldFromBoard?"LEFT HELD BOARD POSE / NO UART":Preview.LeftEdited?"LEFT MANUAL PREVIEW / NO UART":"LEFT REST PREVIEW / NO UART");
                 var uart=GetComponent<ControlStudioUartOutput>();
                 string hardware=uart==null||!uart.Connected?"NOT CONNECTED / TX=0":uart.Mock?"MOCK / REAL TX=0":uart.PortName+" / REAL TX="+uart.HardwareTxCount;
                 status.text=$"ROBOT FAMILY: {family}  |  TOOL: {tool.Gate.Tool}  |  SHELL: {shell}\nENVIRONMENT: {EnvironmentMode} / {(WorkcellVisible?cell:"GRID ONLY")}  |  RIGHT ACTIVE / {left}  |  {hardware}";
+                if(router.Source=="BOARD")status.text=$"ROBOT FAMILY: {family} | {(Selected==RobotVisualProfileId.HumanoidRobot?"RIGHT + LEFT BOARD COMMANDS":"RIGHT BOARD COMMAND / LEFT IN UART PANEL")} | NO POSITION FEEDBACK";
                 if(Error.Length>0)status.text=Error;else if(SelectionMessage.Length>0)status.text=SelectionMessage;
             }
             if(environmentLabel!=null)environmentLabel.text="ENV: "+(EnvironmentMode==EnvironmentViewMode.RobotOnly?"ROBOT ONLY":EnvironmentMode==EnvironmentViewMode.Workcell?"WORKCELL":"AUTO");
         }
         Transform ActiveToolMount()=>Selected==RobotVisualProfileId.HumanoidRobot?Humanoid?.RightToolMount:Current?.toolMount;
-        void Update(){if(router!=null&&!router.Paused&&Selected==RobotVisualProfileId.HumanoidRobot&&GetComponent<ControlStudioStartupMenu>()?.Visible!=true)Preview.Advance(Time.deltaTime);if(Adapter!=null)Adapter.SyncVisuals();Sync();}
+        void Update(){if(router!=null&&router.Source!="BOARD"&&!router.Paused&&Selected==RobotVisualProfileId.HumanoidRobot&&GetComponent<ControlStudioStartupMenu>()?.Visible!=true)Preview.Advance(Time.deltaTime);if(Adapter!=null)Adapter.SyncVisuals();Sync();}
         void LateUpdate(){Sync();}
         void BuildUI(Transform canvas)
         {

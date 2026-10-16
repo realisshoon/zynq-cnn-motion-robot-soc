@@ -1,5 +1,7 @@
 # 로봇팀 빠른 시작
 
+> 과거 기록(2026-10-08): 아래의 MOCK ONLY / POSE3D 설명은 당시 구현 상태다. 최신 TK UART / CSV / Quick HUD / 관절점 토글의 설치와 실행은 [현재 README](../README.md) 및 [최신 공유 검증 기록](LATEST_SOURCE_HANDOFF.md)을 사용한다.
+
 작성·소스 확인: 2026-10-08. 이번 패키지는 **dev/unity 인계본**이다. 2026-10-08 동일 Windows PC의 별도 `dev/unity` Clean Clone에서 새 Library Import·Editor Play·Windows Player를 검증했다. 별도 팀원 PC와 실물 UART는 미검증이다.
 
 ## 1. 먼저 알아둘 상태

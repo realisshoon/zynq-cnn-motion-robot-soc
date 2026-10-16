@@ -38,10 +38,10 @@ public sealed class ForearmArmController : MonoBehaviour
     //
     // 현재 Git calibration:
     //
-    // M0 =  90 - Human Forearm Azimuth
+    // M0 = 90 + Human Forearm Azimuth (RIGHT), 90 - Human Forearm Azimuth (LEFT)
     // M1 = 120 - Human Forearm Elevation
     // M2 =  80 + Human Wrist Pitch
-    // M3 =  87 + Human Wrist Roll
+    // M3 = 87 - Human Wrist Roll
     //
     // Unity에서는 위 식을 다시 계산하지 않는다.
     // 전달받은 최종 M0~M4를 시각화만 한다.
@@ -167,14 +167,14 @@ public sealed class ForearmArmController : MonoBehaviour
         //
         // 현재 Robot C forearm_calibration_config.c 기준:
         //
-        // M0 : 20 ~ 160
+        // M0 : 10 ~ 170
         // M1 : 20 ~ 180
         // M2 : 10 ~ 160
         // M3 : 10 ~ 170
         // M4 : 0 ~ 1
         // =====================================================
 
-        float m0 = Mathf.Clamp(command.elbowRoll, 20f, 160f);
+        float m0 = Mathf.Clamp(command.elbowRoll, 10f, 170f);
         float m1 = Mathf.Clamp(command.elbowPitch, 20f, 180f);
         float m2 = Mathf.Clamp(command.wristPitch, 10f, 160f);
         float m3 = Mathf.Clamp(command.wristRoll, 10f, 170f);

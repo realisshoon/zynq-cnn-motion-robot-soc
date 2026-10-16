@@ -1,0 +1,66 @@
+{
+  "date_kst": "2026-10-16",
+  "basis": "20261014_CAMERA_OVERLAY_TOGGLE_R1",
+  "unity": "6000.3.24f1",
+  "scene": "Assets/Scenes/Demo_07_SingleArmControl.unity",
+  "target": "StandaloneWindows64",
+  "development": false,
+  "fresh_library_import": true,
+  "windows_build": {
+    "result": "Succeeded",
+    "errors": 0,
+    "warnings": 4
+  },
+  "offline_checks_total": 2942,
+  "core_gateway_checks": 43,
+  "windows_player_tests": [
+    {
+      "checks": 96,
+      "case": "CameraOverlay",
+      "result": "PASS"
+    },
+    {
+      "checks": 88,
+      "case": "PortOwner",
+      "result": "PASS"
+    },
+    {
+      "checks": 168,
+      "case": "G51",
+      "result": "PASS"
+    },
+    {
+      "checks": 416,
+      "case": "QuickHUD",
+      "result": "PASS"
+    },
+    {
+      "checks": 244,
+      "case": "Records",
+      "result": "PASS"
+    },
+    {
+      "checks": 156,
+      "case": "CSV",
+      "result": "PASS"
+    },
+    {
+      "checks": 1625,
+      "case": "Studio",
+      "result": "PASS"
+    },
+    {
+      "checks": 106,
+      "case": "SingleRole",
+      "result": "PASS"
+    }
+  ],
+  "physical_COM_opens": 0,
+  "physical_UART_TX_bytes": 0,
+  "staged_project_files": 709,
+  "personal_recovery_files_excluded": 3,
+  "missing_file_metas": 0,
+  "duplicate_asset_guids": 0,
+  "original_working_tree_preserved": true,
+  "physical_board_servo_OBS_stereo_validation": "NOT TESTED in this publication run"
+}

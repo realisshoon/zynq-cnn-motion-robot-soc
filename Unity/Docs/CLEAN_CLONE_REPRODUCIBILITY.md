@@ -1,5 +1,7 @@
 # Clean Clone 재현성 및 Humanoid 추가 인계 검증
 
+> 이 문서는 2026-10-08 인계 당시의 검증 이력이다. 2026-10-14 Camera Overlay Toggle R1 기준 소스의 현재 공유 결과와 실행 방법은 [README](../README.md) 및 [최신 공유 검증 기록](LATEST_SOURCE_HANDOFF.md)을 참고한다.
+
 작성: 2026-10-08. Clean Clone 검증 후 사용자가 dev/unity Commit/Push를 승인했다. 이 문서는 해당 인계 커밋에 포함된다.
 
 CLEAN CLONE VALIDATION = PASS

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 namespace HumanMotion.ControlStudio
 {
@@ -26,8 +26,8 @@ namespace HumanMotion.ControlStudio
         public int[] HumanInfo {get;private set;}
         public int MotionHold {get;private set;}
         public float[] Velocity {get;}=new float[4];
-        public float[] Min {get;private set;}=new[]{20f,20f,10f,10f,0f};
-        public float[] Max {get;private set;}=new[]{160f,180f,160f,170f,1f};
+        public float[] Min {get;private set;}=new[]{10f,20f,10f,10f,0f};
+        public float[] Max {get;private set;}=new[]{170f,180f,160f,170f,1f};
         public long TickCount {get;private set;}
         public double SimulatedSeconds=>TickCount*TickSeconds;
         public int HardwareTxCount=>0;
@@ -38,7 +38,7 @@ namespace HumanMotion.ControlStudio
         public event Action OutputApplied;
         ControlStudioOutputPolicy policy;
         double accumulator;bool clockStarted;
-        static readonly float[] UnityMin={20,20,10,10,0},UnityMax={160,180,160,170,1};
+        static readonly float[] UnityMin={10,20,10,10,0},UnityMax={170,180,160,170,1};
         void Start()
         {
             Csv=GetComponent<CsvRecordedHumanSource>()??gameObject.AddComponent<CsvRecordedHumanSource>();Csv.router=this;
@@ -49,15 +49,23 @@ namespace HumanMotion.ControlStudio
                 Ready=true;HasApproved=true;Status="READY / VIRTUAL ONLY";
             }catch(Exception e){Fail(e);}Changed?.Invoke();
         }
-        public bool ResetOwner(string source)
+        public bool ResetOwner(string source, BoardSide csvSide=BoardSide.Right)
         {
-            if(!Ready)return false;
+            if(source=="BOARD")
+            {
+                if(robot==null||!robot.IsConfigured){Reject("Robot references invalid");return false;}
+                policy?.Dispose();policy=null;Source=source;Epoch++;Ready=true;NativeError="";
+                accumulator=0;Array.Clear(Velocity,0,4);MotionHold=0;HasApproved=HasApplied=false;
+                Human=Wrapped=Candidate=null;HumanInfo=null;Status="BOARD / waiting for verified applied TK";
+                SetPaused(false);Changed?.Invoke();return true;
+            }
+            if(!Ready&&Source!="BOARD")return false;
             if(source!="MANUAL"&&source!="CSV"&&source!="UART"){Reject("Unknown source");return false;}
             try {
                 // Seed a fresh C context at the currently displayed command: zero velocity,
                 // no old observation/HOLD history, no position jump, no automatic Home.
-                var seed=(float[])(HasApplied?Applied:Home).Clone();
-                var next=new ControlStudioOutputPolicy(seed);policy.Dispose();policy=next;
+                var seed=(float[])(HasApplied||Source=="BOARD"?Applied:Home).Clone();
+                var next=new ControlStudioOutputPolicy(seed,source=="CSV"?csvSide:BoardSide.Right);policy?.Dispose();policy=next;Ready=true;
                 Source=source;Epoch++;accumulator=0;Array.Clear(Velocity,0,4);MotionHold=0;
                 Requested=(float[])seed.Clone();Approved=seed;Human=Wrapped=Candidate=null;HumanInfo=null;
                 Status="SOURCE "+source+" / new epoch";SetPaused(source=="CSV");Changed?.Invoke();return true;
@@ -72,6 +80,13 @@ namespace HumanMotion.ControlStudio
             Requested=(float[])q.Clone();
             try {int rc=policy.Submit(q);Status=ControlStudioOutputPolicy.Reason(rc);if(rc!=0){Changed?.Invoke();return false;}Approved=(float[])q.Clone();HasApproved=true;Changed?.Invoke();return true;}
             catch(Exception e){Fail(e);return false;}
+        }
+        public bool SubmitCsvCommand(float[] q,int epoch)
+        {
+            if(Source!="CSV"||epoch!=Epoch||!Ready)return false;
+            int rc=policy.Submit(q);if(rc!=0){Reject(ControlStudioOutputPolicy.Reason(rc));return false;}
+            Requested=(float[])q.Clone();Approved=(float[])q.Clone();HasApproved=true;
+            Status="CSV final target / existing native trajectory";return true;
         }
         public bool SubmitHuman(RecordedHumanRow row,int epoch)
         {
@@ -106,7 +121,7 @@ namespace HumanMotion.ControlStudio
         }
         public void AdvanceVirtual(double dt)
         {
-            if(!Ready||Paused)return;
+            if(!Ready||Paused||Source=="BOARD")return;
             if(dt<0||double.IsNaN(dt)||double.IsInfinity(dt)){Reject("Invalid elapsed time");return;}
             if(dt>.5){Paused=true;PauseReason="TIMING STALL / press Resume";TimingStalls++;accumulator=0;Changed?.Invoke();return;}
             if(Source=="CSV"){Csv.Advance(dt);return;}
@@ -128,6 +143,17 @@ namespace HumanMotion.ControlStudio
                 if(!robot.ApplyCommand(c)){Ready=false;Status="CONTROLLER REJECTED";return false;}
                 Applied=next;HasApplied=true;TickCount++;MotionHold=rc;OutputApplied?.Invoke();return true;
             }catch(Exception e){Fail(e);return false;}
+        }
+        public bool SubmitBoard(BoardTick tick,int epoch)
+        {
+            if(Source!="BOARD"||epoch!=Epoch||tick==null||tick.Command==null||tick.Command.Length!=5||tick.Writes==0||tick.Errors!=0)return false;
+            var q=tick.Command;
+            for(int i=0;i<5;i++)if(float.IsNaN(q[i])||float.IsInfinity(q[i])||q[i]<UnityMin[i]||q[i]>UnityMax[i])return false;
+            var c=new ForearmJointCommandData{frame_id=tick.Tick,valid=true,elbowRoll=q[0],elbowPitch=q[1],wristPitch=q[2],wristRoll=q[3],gripper=q[4]};
+            // Board TK is already in the servo domain. Keep the sole controller writer here.
+            if(!robot.ApplyCommand(c)){Status="BOARD / CONTROLLER REJECTED";return false;}
+            Applied=(float[])q.Clone();Requested=(float[])q.Clone();HasApplied=true;HasApproved=false;
+            TickCount++;Status="BOARD / applied command (no position feedback)";Changed?.Invoke();OutputApplied?.Invoke();return true;
         }
         void Fail(Exception e){Ready=false;NativeError=e.Message;Status="NATIVE_UNAVAILABLE / "+e.Message;Changed?.Invoke();}
         void OnDestroy(){Ready=false;Epoch++;policy?.Dispose();}

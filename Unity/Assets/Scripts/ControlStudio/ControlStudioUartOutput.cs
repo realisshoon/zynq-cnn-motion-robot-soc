@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO.Ports;
@@ -111,7 +111,7 @@ namespace HumanMotion.ControlStudio
             bool armed;
             lock (stateLock)
             {
-                txEnabled = enabled && connected;
+                txEnabled = enabled && connected && router?.Source != "CSV"; // CSV physical input contract is unverified: fail closed.
                 armed = txEnabled;
                 if (connected) status = (Mock ? "MOCK" : portName) + (txEnabled ? " / TX ENABLED" : " / TX OFF");
                 else if (!status.StartsWith("UART ERROR:", StringComparison.Ordinal)) status = "DISCONNECTED";
@@ -152,7 +152,7 @@ namespace HumanMotion.ControlStudio
 
         bool QueueApplied(float[] applied, bool forced)
         {
-            if (router == null || !router.Ready || router.Paused) return false;
+            if (router == null || (router.Source == "BOARD" || router.Source == "CSV") || !router.Ready || router.Paused) return false;
             string packet;
             try { packet = FormatApplied(applied); }
             catch (Exception e) { SetStatus("PACKET REJECTED: " + e.Message); return false; }

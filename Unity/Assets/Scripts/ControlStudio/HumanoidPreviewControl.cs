@@ -13,8 +13,24 @@ namespace HumanMotion.ControlStudio
         readonly float[,] requested=new float[2,2],applied=new float[2,2];
         readonly float[] leftRequested={90,90,90,90,1},leftApplied={90,90,90,90,1};
         public bool LeftEdited {get;private set;}
+        public bool LeftHeldFromBoard {get;private set;}
         public float Shoulder(int side,int axis)=>requested[side,axis];
         public float LeftValue(int axis)=>leftRequested[axis];
+        // Retain the displayed board pose for a later visual-only source handoff.
+        // The small manual edit envelope must not clamp an already-applied board command.
+        public bool RetainBoardPose(HumanoidArmSide side,float[] command)
+        {
+            if(command==null||command.Length!=5||(side!=HumanoidArmSide.Right&&side!=HumanoidArmSide.Left))return false;
+            foreach(float value in command)if(!Finite(value))return false;
+            int index=side==HumanoidArmSide.Right?0:1;
+            for(int axis=0;axis<2;axis++)requested[index,axis]=applied[index,axis]=0;
+            if(side==HumanoidArmSide.Left)
+            {
+                for(int axis=0;axis<5;axis++)leftRequested[axis]=leftApplied[axis]=command[axis];
+                LeftHeldFromBoard=true;
+            }
+            return true;
+        }
         public bool SetShoulder(int selection,int axis,float value)
         {
             if(selection<0||selection>2||axis<0||axis>1||!Finite(value))return false;
@@ -25,7 +41,7 @@ namespace HumanMotion.ControlStudio
         public bool SetLeft(int axis,float value)
         {
             if(axis<0||axis>4||!Finite(value)||value<LeftMin[axis]||value>LeftMax[axis])return false;
-            leftRequested[axis]=value;LeftEdited=true;return true;
+            leftRequested[axis]=value;LeftEdited=true;LeftHeldFromBoard=false;return true;
         }
         static bool Finite(float value)=>!float.IsNaN(value)&&!float.IsInfinity(value);
         public void Advance(float dt)

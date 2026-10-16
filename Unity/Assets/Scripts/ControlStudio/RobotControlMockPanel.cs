@@ -5,18 +5,19 @@ using UnityEngine.EventSystems;
 
 namespace HumanMotion.ControlStudio
 {
-    // Presentation-only MVP: deliberately no router, serial, native or robot reference.
+    // Robot controls are Mock; optional camera preview uses its independent capture owner.
     [DefaultExecutionOrder(4500)]
     public sealed class RobotControlMockPanel : MonoBehaviour
     {
         readonly RobotControlMockState[] robots={new RobotControlMockState(),new RobotControlMockState()};
-        readonly Color ink=new Color(.89f,.94f,.97f),muted=new Color(.57f,.69f,.75f),accent=new Color(.35f,.84f,.9f);
+        readonly Color ink=new Color(.89f,.91f,.94f),muted=new Color(.60f,.65f,.71f),accent=new Color(.36f,.57f,.78f);
         readonly Slider[] margins=new Slider[3];readonly Text[] marginValues=new Text[3];
         readonly Button[] selections=new Button[3];
         ControlStudioPresentationUI presentation;ControlStudioStartupMenu startup;
-        GameObject root,advanced,previewImage,sizeToggle,sizeMenu;RectTransform preview;
-        readonly Button[] sizeChoices=new Button[3];Text sizeLabel;bool sizeMenuOpen;int hiddenPreviewSize=2;
+        GameObject root,advanced,previewImage,sizeToggle,sizeMenu;RectTransform preview,captureViewport;
+        readonly Button[] sizeChoices=new Button[4];Text sizeLabel;bool sizeMenuOpen;int hiddenPreviewSize=2;
         Font font;Text pwm,follow,notice,applied,advancedLabel,previewLabel;
+        ControlStudioVideoCapture capture;RawImage captureImage;Text captureLabel;
         Button start,stop,pwmOn,pwmOff;bool advancedOpen,previewOpen;int selected;
         public RobotControlMockState State=>robots[selected==1?1:0];
         public int SelectedRobot=>selected;
@@ -41,13 +42,15 @@ namespace HumanMotion.ControlStudio
         public bool PreviewOpen=>previewOpen;
         public int HiddenPreviewSize=>hiddenPreviewSize;
         public RectTransform PreviewRect=>preview;
-        public bool CanPreviewInteract=>isActiveAndEnabled&&startup!=null&&!startup.Visible&&presentation!=null&&!presentation.PresentationMode;
+        public bool CanPreviewInteract=>isActiveAndEnabled&&startup!=null&&!startup.Visible&&presentation!=null;
+        public bool PreviewVisible=>preview!=null&&preview.gameObject.activeInHierarchy;
         public GameObject PanelRoot=>root;
         public Slider[] MarginSliders=>margins;
-        public bool CanInteract=>isActiveAndEnabled&&startup!=null&&!startup.Visible&&presentation!=null&&!presentation.PresentationMode&&presentation.ControlsVisible;
+        public bool CanInteract=>GetComponent<ControlStudioRuntimeUI>()?.router?.Source!="BOARD"&&isActiveAndEnabled&&startup!=null&&!startup.Visible&&presentation!=null&&!presentation.PresentationMode&&presentation.ControlsVisible;
         public static void Attach(ControlStudioRuntimeUI owner,Transform design)
         {
             var panel=owner.gameObject.AddComponent<RobotControlMockPanel>();
+            panel.capture=ControlStudioVideoCapture.GetOrAttach(owner.gameObject);
             panel.presentation=owner.GetComponent<ControlStudioPresentationUI>();panel.startup=owner.GetComponent<ControlStudioStartupMenu>();
             panel.Build(design);
         }
@@ -110,11 +113,14 @@ namespace HumanMotion.ControlStudio
             var show=Button("Preview toggle",design,950,54,210,32,"Camera / MOCK +",()=>{previewOpen=!previewOpen;},true);previewLabel=show.GetComponentInChildren<Text>();
             var sizes=Button("Camera size menu toggle",design,1170,54,190,32,"Size 2 ▾",()=>sizeMenuOpen=!sizeMenuOpen,true);
             sizeToggle=sizes.gameObject;sizeLabel=sizes.GetComponentInChildren<Text>();sizeLabel.fontSize=16;
-            sizeMenu=Rect("Camera size choices",design,1370,54,206,32).gameObject;
-            for(int i=0;i<3;i++){int choice=i+1;sizeChoices[i]=Button("Camera size "+choice,sizeMenu.transform,i*70,0,66,32,choice.ToString(),()=>{hiddenPreviewSize=choice;sizeMenuOpen=false;},true);}
+            sizeMenu=Rect("Camera size choices",design,1300,54,276,32).gameObject;
+            for(int i=0;i<sizeChoices.Length;i++){int choice=i+1;sizeChoices[i]=Button("Camera size "+choice,sizeMenu.transform,i*70,0,66,32,choice.ToString(),()=>{hiddenPreviewSize=choice;sizeMenuOpen=false;},true);}
             previewImage=Box("Placeholder / no capture",preview,0,0,272,153,new Color(.07f,.11f,.14f)).gameObject;
             for(int i=1;i<4;i++){Box("Grid V "+i,previewImage.transform,272*i/4f,0,1,153,new Color(.11f,.17f,.20f)).raycastTarget=false;Box("Grid H "+i,previewImage.transform,0,153*i/4f,272,1,new Color(.11f,.17f,.20f)).raycastTarget=false;}
             var placeholder=Label("Placeholder label",previewImage.transform,8,34,256,80,"MOCK PREVIEW\n영상 입력 없음",19,muted);placeholder.alignment=TextAnchor.MiddleCenter;
+            captureViewport=Rect("Live capture viewport",preview,0,24,272,153);
+            captureImage=Rect("Live capture preview",captureViewport,0,0,272,153).gameObject.AddComponent<RawImage>();captureImage.raycastTarget=false;captureImage.gameObject.SetActive(false);
+            captureLabel=Label("Capture preview source",preview,0,0,272,20,"",12,accent);captureLabel.gameObject.SetActive(false);
             RefreshView();RefreshVisibility();
         }
         public void SelectRobot(int index){if(index<0||index>2)return;selected=index;RefreshView();}
@@ -135,18 +141,20 @@ namespace HumanMotion.ControlStudio
             notice.text=ResultMessage;
             applied.text=both?$"R {robots[0].AppliedRed}/{robots[0].AppliedGreen}/{robots[0].AppliedBlue} · L {robots[1].AppliedRed}/{robots[1].AppliedGreen}/{robots[1].AppliedBlue}\nRGB 드래그만 양측 변경 · 독립 MOCK":$"적용 R {state.AppliedRed} / G {state.AppliedGreen} / B {state.AppliedBlue}";
             advancedLabel.text=advancedOpen?"고급 설정  −":"고급 설정  +";advanced.SetActive(advancedOpen);
-            previewLabel.text=previewOpen?"Camera / MOCK −":"Camera / MOCK +";previewImage.SetActive(previewOpen);
+            string source=capture!=null&&capture.HasFrame?"LIVE":"MOCK";
+            previewLabel.text="Camera "+(previewOpen?"ON":"OFF");previewImage.SetActive(false);
         }
         public void RefreshVisibility()
         {
             if(root!=null)root.SetActive(CanInteract);
             if(preview==null)return;
-            preview.gameObject.SetActive(CanPreviewInteract&&previewOpen);
-            bool sizes=CanPreviewInteract&&!presentation.ControlsVisible;
+            preview.gameObject.SetActive(CanPreviewInteract&&previewOpen&&capture!=null&&capture.HasFrame);
+            bool sizes=CanPreviewInteract&&!presentation.PresentationMode;
             if(!sizes)sizeMenuOpen=false;
             sizeToggle.SetActive(sizes);sizeMenu.SetActive(sizes&&sizeMenuOpen);
+            if(sizes&&sizeMenuOpen)sizeMenu.transform.SetAsLastSibling();
             sizeLabel.text="Size "+hiddenPreviewSize+" ▾";
-            for(int i=0;i<3;i++)sizeChoices[i].GetComponent<Image>().color=i+1==hiddenPreviewSize?new Color(.2f,.43f,.49f):new Color(.13f,.23f,.29f);
+            for(int i=0;i<sizeChoices.Length;i++)sizeChoices[i].GetComponent<Image>().color=i+1==hiddenPreviewSize?new Color(.2f,.43f,.49f):new Color(.13f,.23f,.29f);
         }
         public void HandleShortcut(Key key)
         {
@@ -166,21 +174,45 @@ namespace HumanMotion.ControlStudio
         void LateUpdate()
         {
             RefreshVisibility();if(preview==null)return;
-            if(presentation!=null&&!presentation.ControlsVisible){
-                // 360/450/540 px at 1920x1080; regular preview is already 326 px.
-                // All sizes share the large preview's top-left origin: no position jump.
-                float fit=Mathf.Max(.01f,Mathf.Min(Screen.width/1600f,Screen.height/900f));
-                float maximum=Mathf.Min(450,Mathf.Min((Screen.width-32)/fit,(Screen.height-108*fit-16)/fit*16/9));
-                maximum=Mathf.Max(1,maximum);
-                float hiddenWidth=maximum*(hiddenPreviewSize==1?2f/3:hiddenPreviewSize==2?5f/6:1);
-                preview.anchoredPosition=new Vector2(1576-maximum,-108);
-                preview.localScale=Vector3.one*(hiddenWidth/272);return;
+            bool live=capture!=null&&capture.HasFrame;
+            // Use the displayed frame's aspect, including webcam rotation, rather than
+            // letterboxing stereo video inside a fixed 16:9 parent.
+            float aspect=16f/9;
+            if(live){
+                var frame=capture.Session;float angle=frame.Rotation*Mathf.Deg2Rad;
+                float c=Mathf.Abs(Mathf.Cos(angle)),s=Mathf.Abs(Mathf.Sin(angle));
+                aspect=(frame.Width*c+frame.Height*s)/(frame.Width*s+frame.Height*c);
             }
-            // Narrow screens reserve less of the robot viewport for the optional preview.
-            float width=Screen.width<1200?224:272;
-            bool sidebar=presentation!=null&&!presentation.WideCamera;
-            float right=sidebar?presentation.CameraDesignWidth-12:1576;
-            preview.anchoredPosition=new Vector2(right-width,-108);preview.localScale=Vector3.one*(width/272);
+            float fit=Mathf.Max(.01f,Mathf.Min(Screen.width/1600f,Screen.height/900f));
+            float heading=live?24:0;
+            bool expanded=presentation!=null&&!presentation.ControlsVisible;
+            float previewTop=expanded&&hiddenPreviewSize==4?96:108;
+            float availableWidth=(Screen.width-32)/fit;
+            float availableHeight=(Screen.height-previewTop*fit-16)/fit-heading;
+            float width,right;
+            if(expanded){
+                // Size 1/2 retain their original widths; Size 3 is up to 620 screen pixels.
+                // Size 4 uses 800px at 1920 and 480px at 1280 to leave the robot visible.
+                // Only Size 4 moves up below the toolbar; all sizes retain their right-edge policy.
+                float limit=hiddenPreviewSize==4?Mathf.Lerp(480,800,Mathf.Clamp01((Screen.width-1280f)/640f)):620;
+                float maximum=Mathf.Max(1,Mathf.Min(limit/fit,Mathf.Min(availableWidth,availableHeight*aspect)));
+                width=Mathf.Min(hiddenPreviewSize==1?300:hiddenPreviewSize==2?375:maximum,maximum);
+                right=1576-maximum+width;
+            }else{
+                width=Mathf.Min(Screen.width<1200?224:272,Mathf.Max(1,Mathf.Min(availableWidth,availableHeight*aspect)));
+                bool sidebar=presentation!=null&&!presentation.WideCamera;
+                right=sidebar?presentation.CameraDesignWidth-12:1576;
+            }
+            float imageHeight=width/aspect;
+            preview.anchoredPosition=new Vector2(right-width,-previewTop);preview.localScale=Vector3.one;
+            preview.sizeDelta=new Vector2(width,imageHeight+heading);
+            captureViewport.anchoredPosition=new Vector2(0,-heading);captureViewport.sizeDelta=new Vector2(width,imageHeight);
+            captureLabel.rectTransform.sizeDelta=new Vector2(width,20);
+            previewImage.transform.localScale=Vector3.one*(width/272);
+            if(capture!=null)live=capture.Render(captureImage,width,imageHeight);
+            previewImage.SetActive(false);captureLabel.gameObject.SetActive(previewOpen&&live);
+            if(live)captureLabel.text="LIVE CAPTURE / "+capture.Session.Device;
+            previewLabel.text="Camera "+(previewOpen?"ON":"OFF");
         }
         void OnDestroy(){if(root!=null)Destroy(root);if(preview!=null)Destroy(preview.gameObject);if(sizeToggle!=null)Destroy(sizeToggle);if(sizeMenu!=null)Destroy(sizeMenu);if(font!=null)Destroy(font);}
     }

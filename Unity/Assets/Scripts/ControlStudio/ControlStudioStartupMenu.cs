@@ -88,7 +88,7 @@ namespace HumanMotion.ControlStudio
         void Snapshot()
         {
             choices[0]=visuals.Selected==RobotVisualProfileId.HumanoidRobot?1:0;
-            choices[1]=studio.router.Source=="CSV"?1:studio.router.Source=="UART"?2:0;
+            choices[1]=studio.router.Source=="CSV"?1:studio.router.Source=="UART"||studio.router.Source=="BOARD"?2:0;
             choices[2]=System.Array.IndexOf(Tools,tools.Gate.Tool);if(choices[2]<0)choices[2]=0;
             Refresh();
         }

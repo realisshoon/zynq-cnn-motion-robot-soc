@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../Assets/Scripts/ControlStudio/BoardUartProtocol.cs" />
+    <Compile Include="../../Assets/Scripts/ControlStudio/BoardCommandContracts.cs" />
+    <Compile Include="../../Assets/Scripts/ControlStudio/BoardCommandGateway.cs" />
+    <Compile Include="../../Assets/Scripts/ControlStudio/BoardCameraOverlayController.cs" />
+  </ItemGroup>
+</Project>
