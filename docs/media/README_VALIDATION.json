@@ -1,0 +1,375 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-19",
+  "readme_sha256": "548a97efc8f791522d730ba8efdd38fdbe4a831eae18e71b35e53ecad19cfbb5",
+  "local_relative_links_and_anchors": "PASS",
+  "local_link_checks": 39,
+  "links": [
+    {
+      "target": "docs/media/demo-final-slide10.gif",
+      "status": "PASS"
+    },
+    {
+      "target": "VALIDATION_SUMMARY.md",
+      "status": "PASS"
+    },
+    {
+      "target": "INTEGRATION_BLOCKERS.md",
+      "status": "PASS"
+    },
+    {
+      "target": "#2-system-architecture",
+      "status": "PASS"
+    },
+    {
+      "target": "#3-cnn-rtl-accelerator",
+      "status": "PASS"
+    },
+    {
+      "target": "#4-systemverilog-uvm-verification",
+      "status": "PASS"
+    },
+    {
+      "target": "#5-robot-arm-firmware",
+      "status": "PASS"
+    },
+    {
+      "target": "#6-unity-digital-twin",
+      "status": "PASS"
+    },
+    {
+      "target": "#9-development-environment--how-to-run",
+      "status": "PASS"
+    },
+    {
+      "target": "#10-team--contributions",
+      "status": "PASS"
+    },
+    {
+      "target": "docs/media/system-architecture-slide12.png",
+      "status": "PASS"
+    },
+    {
+      "target": "docs/media/cnn-pipeline-slide26.png",
+      "status": "PASS"
+    },
+    {
+      "target": "docs/media/feature-map-dma-slide43.png",
+      "status": "PASS"
+    },
+    {
+      "target": "CNN/docs/docs/",
+      "status": "PASS"
+    },
+    {
+      "target": "CNN/golden_py_model/",
+      "status": "PASS"
+    },
+    {
+      "target": "docs/media/uvm-verification-slide27.png",
+      "status": "PASS"
+    },
+    {
+      "target": "README_CNN_UVM_BASE.md",
+      "status": "PASS"
+    },
+    {
+      "target": "CNN/uvm/dma_stream/README.md",
+      "status": "PASS"
+    },
+    {
+      "target": "validation/step3/STEP3_RESULTS.json",
+      "status": "PASS"
+    },
+    {
+      "target": "VALIDATION_SUMMARY.md",
+      "status": "PASS"
+    },
+    {
+      "target": "robot_arm/README.md",
+      "status": "PASS"
+    },
+    {
+      "target": "docs/media/unity-digital-twin-slide35.gif",
+      "status": "PASS"
+    },
+    {
+      "target": "Unity/README.md",
+      "status": "PASS"
+    },
+    {
+      "target": "docs/media/stereo-depth-issue-slide49.png",
+      "status": "PASS"
+    },
+    {
+      "target": "INTEGRATION_BLOCKERS.md",
+      "status": "PASS"
+    },
+    {
+      "target": "MAIN_INTEGRATION_SOURCES.json",
+      "status": "PASS"
+    },
+    {
+      "target": "robot_arm/README.md",
+      "status": "PASS"
+    },
+    {
+      "target": "Unity/README.md",
+      "status": "PASS"
+    },
+    {
+      "target": "README_CNN_UVM_BASE.md",
+      "status": "PASS"
+    },
+    {
+      "target": "docs/media/SOURCES.md",
+      "status": "PASS"
+    },
+    {
+      "target": "validation/step3/STEP3_RESULTS.json",
+      "status": "PASS"
+    },
+    {
+      "target": "INTEGRATION_BLOCKERS.md#b05--uvm-실행기입력-벡터-누락-blocked",
+      "status": "PASS"
+    },
+    {
+      "target": "validation/step3/STEP3_RESULTS.json",
+      "status": "PASS"
+    },
+    {
+      "target": "VALIDATION_SUMMARY.md#firmware-빌드-근거",
+      "status": "PASS"
+    },
+    {
+      "target": "CNN/golden_py_model/CNN_v4_README.md#구현-담당과-읽는-순서",
+      "status": "PASS"
+    },
+    {
+      "target": "https://github.com/realisshoon/zynq-cnn-motion-robot-soc/graphs/contributors",
+      "status": "NOT RUN",
+      "scope": "외부 Contributors URL: web tool cache miss, live 응답 미확인"
+    },
+    {
+      "target": "validation/step3/STEP3_HISTORY.json",
+      "status": "PASS"
+    },
+    {
+      "target": "docs/media/SOURCES.md",
+      "status": "PASS"
+    },
+    {
+      "target": "docs/media/MEDIA_SOURCES.json",
+      "status": "PASS"
+    },
+    {
+      "target": "VALIDATION_SUMMARY.md#git-이력-보존-분석과-권고",
+      "status": "PASS"
+    }
+  ],
+  "media_decode_and_hash": "PASS",
+  "media_count": 7,
+  "total_media_bytes": 20364090,
+  "gif_original_frames_timing_loop": "PASS",
+  "image_checks": [
+    {
+      "file": "docs/media/demo-final-slide10.gif",
+      "slide": 10,
+      "ppt_part": "ppt/media/image42.gif",
+      "caption": "최종 발표 실제 시연",
+      "method": "PPT ZIP 내장 미디어의 바이트 그대로 추출",
+      "source_bytes": 14400982,
+      "stored_bytes": 14400982,
+      "sha256": "033eb496918795d23debae633cbda4d7bbbaa04d50da5ef101210068cee145fc",
+      "dimensions": [
+        800,
+        450
+      ],
+      "frames": 150,
+      "duration_ms": 6000,
+      "loop": 0,
+      "optimization": "없음. GIF frame·timing·palette·loop와 원본 byte 보존",
+      "byte_identical_to_ppt_part": true,
+      "decode": "PASS",
+      "sha256_check": "PASS",
+      "frame_timing_check": "PASS"
+    },
+    {
+      "file": "docs/media/system-architecture-slide12.png",
+      "slide": 12,
+      "ppt_part": "ppt/media/image45.png",
+      "caption": "발표 전체 시스템 블록다이어그램",
+      "method": "PPT ZIP 내장 미디어의 바이트 그대로 추출",
+      "source_bytes": 115508,
+      "stored_bytes": 115508,
+      "sha256": "1153c26c0b63a62bbd6bd39ad102a597a982975c57d0c6068d5373d1be702b1e",
+      "dimensions": [
+        1465,
+        929
+      ],
+      "frames": 1,
+      "duration_ms": null,
+      "loop": null,
+      "optimization": "없음. crop·resize·annotation·수치 수정 없음",
+      "byte_identical_to_ppt_part": true,
+      "decode": "PASS",
+      "sha256_check": "PASS",
+      "frame_timing_check": "NOT APPLICABLE"
+    },
+    {
+      "file": "docs/media/cnn-pipeline-slide26.png",
+      "slide": 26,
+      "ppt_part": null,
+      "caption": "PoseNet CNN 연산 흐름",
+      "method": "PowerPoint 읽기 전용 PNG Export 1600×900. 원본 슬라이드의 텍스트·그림 배치를 그대로 보존",
+      "source_bytes": 305755,
+      "stored_bytes": 305755,
+      "sha256": "5e536499eb2bb7624d5f1ba309f0eb3e594e678de43429310a108490076cb8f9",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "frames": 1,
+      "duration_ms": null,
+      "loop": null,
+      "optimization": "없음. crop·resize·annotation·수치 수정 없음",
+      "byte_identical_to_ppt_part": null,
+      "decode": "PASS",
+      "sha256_check": "PASS",
+      "frame_timing_check": "NOT APPLICABLE"
+    },
+    {
+      "file": "docs/media/uvm-verification-slide27.png",
+      "slide": 27,
+      "ppt_part": "ppt/media/image128.png",
+      "caption": "발표 UVM 검증 범위와 당시 결과",
+      "method": "PPT ZIP 내장 미디어의 바이트 그대로 추출",
+      "source_bytes": 65383,
+      "stored_bytes": 65383,
+      "sha256": "d789e81a195f85ba0d45945c4e6838ecc70b75633c0dcb4e2d3eb4af6e5f7790",
+      "dimensions": [
+        927,
+        781
+      ],
+      "frames": 1,
+      "duration_ms": null,
+      "loop": null,
+      "optimization": "없음. crop·resize·annotation·수치 수정 없음",
+      "byte_identical_to_ppt_part": true,
+      "decode": "PASS",
+      "sha256_check": "PASS",
+      "frame_timing_check": "NOT APPLICABLE"
+    },
+    {
+      "file": "docs/media/unity-digital-twin-slide35.gif",
+      "slide": 35,
+      "ppt_part": "ppt/media/image202.gif",
+      "caption": "발표 Unity Digital Twin 동작",
+      "method": "PPT ZIP 내장 미디어의 바이트 그대로 추출",
+      "source_bytes": 4697900,
+      "stored_bytes": 4697900,
+      "sha256": "0275dce139098db5a1145be9a763b5360c7ac040c41a2187425e4374df4dffe0",
+      "dimensions": [
+        960,
+        537
+      ],
+      "frames": 150,
+      "duration_ms": 6000,
+      "loop": 0,
+      "optimization": "없음. GIF frame·timing·palette·loop와 원본 byte 보존",
+      "byte_identical_to_ppt_part": true,
+      "decode": "PASS",
+      "sha256_check": "PASS",
+      "frame_timing_check": "PASS"
+    },
+    {
+      "file": "docs/media/feature-map-dma-slide43.png",
+      "slide": 43,
+      "ppt_part": null,
+      "caption": "Feature Map DDR·DMA 적용",
+      "method": "PowerPoint 읽기 전용 PNG Export 1600×900. 원본 슬라이드의 텍스트·그림 배치를 그대로 보존",
+      "source_bytes": 236834,
+      "stored_bytes": 236834,
+      "sha256": "a4393554ad0ba558af688b9cf1a7a5f79b55a94ce88ff9a2129aa867a94bea4f",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "frames": 1,
+      "duration_ms": null,
+      "loop": null,
+      "optimization": "없음. crop·resize·annotation·수치 수정 없음",
+      "byte_identical_to_ppt_part": null,
+      "decode": "PASS",
+      "sha256_check": "PASS",
+      "frame_timing_check": "NOT APPLICABLE"
+    },
+    {
+      "file": "docs/media/stereo-depth-issue-slide49.png",
+      "slide": 49,
+      "ppt_part": "ppt/media/image276.png",
+      "caption": "단안 깊이 추정 오류 분석",
+      "method": "PPT ZIP 내장 미디어의 바이트 그대로 추출",
+      "source_bytes": 541728,
+      "stored_bytes": 541728,
+      "sha256": "704d7f6165b2393cce6081285d6d9fbaf4d338727d955cf1812b3eb762e84425",
+      "dimensions": [
+        1387,
+        409
+      ],
+      "frames": 1,
+      "duration_ms": null,
+      "loop": null,
+      "optimization": "없음. crop·resize·annotation·수치 수정 없음",
+      "byte_identical_to_ppt_part": true,
+      "decode": "PASS",
+      "sha256_check": "PASS",
+      "frame_timing_check": "NOT APPLICABLE"
+    }
+  ],
+  "browser_render": "PASS (local IAB, GitHub 유사 Markdown preview)",
+  "github_server_render": "NOT RUN (no push / PR)",
+  "original_presentation_sha256": "66c32a34130ad0d9d17797a35c49e40ce4439c5dee5a42c2aab2351dbd7d01c3",
+  "scope": "README·미디어·공유 문서 검사. 소스 구현·기존 검증 기준·현재 Git 이력을 변경하지 않음",
+  "browser_observation": {
+    "loaded_images": 7,
+    "total_images": 7,
+    "h2_sections": 11,
+    "viewport_width": 591,
+    "body_scroll_width": 591,
+    "reviewed_views": [
+      "첫 화면·시연 GIF",
+      "CNN",
+      "Unity GIF",
+      "발표 UVM diagram·인접 현재 판정 설명"
+    ],
+    "navigation_anchors": [
+      "#3-cnn-rtl-accelerator",
+      "#6-unity-digital-twin",
+      "#4-systemverilog-uvm-verification"
+    ],
+    "limitation": "실제 GitHub 서버 업로드·렌더링은 NOT RUN. External Contributors URL은 web 도구 cache miss로 live 응답 미확인.",
+    "final_corrected_summary_recheck": "PASS: 12 PASS / 3 FAIL / 1 BLOCKED, final README shown in Browser; media loaded 7/7",
+    "final_readme_example_recheck": "PASS: tb_pointwise_conv_pe_fault source unchanged, normal terminal marker and $finish"
+  },
+  "local_server_scope": "검토용 HTML 1개·선정 media 7개만 있는 .validation/step3/readme_site. 저장소 전체 서빙은 자동 승인에서 거부되어 실행하지 않았고 좁은 폴더로 대체.",
+  "status": "PASS (local links/anchors/media/render); external link and GitHub server render NOT RUN",
+  "related_document_local_links": {
+    "README.md": 39,
+    "docs/media/SOURCES.md": 10,
+    "VALIDATION_SUMMARY.md": 21,
+    "INTEGRATION_BLOCKERS.md": 0,
+    "status": "PASS"
+  },
+  "temporary_preview_server": "stopped after local review",
+  "readme_rtl_example": {
+    "testbench": "tb_pointwise_conv_pe_fault",
+    "command": "README powershell RTL block executed verbatim",
+    "compile": "PASS",
+    "elaboration": "PASS",
+    "simulation": "PASS",
+    "terminal_marker": "POINTWISE_FAULT_RECOVERY PASS / $finish / FAULT_TIMEOUT 0 / FAULT_ERRORS 0",
+    "log": ".validation/step3/readme_pointwise_example.log",
+    "log_sha256": "6e711770f579f1ecb900d145da939a5cf2194bd5818e14b86bd97c9c71efabea"
+  }
+}

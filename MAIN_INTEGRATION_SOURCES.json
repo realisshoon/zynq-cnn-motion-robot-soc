@@ -224,6 +224,11 @@
       "id": "MAIN_HISTORY_ANCESTRY",
       "status": "BLOCKED",
       "description": "원격 원본 commit 270개의 main 조상 연결은 권고안만 작성했고 실행하지 않음. 비중복 tip 18개 범위 결정 필요."
+    },
+    {
+      "id": "DIRECTED_FEATURE_MAP_TIMEOUT",
+      "status": "FAIL",
+      "description": "원본 tb_feature_map_io는 TEST O에서 2ms timeout. FAIL=0이어도 정상 REGRESSION/$finish 미도달. 초기 PASS 오분류를 정정했으며 원본 소스·timeout 불변."
     }
   ],
   "step3_follow_up": [
@@ -263,8 +268,10 @@
     "source_files_before_hygiene": 1942,
     "approved_untracked_artifacts": 3,
     "additional_dependency_files": 2,
-    "final_count_after_staging": 2024,
-    "count_basis": "STEP 3 문서·검증 증거 및 3개 artifact 추적 해제 반영 후 index. README 별도 commit도 파일 수는 동일하다. byte 수는 STEP 2 원본 snapshot 항목을 따른다."
+    "count_basis": "STEP 3 검증·Git 관리 commit 977bd0d3ffdf97a544496da839f0e4213ffd037d 기준. README 발표 미디어는 후속 별도 commit에서 추가.",
+    "validation_commit_tracked_files": 2024,
+    "readme_media_new_files": 10,
+    "total_tracked_files_after_readme_media": 2034
   },
   "step3": {
     "validated_source_commit": "b7eb63cb6b79a5b22a6e6b6e9fceb70eec67aa46",
@@ -300,6 +307,30 @@
     "push": false,
     "pull_request": false,
     "main_merge": false,
-    "readme_commit_policy": "한국어 GitHub 포트폴리오 README는 검증·Git 관리 commit과 분리한 README 전용 로컬 commit으로 기록한다."
+    "readme_commit_policy": "공식 팀 프로젝트 README·PPT 미디어·관련 출처/검사 기록은 검증·Git 관리 commit과 분리한 로컬 commit으로 기록한다.",
+    "team_readme": "README.md",
+    "presentation_media_sources": "docs/media/MEDIA_SOURCES.json",
+    "readme_media_validation": "docs/media/README_VALIDATION.json",
+    "presentation_media_files": 7,
+    "presentation_media_bytes": 20364090,
+    "original_worktree_preservation": {
+      "head": true,
+      "branch": true,
+      "index_sha256": true,
+      "index_entries_sha256": true,
+      "status": true,
+      "untracked": true,
+      "stash": true,
+      "original_branches": true,
+      "index_still_unchanged_after_checks": true
+    },
+    "validation_documentation_commit": "977bd0d3ffdf97a544496da839f0e4213ffd037d",
+    "validation_path_normalization_commit": "b0010d52d485307e12864c6d2bc2aec2d10098ad",
+    "rtl_directed_summary": {
+      "PASS": 12,
+      "FAIL": 3,
+      "BLOCKED": 1
+    },
+    "directed_timeout_classification_correction_commit": "c3e2bd829057105c4a7f90aa34b9e2eb52a675b1"
   }
 }
