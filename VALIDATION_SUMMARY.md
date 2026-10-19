@@ -13,7 +13,7 @@
 |---|---|---|
 | Git 업로드 크기 | PASS | 현재 이력, 4개 source 이력, 현재 원격 36개 branch 이력 모두 50 MiB/100 MiB 초과 blob 0개. 가장 큰 파일 30,664,242 bytes. LFS 포인터 없음 |
 | RTL 전체 Verilog compile | PASS | XSim 2020.2 xvlog로 원본 RTL·TB 파싱 |
-| Directed TB 16개 | 13 PASS / 2 FAIL / 1 BLOCKED | 아래 개별 결과. FAIL은 원본 argmax 모듈명 차이와 color marker 검사 실패·wall timeout |
+| Directed TB 16개 | 12 PASS / 3 FAIL / 1 BLOCKED | 아래 개별 결과. FAIL은 argmax 모듈명 차이, color marker 검사 실패·wall timeout, Feature Map TB 원본 2ms timeout |
 | downsample 추가 Golden 모드 | BLOCKED | 기본 directed 모드는 PASS. 추가 +GOLDEN 입력 hex 2개 누락 |
 | Packed Python Golden | PASS | Python 3.10/NumPy 1.24.4, frame 121~125 관절 동일·heatmap/offset 원소 차이 0 |
 | ZIP Golden | FAIL | 같은 고정 환경에서 기존 `version/hash mismatch` 재현 |
@@ -47,13 +47,15 @@
 | `tb_depthwise_conv_pe` | PASS | PASS | BLOCKED | BLOCKED |
 | `tb_depthwise_conv_pe_full_layer` | PASS | PASS | PASS | PASS |
 | `tb_downsample_module` | PASS | PASS | PASS | PASS |
-| `tb_feature_map_io` | PASS | PASS | PASS | PASS |
+| `tb_feature_map_io` | PASS | PASS | FAIL | FAIL |
 | `tb_input_conv_pe` | PASS | PASS | PASS | PASS |
 | `tb_layer_param_rom` | PASS | PASS | PASS | PASS |
 | `tb_pointwise_conv_pe` | PASS | PASS | PASS | PASS |
 | `tb_pointwise_conv_pe_fault` | PASS | PASS | PASS | PASS |
 | `tb_top_level_fsm` | PASS | PASS | PASS | PASS |
 | `tb_weight_bram_swap_fsm` | PASS | PASS | PASS | PASS |
+
+Feature Map은 `TEST O`에서 진행 후 원본 2ms timeout의 `TIMEOUT PASS=200110 FAIL=0`과 `$stop`으로 종료됐습니다. 정상 완료 `REGRESSION ... DONE_PULSES=12` / `$finish`가 없으므로 FAIL입니다. 초기 보고의 중간 PASS 문자열·exit 0 기반 오분류를 정정했고, 문서 예제 재실행에서도 같은 결과를 재현했습니다. 다른 Directed TB 12개의 정상 성공 marker·종료도 다시 확인했습니다. 원본 소스와 timeout은 변경하지 않았습니다.
 
 Color marker는 실제 검사 실패 후 600초 wall guard에서 종료됐으며 정리까지 616.8초가 걸렸다. 원본 SV timeout을 바꾸지 않았다. 다른 FAIL을 숨기기 위해 assertion·입력·expected를 바꾸지 않았다.
 
@@ -122,4 +124,4 @@ Player fixture 7개는 CameraOverlay 96, PortOwner 88, G51 168, QuickHUD 416, Re
 
 이번 단계는 별도 로컬 문서·Git 관리 commit까지만 수행한다. source 구현과 기존 commit은 재작성하지 않는다.
 
-포트폴리오 README는 이 검증·Git 관리 변경과 분리된 README 전용 로컬 commit으로 기록한다. 저장소의 실제 Golden 시각 자료를 사용하며, Contributors는 원본 담당표·경로별 Git 이력에 근거하고 개인 업무를 전체 팀 성과와 구분한다.
+공식 팀 프로젝트 README·발표 미디어는 검증·Git 관리 변경과 분리한 로컬 commit으로 기록한다. 사용자 추가 요구에 따라 개인 포트폴리오 지시를 대체했다. PPT 10페이지 시연 GIF 등 7개 미디어(20,364,090 bytes)를 사용하며, Contributors는 발표자료 2페이지의 7명 담당표에 근거한다. 슬라이드·hash·원본 움직임 보존 여부는 docs/media/에 기록했다. 발표 당시 결과를 현재 통합 검증 PASS로 확대하지 않았다.

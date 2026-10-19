@@ -65,6 +65,12 @@ IDE 연결과 스크립트 오류 검출을 별도 환경/빌드도구 작업으
 
 Firmware TK 17필드는 Unity 파서와 정적으로 대응하고, 순수 C# gateway fixture는 PASS다. A1/A2/P3 전체를 현재 Unity 런타임이 처리하는 것은 아니다. 실제 COM, 설치 BOOT, HDMI overlay, 물리 서보 출력·보정은 검증하지 않았다.
 
+## B12 — Feature Map Directed TB 완료 실패: FAIL
+
+원본 `tb_feature_map_io`는 `TEST O` 진행 중 2ms TB timeout에 도달하여 `TIMEOUT PASS=200110 FAIL=0`과 `$stop`으로 종료했다. 정상 완료의 `REGRESSION ... DONE_PULSES=12` / `$finish`는 없다. 프로세스 exit 0과 중간 PASS 수를 완료로 오인한 초기 집계를 FAIL로 정정했다. 원본 명령 재실행에서도 동일하다.
+
+진행이 멈춘 handshake와 TB 시나리오 계약을 담당자가 대조해야 한다. 원인이나 해결을 단정하지 않으며 구현·expected·assertion·timeout은 수정하지 않았다.
+
 ## Git 이력 보존 결정
 
 STEP 2는 main의 단일 자식 snapshot commit이므로 승인된 source 이력의 commit 168개와 별도 feature 원본 102개, 합계 270개가 아직 통합 후보의 조상이 아니다. 현재 commit을 재작성하지 않는 후속 provenance merge와 GitHub merge commit 방식이 권고안이다. 이력 연결 merge 자체는 이번 단계에서 실행하지 않았다. 4개 source만 연결할 때는 3개 tip, 원격 36개 branch 전체 이력에는 비중복 18개 tip이 필요하다. 세부 SHA·작성자·위험은 `validation/step3/STEP3_HISTORY.json`에 기록했다.

@@ -78,8 +78,9 @@
       "testbench": "tb_feature_map_io",
       "compile": "PASS",
       "elaboration": "PASS",
-      "simulation": "PASS",
-      "result": "PASS"
+      "simulation": "FAIL",
+      "result": "FAIL",
+      "reason": "원본 TB 2ms TIMEOUT. FAIL=0이어도 REGRESSION 완료 marker가 없어 정상 완료 아님."
     },
     {
       "testbench": "tb_input_conv_pe",
@@ -125,8 +126,8 @@
     }
   ],
   "rtl_case_summary": {
-    "PASS": 13,
-    "FAIL": 2,
+    "PASS": 12,
+    "FAIL": 3,
     "BLOCKED": 1
   },
   "unity_build": {
@@ -1584,11 +1585,17 @@
       "seconds": 10.08,
       "log": ".validation/step3/rtl_run_tb_feature_map_io.log",
       "log_sha256": "60a406008b4ba2829ae163a8254d2e679ccc2526f2ef23a2bb8a10b4bfba6ca7",
-      "status": "PASS",
-      "failure_lines": [],
-      "pass_marker": true,
+      "status": "FAIL",
+      "failure_lines": [
+        "TIMEOUT PASS=200110 FAIL=0",
+        "원본 정상 완료 REGRESSION ... DONE_PULSES=12 및 $finish에 도달하지 않음"
+      ],
+      "pass_marker": false,
       "evidence_excerpt": "validation/step3/evidence/rtl_run_tb_feature_map_io.txt",
-      "evidence_excerpt_sha256": "93496e8096e0821898a4f7ac6bdbce1a0aa228b555605c02b40dd097240f8bb4"
+      "evidence_excerpt_sha256": "93496e8096e0821898a4f7ac6bdbce1a0aa228b555605c02b40dd097240f8bb4",
+      "testbench_timeout": true,
+      "normal_completion_marker": false,
+      "observed_pass_substring": true
     },
     {
       "name": "rtl_elab_tb_input_conv_pe",
@@ -2394,5 +2401,18 @@
   "source_functional_changes": false,
   "git_history_merge_executed": false,
   "draft_pr_preparation": "PASS (미해결 문제를 공개하는 소스 통합 Draft용)",
-  "final_merge_or_system_release": "BLOCKED"
+  "final_merge_or_system_release": "BLOCKED",
+  "classification_corrections": [
+    {
+      "testbench": "tb_feature_map_io",
+      "previous_status": "PASS",
+      "corrected_status": "FAIL",
+      "reason": "중간 PASS 문자열·FAIL=0 및 프로세스 exit 0만으로 성공을 판정한 집계 오류를 정정. 원본 2ms timeout과 $stop은 정상 완료가 아님.",
+      "source_modified": false,
+      "assertion_expected_timeout_modified": false,
+      "recheck_log": ".validation/step3/readme_rtl_example.log",
+      "recheck_log_sha256": "e8749f975cf4782d3b37da19b8d67db138dd8239c651b66d2533f340bb05a768",
+      "other_directed_tests": "종료 로그를 전부 재대조. 나머지 PASS 12개는 원본 성공 marker와 정상 $finish 확인."
+    }
+  ]
 }
