@@ -71,6 +71,8 @@ Firmware TK 17필드는 Unity 파서와 정적으로 대응하고, 순수 C# gat
 
 진행이 멈춘 handshake와 TB 시나리오 계약을 담당자가 대조해야 한다. 원인이나 해결을 단정하지 않으며 구현·expected·assertion·timeout은 수정하지 않았다.
 
-## Git 이력 보존 결정
+## Git 이력 보존 결정 — 후보 PASS / main 반영 대기
 
-STEP 2는 main의 단일 자식 snapshot commit이므로 승인된 source 이력의 commit 168개와 별도 feature 원본 102개, 합계 270개가 아직 통합 후보의 조상이 아니다. 현재 commit을 재작성하지 않는 후속 provenance merge와 GitHub merge commit 방식이 권고안이다. 이력 연결 merge 자체는 이번 단계에서 실행하지 않았다. 4개 source만 연결할 때는 3개 tip, 원격 36개 branch 전체 이력에는 비중복 18개 tip이 필요하다. 세부 SHA·작성자·위험은 `validation/step3/STEP3_HISTORY.json`에 기록했다.
+STEP 3 분석에서 원본 source 168개와 feature 102개, 합계 270개가 후보 조상이 아니었다. STEP 4 사용자 승인 후 `c31640cdcf9aeb4d830254e809badeb4008a804e`에 원본 tip 18개를 부모로 연결했다. 기존 commit 재작성 없이 270/270개 조상 검사와 이력 merge 전후 tree 불변 검사를 통과했다.
+
+[이력 보존 증거](validation/step4/HISTORY_PRESERVATION.json)를 참고한다. main은 미병합이며, 향후 GitHub merge commit 방식으로 반영해야 원본 조상 관계를 보존한다. 원본 branch 삭제·force push·ruleset 변경은 하지 않았다. 이력 처리의 PASS를 위 B01~B12의 호환성·검증 실패 해결로 확대하지 않는다.

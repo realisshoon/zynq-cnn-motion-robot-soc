@@ -250,4 +250,4 @@ pwsh -NoProfile -File Unity/Tools/ShareValidation/Invoke-PlayerChecks.ps1 -Playe
 
 소스는 `dev/cnn`, `val/cnn/integration`, `dev/integration`, `dev/unity`의 확정 SHA에서 선택 통합했습니다. 약 1.10 GB의 소스·데이터를 보존했으며, cache 2개와 compiler stderr 1개만 디스크에 남긴 채 추적 해제했습니다. Golden·DLL·XSA·BOOT·입력 데이터를 광범위하게 제외하지 않았습니다.
 
-현재 main 조상 관계에는 원본 팀원 이력이 모두 연결되어 있지 않습니다. 기존 commit을 재작성하지 않는 후속 이력 연결 방안과 GitHub merge 방식은 [Git 이력 분석](VALIDATION_SUMMARY.md#git-이력-보존-분석과-권고)에 정리했습니다. 이 저장소의 현재 문서는 소스 통합·검토의 기준이며, 실제 시스템 릴리스는 미해결 항목의 확인 후 판정합니다.
+통합 후보에는 기존 commit을 재작성하지 않는 `ours` merge로 팀원 원본 이력 **270개**를 연결했습니다. 이력 merge 전후 파일 tree는 동일하며, [STEP 4 기록](validation/step4/STEP4_SUMMARY.md)에 부모 SHA와 조상 검사를 공개했습니다. main은 아직 미병합입니다. 향후 **merge commit 방식**으로 반영해야 원본 조상 관계를 보존할 수 있습니다. [Git 이력 분석](VALIDATION_SUMMARY.md#git-이력-보존-분석과-권고)과 미해결 항목을 확인한 뒤 실제 시스템 릴리스를 판정합니다.

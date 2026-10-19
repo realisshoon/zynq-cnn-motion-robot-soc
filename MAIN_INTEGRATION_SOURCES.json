@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "stage": "STEP_3",
-  "description": "STEP 2 원본 출처를 보존하고 STEP 3 실행 증거·문서·허용된 cache 추적 해제 결과를 추가했다. 구현과 검증 기준은 변경하지 않았다.",
+  "stage": "STEP_4",
+  "description": "확정된 원본·STEP 3 실행 결과를 보존하고, 승인한 STEP 4 ours merge로 원본 270개 이력을 연결했다. source 기능과 기존 commit은 재작성하지 않았다.",
   "repository": "https://github.com/realisshoon/zynq-cnn-motion-robot-soc",
   "integration_branch": "release/main-consolidation-20261019",
   "base": {
@@ -222,8 +222,8 @@
     },
     {
       "id": "MAIN_HISTORY_ANCESTRY",
-      "status": "BLOCKED",
-      "description": "원격 원본 commit 270개의 main 조상 연결은 권고안만 작성했고 실행하지 않음. 비중복 tip 18개 범위 결정 필요."
+      "status": "PASS",
+      "description": "통합 후보에서 ours merge로 원본 270/270개 SHA를 조상으로 연결했고 merge tree 불변 검사 PASS. main은 아직 미병합이며 향후 merge commit 방식 필요."
     },
     {
       "id": "DIRECTED_FEATURE_MAP_TIMEOUT",
@@ -240,8 +240,8 @@
     "source_artifact_cleanup": true,
     "hardware_programming": false,
     "robot_actuation": false,
-    "push": false,
-    "pull_request": false,
+    "push": true,
+    "pull_request": true,
     "main_merge": false
   },
   "step2_integration_commit": "b7eb63cb6b79a5b22a6e6b6e9fceb70eec67aa46",
@@ -271,7 +271,9 @@
     "count_basis": "STEP 3 검증·Git 관리 commit 977bd0d3ffdf97a544496da839f0e4213ffd037d 기준. README 발표 미디어는 후속 별도 commit에서 추가.",
     "validation_commit_tracked_files": 2024,
     "readme_media_new_files": 10,
-    "total_tracked_files_after_readme_media": 2034
+    "total_tracked_files_after_readme_media": 2034,
+    "step4_new_report_files": 2,
+    "step4_total_tracked_files": 2036
   },
   "step3": {
     "validated_source_commit": "b7eb63cb6b79a5b22a6e6b6e9fceb70eec67aa46",
@@ -331,6 +333,29 @@
       "FAIL": 3,
       "BLOCKED": 1
     },
-    "directed_timeout_classification_correction_commit": "c3e2bd829057105c4a7f90aa34b9e2eb52a675b1"
+    "directed_timeout_classification_correction_commit": "c3e2bd829057105c4a7f90aa34b9e2eb52a675b1",
+    "record_scope": "STEP 3 종료 시점의 실행·이력·로컬 범위 기록. 현재 이력 연결 결과는 step4에 별도 기록."
+  },
+  "scope_semantics": "STEP 4 허용 범위. 원격 공개의 실제 완료 여부는 공개 후 PR 본문·완료 보고에서 확인한다. main merge는 승인하지 않음.",
+  "step4": {
+    "user_approval": "권고안 승인: 원본 이력 270개 연결 후 push·Draft PR",
+    "baseline_commit": "5ec588fa5332db16e4f5e43295d526cad24bf407",
+    "history_merge_commit": "c31640cdcf9aeb4d830254e809badeb4008a804e",
+    "history_merge_tree": "61aa43cafe4e753440a70cdc55e69cd4d63d4fc1",
+    "history_merge_parent_count": 19,
+    "history_merge_tree_unchanged": "PASS",
+    "original_commits_checked": 270,
+    "original_commits_reachable": 270,
+    "original_commits_not_yet_ancestors": 0,
+    "source_trees_unchanged": "PASS (7 areas)",
+    "working_file_precheck": "PASS (2034 files)",
+    "history_evidence": "validation/step4/HISTORY_PRESERVATION.json",
+    "summary": "validation/step4/STEP4_SUMMARY.md",
+    "publication_scope": "일반 push + Draft PR까지만 승인. main 병합은 승인하지 않음.",
+    "main_merge_executed": false,
+    "rewritten_existing_commits": false,
+    "force_push": false,
+    "deleted_branches": false,
+    "ruleset_changes": false
   }
 }

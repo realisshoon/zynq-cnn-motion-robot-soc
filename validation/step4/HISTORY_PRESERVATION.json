@@ -1,0 +1,1776 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-19",
+  "timezone": "Asia/Seoul",
+  "user_approval": "권고안 승인: 원본 이력 270개 연결 후 push·Draft PR",
+  "baseline_commit": "5ec588fa5332db16e4f5e43295d526cad24bf407",
+  "baseline_tree": "61aa43cafe4e753440a70cdc55e69cd4d63d4fc1",
+  "history_merge_commit": "c31640cdcf9aeb4d830254e809badeb4008a804e",
+  "history_merge_tree": "61aa43cafe4e753440a70cdc55e69cd4d63d4fc1",
+  "strategy": "ours",
+  "parents": [
+    "5ec588fa5332db16e4f5e43295d526cad24bf407",
+    "43895a84857e19b3e53a8c5ebdc54e35a4847b9e",
+    "86e08eccf32c13164d2b69ff0b591d01b9429527",
+    "7516105e5f9ef3cefabb1c00fde54c36e6815daa",
+    "a7a6cdf3297025527461b7dda1e133ed96f43e50",
+    "755a81cae17e814aad0118afc2f3dc7c43963a9b",
+    "86ff0a78c07e25f1b888bd750446ab58460d20d6",
+    "1a7b0deba29e6d9ad4d7d107b72754a64c0ff617",
+    "54cf786724d7ada584dd9363e065117e889ae64e",
+    "227292c25252f1652942f1659914c28d1ba70865",
+    "90c70ae67d3cfbb4b106bb1c44147e2237b180dc",
+    "6134ff6581f39489b20241672726f8000325fcee",
+    "7d1a19aa63bee000ce9f051ab89e32d75abc91c9",
+    "b02e06e8c6184c04083dd26afc91ed8855cf2705",
+    "1517e88c406bbf308beb8124eda11fdde33de3a8",
+    "5a8a23642eca0686d78bdf4718b28b68494ba291",
+    "a020efe3ba52df8c1f3ccfcbfa571efe26c8b964",
+    "5c837c416af073c1cc462e4c19fd6bfbd4d024bc",
+    "eb62194967a8764e6725d609bf247158ecaa7471"
+  ],
+  "parent_count": 19,
+  "tree_unchanged": "PASS",
+  "tree_diff_bytes": 0,
+  "original_commits_checked": 270,
+  "original_commits_reachable": 270,
+  "original_commits_not_reachable": 0,
+  "original_commit_sha_author_date_preserved": "PASS (same Git objects)",
+  "original_commits": [
+    {
+      "sha": "43895a84857e19b3e53a8c5ebdc54e35a4847b9e",
+      "author": "ron2011",
+      "author_date": "2026-10-19T10:48:54+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "00f776e9f2d46975c77776b50682267e0e333247",
+      "author": "ron2011",
+      "author_date": "2026-10-19T10:48:33+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c3dfd983bd725113bc5819c439382a3084301ad9",
+      "author": "ron2011",
+      "author_date": "2026-10-19T10:36:31+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a9e873de9239a2b0126a8c530e81dbb25d3ba749",
+      "author": "ron2011",
+      "author_date": "2026-10-19T10:04:36+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "86e08eccf32c13164d2b69ff0b591d01b9429527",
+      "author": "ron2011",
+      "author_date": "2026-10-16T16:38:28+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c124a8ecad7975566645d18266ab9e7dd393d183",
+      "author": "ron2011",
+      "author_date": "2026-10-08T16:51:46+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "2cddf7685a000cefb7c85bb622e0f0cbb9a4536d",
+      "author": "ron2011",
+      "author_date": "2026-10-08T16:50:18+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "f6224e7d8cf36d5345f21ad58ca87df0247e31c5",
+      "author": "realisshoon",
+      "author_date": "2026-10-08T15:12:04+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "f134cc03e0d68b066863bd18f1731adb8fa6386f",
+      "author": "realisshoon",
+      "author_date": "2026-10-08T15:10:08+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "473e8fe1d95d53dd4aaa16db9e137a3e615462a6",
+      "author": "ron2011",
+      "author_date": "2026-10-08T10:11:12+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b13f505758ae9f6d668b6d8bf590d737b244d395",
+      "author": "ron2011",
+      "author_date": "2026-10-08T10:07:00+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "eb62194967a8764e6725d609bf247158ecaa7471",
+      "author": "realisshoon",
+      "author_date": "2026-10-06T22:22:52+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "f216c8c16b228066b2f345d246b27c9d4d03601a",
+      "author": "realisshoon",
+      "author_date": "2026-10-06T22:15:11+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5f079048b1ab78a2e72741d4d7eaf0ce2bb08f9b",
+      "author": "realisshoon",
+      "author_date": "2026-10-06T22:14:32+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "512f8dc43514c366d6c3a98bf253bb0ff7252b20",
+      "author": "realisshoon",
+      "author_date": "2026-10-06T22:02:27+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "dff40d1d5fcdbb9a6a85f6f6d26a3eccec38e7bb",
+      "author": "jimin-max",
+      "author_date": "2026-10-06T21:59:19+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "339c8eb0812b9e9a3779a7278d6e4f03b818111e",
+      "author": "jjm15955",
+      "author_date": "2026-10-06T21:24:12+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e9f8d08f03b36354f91e51dee86cf7a29b9e849d",
+      "author": "realisshoon",
+      "author_date": "2026-10-06T20:45:11+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "73a0312478cf9243bd33935218d47a56fa5bbaf2",
+      "author": "jimin-max",
+      "author_date": "2026-10-06T13:27:32+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "25ad3b562499ce3afe62a840eea5f1becce05153",
+      "author": "ron2011",
+      "author_date": "2026-10-04T17:48:21+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "30b060feb8ec3ef33e0d3d2432b465270a2f120f",
+      "author": "lsy49055089",
+      "author_date": "2026-10-03T22:04:13+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "143b4be72cc886709c67a0324108d978c22ae461",
+      "author": "jimin-max",
+      "author_date": "2026-10-03T21:39:13+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "db27c9749bbd1e8a434a6abdc7eca44454e5367d",
+      "author": "jimin-max",
+      "author_date": "2026-10-03T21:06:52+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b950c58928a2eeb5780a43514fca7236ce028d5a",
+      "author": "jimin-max",
+      "author_date": "2026-10-03T19:13:09+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "0a744092adf9ee92435bde6aa35415ec81763856",
+      "author": "ron2011",
+      "author_date": "2026-10-02T18:31:33+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "99096f3ea96e8cab3815df51a0446f9f28b38cfd",
+      "author": "ron2011",
+      "author_date": "2026-10-02T18:30:08+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c615c2c28a0c294258a0e24d7a49c39b02f8f30b",
+      "author": "ron2011",
+      "author_date": "2026-10-02T17:58:25+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "274d86003df8b0bdc65e978c6a601d7c1f228d75",
+      "author": "ron2011",
+      "author_date": "2026-10-02T17:55:57+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5a739fb9a8cd967fd3b5b2576b4dec37f4c82106",
+      "author": "ron2011",
+      "author_date": "2026-10-02T16:56:08+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c0ba7606e9587ef3985858161fc52e374b35a3be",
+      "author": "ron2011",
+      "author_date": "2026-10-02T16:52:06+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8e00c6ea00f87da570e5cf7427fa26f46519112c",
+      "author": "realisshoon",
+      "author_date": "2026-10-01T21:26:15+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "9211ac142eae7acce4404effd64483699e1739bb",
+      "author": "realisshoon",
+      "author_date": "2026-10-01T20:00:04+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "440a3ff97484d03ee442d49f3c2a491982c33e78",
+      "author": "realisshoon",
+      "author_date": "2026-10-01T18:59:49+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "bfda0eb724f984c0e6ca235b8405b6f4e0f1b594",
+      "author": "jimin-max",
+      "author_date": "2026-10-01T08:46:39+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "05d947b2ca0007238da32d7b23c57695b6e5f4ae",
+      "author": "ron2011",
+      "author_date": "2026-09-30T11:10:51+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "6d10b3b34a65a2dd360564707591772d93e1093e",
+      "author": "ron2011",
+      "author_date": "2026-09-30T11:09:37+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "69200ba0fe32066e49b0c4f66f89fe3c8af41d34",
+      "author": "ron2011",
+      "author_date": "2026-09-30T11:05:16+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "f6bad13aee3cb9b81c55b1b13dad031075e866cb",
+      "author": "younghyun0702",
+      "author_date": "2026-09-30T10:44:10+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "d0a3e4d62c0a4a3a7eda31c51a1a27cb384c3941",
+      "author": "ron2011",
+      "author_date": "2026-09-30T09:25:41+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b92244753fb2f933e8828fbf572c1ea181f2f5ee",
+      "author": "ron2011",
+      "author_date": "2026-09-30T09:25:09+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "88e2a880fe5137206dedbedd37bbd619efdf5c64",
+      "author": "ron2011",
+      "author_date": "2026-09-30T09:22:57+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "ed0e317f424a3b8ffeea68f0a645cc5da2869e90",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-29T21:10:16+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5c78b6834c99cedcdfcf3d88d278b7c3663e7d43",
+      "author": "realisshoon",
+      "author_date": "2026-09-29T15:26:29+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "3c6f2f338bc2cc14cdfe2ee2b89096485f2bff3f",
+      "author": "ron2011",
+      "author_date": "2026-09-29T11:29:02+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "7a1614d6aa4af5b5b28052ba6d52b5739fcde93f",
+      "author": "ron2011",
+      "author_date": "2026-09-29T11:23:18+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "91fe35aebafd35be79ad19c71d7932ff87fd59b2",
+      "author": "ron2011",
+      "author_date": "2026-09-29T10:22:28+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "0aa4ec5b5f776880c4ff2a894165cb68e24f7587",
+      "author": "ron2011",
+      "author_date": "2026-09-29T10:20:13+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "d0fcf0bc0453426c2df9be9a8daa262c5e0d79b2",
+      "author": "ron2011",
+      "author_date": "2026-09-29T10:16:24+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8366eb1f74408bba9e907604011a53d8a51ded57",
+      "author": "이승열",
+      "author_date": "2026-09-29T09:38:01+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "7ce29bad96be1ad04667731350f51a05c337fc90",
+      "author": "이승열",
+      "author_date": "2026-09-29T09:17:29+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a0c298a44f4cf3b13faeee7d0ee6046195b067af",
+      "author": "이승열",
+      "author_date": "2026-09-28T20:49:43+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c49d0df42c320b76550cd8995ec919acccec5be0",
+      "author": "ron2011",
+      "author_date": "2026-09-28T20:12:01+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "1dd23fe98793e3c8c683afda3ec69ff280df55c5",
+      "author": "ron2011",
+      "author_date": "2026-09-28T20:10:31+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "90c70ae67d3cfbb4b106bb1c44147e2237b180dc",
+      "author": "ron2011",
+      "author_date": "2026-09-28T15:34:37+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "77ed0c237d4bacd29a9ad21cc06977044ebb8b2a",
+      "author": "ron2011",
+      "author_date": "2026-09-28T15:20:36+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "117b0d7f5228efd5a05582778dd8f2c5cd9cb916",
+      "author": "ron2011",
+      "author_date": "2026-09-28T15:17:04+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "55d28edfbf743ff37925ea3dcd34099ab6623fa8",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-28T14:37:31+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5a8a23642eca0686d78bdf4718b28b68494ba291",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-28T14:34:44+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c3558b979873d5d58a7edaa5b262b5889af058f0",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-28T14:22:16+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "0176db8365e90d72bea0dd58fdaeecc6e7ef1023",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-28T14:20:58+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "277a274604903f485f88f056d6e076be193d88e8",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-28T14:17:56+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "39448d10873862db18010460a6c0e3365348da62",
+      "author": "ron2011",
+      "author_date": "2026-09-28T13:20:34+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "098914d480e1f63a04c7d4591e9347414dfc3224",
+      "author": "ron2011",
+      "author_date": "2026-09-28T13:18:45+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "edf4ca8428e7501523c29f1924a2bb316f648224",
+      "author": "ron2011",
+      "author_date": "2026-09-28T10:17:04+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c4b2e0f732bfe02f750e1a737d483bba0792f9ea",
+      "author": "ron2011",
+      "author_date": "2026-09-28T10:14:52+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5667758c3220fd48b842d7922cbc016079271337",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-28T09:38:20+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "1b89da6dd0231187d2dc641d64db2de853374b5c",
+      "author": "이승열",
+      "author_date": "2026-09-28T09:37:10+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b4a695204f7fba9259301fd3c76ce8851a4bbfbc",
+      "author": "ron2011",
+      "author_date": "2026-09-28T09:35:52+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "ea8c634e20c1e5c16e1c9edbb7350678667003d4",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-28T09:32:52+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a735977283c6d89030f86a10347b3b833cafad2a",
+      "author": "jjm15955",
+      "author_date": "2026-09-27T21:47:20+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "569e5e75ed728e9f8b0eeec2b27d9fd859184b91",
+      "author": "ron2011",
+      "author_date": "2026-09-27T20:57:52+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "3b86c12d9444bf52f775cc89a5ec4147e5b9d628",
+      "author": "jimin-max",
+      "author_date": "2026-09-27T20:50:41+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "6ca6a9e7d2a343f784c0400f8876f9c91e41d258",
+      "author": "jjm15955",
+      "author_date": "2026-09-27T20:45:20+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "7ce849a37a5b16f3acb1544babdacfa423cecaa3",
+      "author": "younghyun0702",
+      "author_date": "2026-09-27T20:44:07+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a9cb6db20445040088a38ad6a540dd989e0c94e6",
+      "author": "jjm15955",
+      "author_date": "2026-09-27T20:18:11+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "fd711ad77adae04f7b982d409e696b260024243f",
+      "author": "ron2011",
+      "author_date": "2026-09-27T20:16:02+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "58fb6249386f4eac1eaf2a8dd52a13a4b626985e",
+      "author": "ron2011",
+      "author_date": "2026-09-27T20:15:50+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "183fe46c0544af3415f9b52b4c04ebe49940937e",
+      "author": "ron2011",
+      "author_date": "2026-09-27T18:02:00+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5e29a350dcf24a3d9becfe35398db11a6cdf89c5",
+      "author": "realisshoon",
+      "author_date": "2026-09-27T16:52:48+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "12b15b43bc7acf09003c33c05b96bfbbaa6d96b0",
+      "author": "jjm15955",
+      "author_date": "2026-09-27T16:52:29+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "fe307359556f3dbd174a52f22b63f8b7cf1964b4",
+      "author": "jjm15955",
+      "author_date": "2026-09-27T16:48:42+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5ec70dc2972c4c9a8f50849b6bcba391a6e9243e",
+      "author": "jimin-max",
+      "author_date": "2026-09-27T16:46:42+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "2097ff7cd10dd52f4d4e09c1122d4ced0ee637ad",
+      "author": "jimin-max",
+      "author_date": "2026-09-27T11:55:51+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "39a457403befa7fb9e915cbb9a87d257d6c056b5",
+      "author": "jimin-max",
+      "author_date": "2026-09-27T10:24:40+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c2900dcd2b1a7701cf19df81ca958d2b8b4c07b2",
+      "author": "jimin-max",
+      "author_date": "2026-09-26T17:08:50+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c25525422664b160c4e1397321a1347b0a9f14d2",
+      "author": "realisshoon",
+      "author_date": "2026-09-26T17:05:47+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "ff2b92c13ae8e734baa9230c008dc4164ee2494c",
+      "author": "realisshoon",
+      "author_date": "2026-09-26T16:20:58+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e1b290dc629ea8b59fd24c5d7990fb7e62c9b9f8",
+      "author": "jimin-max",
+      "author_date": "2026-09-26T16:20:21+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "705d6acd20229f9e7e2fdeb930754e5a266ba093",
+      "author": "jjm15955",
+      "author_date": "2026-09-26T16:20:09+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "9faea4e1ca9598f35e87b170db0c04cc2b834af1",
+      "author": "realisshoon",
+      "author_date": "2026-09-26T16:18:59+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "53691055fd4b8ecd918d98be4282d7be1edca601",
+      "author": "jimin-max",
+      "author_date": "2026-09-26T15:47:16+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "3c1e07a13a64051d1bc4b0cb8405798c3e693bfa",
+      "author": "jjm15955",
+      "author_date": "2026-09-26T15:34:00+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "aa1f72a5cf9133b9fc11c79b2b9c2df32d25363d",
+      "author": "jimin-max",
+      "author_date": "2026-09-26T15:31:36+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "6ea561ed929066d8c995c2a4719b1b3685489fb1",
+      "author": "jimin-max",
+      "author_date": "2026-09-26T14:45:22+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5b45c169717fe009083ad381947e97dbe47478c6",
+      "author": "jjm15955",
+      "author_date": "2026-09-26T14:44:46+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e5d48ab81b4d026c6f69481bd98d8b342a5e37ba",
+      "author": "realisshoon",
+      "author_date": "2026-09-26T14:35:47+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "fbf4a2ac3e1aea4b8e4c928accf9aba7caf4b965",
+      "author": "realisshoon",
+      "author_date": "2026-09-26T14:17:22+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "53db9582f7b15f6def504656d13d8113722506c9",
+      "author": "realisshoon",
+      "author_date": "2026-09-26T14:14:56+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8f3bbb9afbe476be09bbd979952190e9c6272c87",
+      "author": "younghyun lee",
+      "author_date": "2026-09-26T14:11:01+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a7a6cdf3297025527461b7dda1e133ed96f43e50",
+      "author": "hans",
+      "author_date": "2026-09-26T14:10:10+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5fe724e2752239387cd658a2c930026bd716439d",
+      "author": "younghyun0702",
+      "author_date": "2026-09-26T14:05:09+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "439157840d47ede59137de5f65e9c2e261e6f1e2",
+      "author": "jimin-max",
+      "author_date": "2026-09-26T13:52:16+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "2b41664fc01c40a2eb71a702a0295d29577d7dee",
+      "author": "jimin-max",
+      "author_date": "2026-09-26T12:49:26+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "239b1e5888998a4a04c0eaf041bc49af7b06d47a",
+      "author": "jimin-max",
+      "author_date": "2026-09-25T14:34:59+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5c837c416af073c1cc462e4c19fd6bfbd4d024bc",
+      "author": "ron2011",
+      "author_date": "2026-09-24T20:17:46+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "69eb424f5d0ff20ad3c8f2fc137f3b258db46581",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-24T20:16:44+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "d3556bf959da6ae46489ca286a2663bbf16d4903",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-24T20:14:52+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "ba831f82a9bb39d26b048a8e3b7f2f14b7ec6187",
+      "author": "jimin-max",
+      "author_date": "2026-09-24T20:02:15+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5ab5268d3d07d13ba0f44eaee80601632574fcf9",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-24T18:26:34+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "47b1c88354566a340ad47dca71ee71c248131c09",
+      "author": "ron2011",
+      "author_date": "2026-09-24T18:21:41+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "7dd0c791e79905d364b49b76345fe3855e550451",
+      "author": "ron2011",
+      "author_date": "2026-09-24T18:20:57+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "1c8efdbd12540b56dfbcada6a1f54d64f8cb3068",
+      "author": "ron2011",
+      "author_date": "2026-09-24T18:19:39+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "135c85288a1768c55470793dc3dad6417b17175f",
+      "author": "jimin-max",
+      "author_date": "2026-09-24T18:01:44+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c2822d74fdebd328dddcd5cfe03648d2f5866ae2",
+      "author": "jjm15955",
+      "author_date": "2026-09-24T18:01:40+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "7ae201f1fff0a68b5eacb3d494819d5770f5cd64",
+      "author": "realisshoon",
+      "author_date": "2026-09-24T17:59:01+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e087a8f98da9b62f1b0681254f2329bf80b1640e",
+      "author": "realisshoon",
+      "author_date": "2026-09-24T17:58:05+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8a3cb0ebbe72c280aa127cd1b6b673631b5031e4",
+      "author": "younghyun lee",
+      "author_date": "2026-09-24T17:52:45+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "63eaa33ee047768fb257b6df33614aa979899d19",
+      "author": "younghyun0702",
+      "author_date": "2026-09-24T17:51:18+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c1bbf834ab7273374c7960abc9efaf49dc96c022",
+      "author": "younghyun0702",
+      "author_date": "2026-09-24T17:45:12+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "f59a91fb15238cc761d9a04f80cc990c915bb59b",
+      "author": "ron2011",
+      "author_date": "2026-09-24T17:44:51+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b97a4941052da818e4e81e3328dbd78f38f05dab",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-24T17:40:46+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "bec416275e35e73b47fe9111aa00a2ae2251fe96",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-24T17:38:46+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b02bc10715e935b45012ec3f6421b6d18a55dbd2",
+      "author": "jjm15955",
+      "author_date": "2026-09-24T17:09:50+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8e79239a40a55ada152e36fbabd4ad845523995e",
+      "author": "realisshoon",
+      "author_date": "2026-09-24T16:20:58+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a6e6e3d2c5e9c551398c6c626bddd26fb8ba5f91",
+      "author": "jimin-max",
+      "author_date": "2026-09-24T15:46:38+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "fbd179ad984668a9b97f4ed55e14056e18ed2d5d",
+      "author": "jjm15955",
+      "author_date": "2026-09-24T14:15:01+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "4bae0a0d911e4d70f153318368aedf02e6326ea5",
+      "author": "realisshoon",
+      "author_date": "2026-09-24T13:42:14+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "7852ef1a9c0941811359cb0900b3fd3f729bbc4a",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-24T13:32:09+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "241328faea195d966872789fe955c2c8edfe8160",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-24T13:20:43+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8ca3fb0fbdfb0b63da461d09a618e0ac72e557b4",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-24T13:15:20+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "437a1187e7926aa0b494dae312b06381661ed1e4",
+      "author": "ron2011",
+      "author_date": "2026-09-24T12:42:49+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "6c7f590e428f4f874b8796872a67f64e5e1ad019",
+      "author": "ron2011",
+      "author_date": "2026-09-24T12:33:20+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "2c86bb81ae3096a33dad1df683f322583c18114d",
+      "author": "ron2011",
+      "author_date": "2026-09-24T12:33:19+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "9e747854e84055d59676bcf341d8a97f19a9c457",
+      "author": "ron2011",
+      "author_date": "2026-09-24T12:33:05+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "efe72553bdfb0f200870c9069d3bfe32209f83fe",
+      "author": "ron2011",
+      "author_date": "2026-09-23T22:15:27+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "19c651fbedeeb1afa5b71724c1616d358a8eb853",
+      "author": "realisshoon",
+      "author_date": "2026-09-23T21:50:35+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e823daaef0e26ec825d3184c64002376aaaa23ef",
+      "author": "realisshoon",
+      "author_date": "2026-09-23T21:41:18+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "6b18beefd0e3a2588ba56bf9de2390fb7f8aa994",
+      "author": "realisshoon",
+      "author_date": "2026-09-23T21:23:34+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "ea569db72c4097c297acd781686dc8e58b8e83b8",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-23T18:42:50+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "2a91b3419e49b4eee30efab54ee81e150bcd641d",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-23T18:41:51+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "d4b7106c7dc41bdc0eff4109b4e1990c2d51c150",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-23T15:40:22+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "1887e40448a77ef0d22e3a471bd2225e52639f7c",
+      "author": "ron2011",
+      "author_date": "2026-09-23T15:34:40+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "ba35e9265cd7f95959a8661f33ca9a94c64e3c26",
+      "author": "ron2011",
+      "author_date": "2026-09-23T14:08:22+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a6efec72c1d5b90914044b9856ad2e3c9b629d8d",
+      "author": "ron2011",
+      "author_date": "2026-09-23T14:07:19+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5308e3a8a26aa48f80b838417e35e8c4b7e25024",
+      "author": "hans",
+      "author_date": "2026-09-23T13:40:38+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b8df6decd6714160d5d6c3cad58ee8b55752b3e7",
+      "author": "ron2011",
+      "author_date": "2026-09-23T13:21:18+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "bf92d67d6c8795beea4c74742d476f37b8b052f5",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-23T13:21:03+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "da756427c032c9952a9f3350bde876f246d0d9b5",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-23T13:19:47+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "d03666fa5198c98bd602f25914004f50f3053ab0",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-23T13:18:38+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "4a54d64e3130b84705d7881979625607de773c77",
+      "author": "ron2011",
+      "author_date": "2026-09-23T09:46:18+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "5c268029e1dde193a3ae7ad9d176ebf15af28935",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-23T09:45:57+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8c735aa600a090e820dadce3859ee7079793e8a0",
+      "author": "이승열",
+      "author_date": "2026-09-23T09:44:13+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "1517e88c406bbf308beb8124eda11fdde33de3a8",
+      "author": "이승열",
+      "author_date": "2026-09-23T09:42:06+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "4ee146638a01d999795eb6b6f7db2b81b54b4dd0",
+      "author": "ron2011",
+      "author_date": "2026-09-23T09:11:13+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e6e8196d3f8d82a886975f383242133e25f28b65",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T23:23:30+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "586d93c21855a69659c7d5b4d52ec1bf7224c9a0",
+      "author": "ron2011",
+      "author_date": "2026-09-22T23:21:38+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "63e2df538fabfd65eb514778e908849ba7992e0f",
+      "author": "이승열",
+      "author_date": "2026-09-22T23:17:02+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "d6c79cc40d0531bef2121e5a64c49c93e4803674",
+      "author": "ron2011",
+      "author_date": "2026-09-22T22:46:50+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "46892e246670119dd196129443190fd30b860cf4",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T22:01:41+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "d0a5b9ff2c2e396732890a4c7929b247be8e3b5b",
+      "author": "ron2011",
+      "author_date": "2026-09-22T22:00:18+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "681b33bd57ab1d10dba0db087f591eaf65c9b0b0",
+      "author": "ron2011",
+      "author_date": "2026-09-22T21:55:13+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "6a24be4f02ed58a45f02762f26f1748ebff166fe",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T21:40:10+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "3e5e47dc6a3e01d71db0deac1e8f93f7ac1e3b90",
+      "author": "ron2011",
+      "author_date": "2026-09-22T21:38:45+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b084be2e1cea6315c5679df47d56bb0cad36b9dc",
+      "author": "이승열",
+      "author_date": "2026-09-22T21:34:26+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b02e06e8c6184c04083dd26afc91ed8855cf2705",
+      "author": "이승열",
+      "author_date": "2026-09-22T21:32:50+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "1b155491449d01bc0206bb7a3b42035b00d4b054",
+      "author": "ron2011",
+      "author_date": "2026-09-22T21:30:29+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "1e49e1afe088caf49581e1401f9474ac229113f4",
+      "author": "realisshoon",
+      "author_date": "2026-09-22T21:09:46+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "7b2b35c477ef6c6af2d28cec8c8bb6430d4b4dac",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T21:02:56+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "069f79d3971f4e3edede25a7f229e5194a422db0",
+      "author": "이승열",
+      "author_date": "2026-09-22T20:59:21+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "7d1a19aa63bee000ce9f051ab89e32d75abc91c9",
+      "author": "이승열",
+      "author_date": "2026-09-22T20:55:46+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a93975d6160b5883a3541dee1a1c8d2c72954c76",
+      "author": "younghyun lee",
+      "author_date": "2026-09-22T20:54:45+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "2e0d31115ccb88b0aafc0991c58bebede974b829",
+      "author": "younghyun0702",
+      "author_date": "2026-09-22T20:53:47+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "193167a07af2813dc9264200b270ca71b87f59ae",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T19:00:13+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "93b910461f36444168f794558639276d3a78db59",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T18:58:52+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "400d8308beb35c292350d1a37330f828c91781e4",
+      "author": "ron2011",
+      "author_date": "2026-09-22T17:27:56+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "ecfb8df90a83078694e113f7241f76313a26faca",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T17:21:50+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "27a6042d80d8130b1f5e70f513a20d3f6e33d812",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T17:20:21+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "2cff69d494337831c2bebec017bf483fd91ee676",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T17:18:58+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "f15f4f58390ce4e40bece478c1ffca86287648cb",
+      "author": "jjm15955",
+      "author_date": "2026-09-22T15:42:59+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "07c24400e37b17c70cf2a1e1133a6631596d20ea",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T14:37:20+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "1ff15afbae6646c049f21228343e14c4f65aaab1",
+      "author": "ron2011",
+      "author_date": "2026-09-22T14:33:55+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8bb823288c2759e315aff3a7a181fa61680f7268",
+      "author": "ron2011",
+      "author_date": "2026-09-22T14:27:53+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "14842a6dabfb3437a9e4555cccf826c8b63ac086",
+      "author": "ron2011",
+      "author_date": "2026-09-22T11:43:43+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "6a8c2dcab02152c9bd2c3133fb1e103db7f79ef2",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T11:40:57+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c3dd8820de382575af80dd460f728bd9ee78e139",
+      "author": "이승열",
+      "author_date": "2026-09-22T11:38:38+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "322a1b54274afc201a40f986b2037939ce341f9f",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-22T11:32:30+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "240007988aac24049e3775fb25d69999f6d30552",
+      "author": "ron2011",
+      "author_date": "2026-09-22T09:15:05+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a944a65565e71ae9b51a39244b2848506c9b5761",
+      "author": "ron2011",
+      "author_date": "2026-09-21T19:47:09+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b1861b122885295fb21679e8645dc70ba9ce2145",
+      "author": "ron2011",
+      "author_date": "2026-09-21T19:36:03+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "3c521a6a981e995e2cbf5662aa646b1c9d2342a2",
+      "author": "ron2011",
+      "author_date": "2026-09-21T19:25:31+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "6d1ad90eb7e67f2640495ffa29d1545d9993873a",
+      "author": "ron2011",
+      "author_date": "2026-09-21T18:16:45+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a2009042d3b8d41ce273ccd39b55d190c03ed8fb",
+      "author": "ron2011",
+      "author_date": "2026-09-21T18:12:56+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "d9505266ba673677dc7d9915dea8d30792801b4f",
+      "author": "ron2011",
+      "author_date": "2026-09-21T18:12:56+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a654df2c090e59892c47f10eeb2ac61639cdf3e3",
+      "author": "ron2011",
+      "author_date": "2026-09-21T17:57:16+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "be1c5c057c652758ca6c8dbf45898759ca85e025",
+      "author": "ron2011",
+      "author_date": "2026-09-21T17:56:20+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "9ab733667809ab46f243d1529fa92777d1a349a4",
+      "author": "ron2011",
+      "author_date": "2026-09-21T17:44:37+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e9080f68f8ed37615f7aec0be5672a096bd24e5e",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-21T14:23:54+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "cbe08cf688470dbe5cf934d5f19b834a2d7ce538",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-21T14:19:51+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e208e4987fbceea9f2ebbfc27ec9a1728a0db26d",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-21T13:43:07+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "f7d8c0495383642ef0401571fe26e289d9765cf6",
+      "author": "ron2011",
+      "author_date": "2026-09-21T13:42:02+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "3d6eb18734c3967661aeba4861d004c51d84c895",
+      "author": "ron2011",
+      "author_date": "2026-09-21T13:34:47+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "9bff4e2c33bd571d711a37bfbffcd1c28d242086",
+      "author": "ron2011",
+      "author_date": "2026-09-21T13:34:46+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "84998a93703ee28d4998a717303003f873c709c7",
+      "author": "ron2011",
+      "author_date": "2026-09-21T13:34:46+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "983d24d7dec28bdd63933259320924c1ad49e4a7",
+      "author": "hans",
+      "author_date": "2026-09-21T10:48:46+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "26cdef9cf63e4d5f17239af03c9c3c47f8e6c052",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-21T10:45:02+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "2d65177e27f08bb59f25fe7967ad43457bde3496",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-21T10:43:35+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "037a5e454dc924fbc1967a66da42e534d22cd78a",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-21T10:39:29+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "6134ff6581f39489b20241672726f8000325fcee",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-21T10:36:05+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8325dada0a62941580c867a50829f1773d070362",
+      "author": "jimin-max",
+      "author_date": "2026-09-21T10:35:09+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "86ff0a78c07e25f1b888bd750446ab58460d20d6",
+      "author": "jimin-max",
+      "author_date": "2026-09-21T10:31:55+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "f20147cb69f55d3139bc78844269e79477939bd5",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-21T10:16:40+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "68030e7233018f02007f237e596aced445ebdcd9",
+      "author": "jimin-max",
+      "author_date": "2026-09-21T09:41:46+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8fd2655fa2f40d497a476118e5479e638bee1d33",
+      "author": "younghyun lee",
+      "author_date": "2026-09-21T09:41:16+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "1a7b0deba29e6d9ad4d7d107b72754a64c0ff617",
+      "author": "realisshoon",
+      "author_date": "2026-09-21T09:39:31+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8066d933b002a443b77d63c41a64eaf686a00321",
+      "author": "younghyun0702",
+      "author_date": "2026-09-21T09:01:53+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "4bf36538c3dc6ef953ba3bbabb3a878c7e1af686",
+      "author": "younghyun0702",
+      "author_date": "2026-09-20T21:38:38+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e7da2fd8d15a304adf3deba7f9ba7ce17c3e85d0",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-19T19:02:36+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e52b0977a6a04cf6197450baabf5e1a69086a95a",
+      "author": "ron2011",
+      "author_date": "2026-09-19T18:15:19+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "33ad6ae66542b3d8ed09392e0d6f84436d9b8dd5",
+      "author": "ron2011",
+      "author_date": "2026-09-19T18:03:20+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "8e0421e0cc23749f9242e9050bea2c0d6785c479",
+      "author": "ron2011",
+      "author_date": "2026-09-19T17:57:27+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "31130fcfa920e41ab0dba27f1a2a98ad61ec242f",
+      "author": "ron2011",
+      "author_date": "2026-09-19T17:28:26+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "9caaa8d33cbdca46cd51dab15c90a0a8176e7065",
+      "author": "이승열",
+      "author_date": "2026-09-19T17:24:59+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "86fc40edc1f5164cdb8d74d3d04ee516c1abcb11",
+      "author": "ron2011",
+      "author_date": "2026-09-19T17:20:25+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b5c3c6d21b88c25d1191c507e1d7ae726ab080c6",
+      "author": "hans",
+      "author_date": "2026-09-19T17:17:01+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "ce43474af14b9e051021d3f3b08363a569000ac1",
+      "author": "이승열",
+      "author_date": "2026-09-19T16:59:42+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "ac5ad7374ff163da8220a6b065894eafcce4332c",
+      "author": "이승열",
+      "author_date": "2026-09-19T16:56:06+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a020efe3ba52df8c1f3ccfcbfa571efe26c8b964",
+      "author": "이승열",
+      "author_date": "2026-09-19T16:54:05+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "f4feddab4de8f80ece0aa1107bf31fb88d0a80ba",
+      "author": "이승열",
+      "author_date": "2026-09-19T16:49:57+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "29b545b985847e335552a0d7286c6ec8374eb9a4",
+      "author": "jjm15955",
+      "author_date": "2026-09-18T21:52:57+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "1decaaba8e80b1e640e14f553e1e29d5beac91a4",
+      "author": "jjm15955",
+      "author_date": "2026-09-18T20:44:58+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "6ae1681e0e941823ae8bc2522c4c2f6ae0434c95",
+      "author": "younghyun lee",
+      "author_date": "2026-09-18T17:30:29+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "7516105e5f9ef3cefabb1c00fde54c36e6815daa",
+      "author": "younghyun0702",
+      "author_date": "2026-09-18T17:29:29+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c3e807347acb38c4216f997c2f4f7f332c517ca2",
+      "author": "younghyun0702",
+      "author_date": "2026-09-18T17:21:11+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "792fc2e3b34a6fb07dd19b6982420976aaddcea5",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-18T16:24:29+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "ed2be755c0d0a063771690b5c9072b5347eca252",
+      "author": "이승열",
+      "author_date": "2026-09-18T16:23:54+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c8f822f66de75b3ef55c10e8d987bb84b09cbf0c",
+      "author": "이승열",
+      "author_date": "2026-09-18T16:21:48+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b8203af1e96d9736d0712b0b65905f0fb609d189",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-18T16:09:43+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "4a965beb8a48c1ca54fe853edd9e071ef0db724b",
+      "author": "hans",
+      "author_date": "2026-09-18T14:29:11+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "4af63fabeebdb7ac67102ea3ba38200c7606392d",
+      "author": "jimin-max",
+      "author_date": "2026-09-18T14:21:30+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e6486a589261107d5bcaab0051f3b6ceeb2c54f5",
+      "author": "ron2011",
+      "author_date": "2026-09-18T14:20:18+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "9071700b77671c0aa9f1c038132522fc46711189",
+      "author": "ron2011",
+      "author_date": "2026-09-18T14:15:09+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c00994c91d6cf88908e4b4a5c106a6aeb9b6eafb",
+      "author": "younghyun lee",
+      "author_date": "2026-09-18T13:09:19+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "54cf786724d7ada584dd9363e065117e889ae64e",
+      "author": "younghyun0702",
+      "author_date": "2026-09-18T13:06:56+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e4817033f062ec9555a23bd2a870eed5b255db90",
+      "author": "jjm15955",
+      "author_date": "2026-09-18T12:42:38+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "46f1d74bdf35146b1d90c3b171c8b01c12548aee",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-18T10:23:09+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "3008b99744a301a89a3406e2833dd0dca6250122",
+      "author": "younghyun lee",
+      "author_date": "2026-09-18T10:01:38+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "a79e3c553421bd7f4694cf7b14528eebcbfa9d7b",
+      "author": "younghyun0702",
+      "author_date": "2026-09-18T09:57:23+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "7c95ddfd33e92b581ffb17fcd0b94abc393272bc",
+      "author": "jimin-max",
+      "author_date": "2026-09-18T09:57:06+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "043ebc1ff19369ff3233a4bb88d5d304c90ff6ae",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-18T09:37:31+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "db44fbf09b47b9bb54e26956db9031ff8ada4702",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-18T09:23:57+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "e94d65eb5237d94ca4a64e0f93cb1961e4bd5af3",
+      "author": "younghyun0702",
+      "author_date": "2026-09-18T09:15:35+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "11ab39f69a453228046ffa5f59d08965076a8851",
+      "author": "hans",
+      "author_date": "2026-09-18T09:06:19+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "13730722dd9e827672f883f9830f54105a8bfdef",
+      "author": "jjm15955",
+      "author_date": "2026-09-18T09:04:27+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "680bc374bc415f435d0a2adbc49b27c415112205",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-17T21:49:54+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "49ef52ac84dbbe2c2808cc0bcd64745cb221544b",
+      "author": "younghyun0702",
+      "author_date": "2026-09-17T18:03:29+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "4db64550d0eb43b14d2fba1e7b0260aa1a66e8db",
+      "author": "younghyun lee",
+      "author_date": "2026-09-17T15:35:31+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "755a81cae17e814aad0118afc2f3dc7c43963a9b",
+      "author": "younghyun0702",
+      "author_date": "2026-09-17T15:03:59+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "31b0b12d33f1db3b84d7176577b3d649d7392675",
+      "author": "younghyun lee",
+      "author_date": "2026-09-17T14:42:53+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b8797f0505bc4b111bc831880907732414e0d6f9",
+      "author": "younghyun0702",
+      "author_date": "2026-09-17T14:41:10+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "53326a2bbc760d29b737e16af292dea205ba8b41",
+      "author": "hans",
+      "author_date": "2026-09-17T11:48:13+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "68afd1af66045e85d6a8970869c4f9efe67376f5",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-17T10:52:23+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "c744cdb647b4315b66ddfc8f32722361c6d54daa",
+      "author": "hans",
+      "author_date": "2026-09-17T10:51:48+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "297649c336173a6fa8a74608f6a3075174b65c9a",
+      "author": "Min-star-prog",
+      "author_date": "2026-09-17T09:47:15+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "2cc8b1364bd8e77ecf7260203bbc3d669a57ef17",
+      "author": "younghyun lee",
+      "author_date": "2026-09-17T09:33:21+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "227292c25252f1652942f1659914c28d1ba70865",
+      "author": "younghyun0702",
+      "author_date": "2026-09-17T09:20:57+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "905b943dcf323a96bb19a5515316fa23842264b7",
+      "author": "hans",
+      "author_date": "2026-09-16T11:09:06+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "0d182e7ebb7fddeb568338126209a648b3e52b6f",
+      "author": "hans",
+      "author_date": "2026-09-16T11:08:43+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "6b2e36f764b50a4d026410746bb661263f777959",
+      "author": "hans",
+      "author_date": "2026-09-16T10:53:41+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "b22da2a766017998b0b498db31e2a13179a065ce",
+      "author": "이승열",
+      "author_date": "2026-09-15T21:30:12+09:00",
+      "ancestor_of_history_merge": true
+    },
+    {
+      "sha": "3ec9377c9a4cfba5ca8d5e7cf3160129600b6b96",
+      "author": "younghyun0702",
+      "author_date": "2026-09-15T19:04:24+09:00",
+      "ancestor_of_history_merge": true
+    }
+  ],
+  "source_areas": [
+    {
+      "path": "CNN/rtl",
+      "tree": "3d2face26c4bd1ae9ed4ce1297f4cead272fe1a1",
+      "status": "PASS",
+      "approved_removed_artifacts": []
+    },
+    {
+      "path": "CNN/tb",
+      "tree": "e7d3f9fea8c691bcc0ac72e61e731dcb241b8ecd",
+      "status": "PASS",
+      "approved_removed_artifacts": []
+    },
+    {
+      "path": "CNN/docs",
+      "tree": "39f64095cbec0a1a983057e687a36f087c72bc9d",
+      "status": "PASS",
+      "approved_removed_artifacts": []
+    },
+    {
+      "path": "CNN/golden_py_model",
+      "tree": "bfe521bd2bafa6dc163aafa5a1ccada5ddc0173b",
+      "status": "PASS",
+      "approved_removed_artifacts": []
+    },
+    {
+      "path": "CNN/uvm",
+      "tree": "183f103acf1423b43627758e1ad2555ee15cdbc1",
+      "status": "PASS",
+      "approved_removed_artifacts": []
+    },
+    {
+      "path": "robot_arm",
+      "tree": "a986d6c3882230ac44ab5f6c31e6c55903f81f7c",
+      "status": "PASS",
+      "approved_removed_artifacts": [
+        "robot_arm/pc/__pycache__/send_pose_uart.cpython-314.pyc",
+        "robot_arm/pc/__pycache__/send_pose_uart_with_video.cpython-314.pyc"
+      ]
+    },
+    {
+      "path": "Unity",
+      "tree": "98c4ff28141cf05acb40a35bfcf96b3a57b958f3",
+      "status": "PASS",
+      "approved_removed_artifacts": [
+        "Unity/Tools/LivePose/native/gcc_err.txt"
+      ]
+    }
+  ],
+  "original_worktree_precheck": {
+    "head": true,
+    "branch": true,
+    "index_bytes": true,
+    "index_entries": true,
+    "clean": true,
+    "no_untracked": true,
+    "stash_unchanged": true,
+    "index_still_unchanged": true
+  },
+  "remote_refs_rechecked_before_merge": {
+    "codex/readme-cleanup-20261019": "00f776e9f2d46975c77776b50682267e0e333247",
+    "dev/cnn": "8f3bbb9afbe476be09bbd979952190e9c6272c87",
+    "dev/integration": "43895a84857e19b3e53a8c5ebdc54e35a4847b9e",
+    "dev/robot": "55d28edfbf743ff37925ea3dcd34099ab6623fa8",
+    "dev/unity": "86e08eccf32c13164d2b69ff0b591d01b9429527",
+    "feat/cnn/cnn_acc_top": "7516105e5f9ef3cefabb1c00fde54c36e6815daa",
+    "feat/cnn/cnn_wrapper": "a7a6cdf3297025527461b7dda1e133ed96f43e50",
+    "feat/cnn/feature_map_io": "755a81cae17e814aad0118afc2f3dc7c43963a9b",
+    "feat/cnn/input_conv_pe": "86ff0a78c07e25f1b888bd750446ab58460d20d6",
+    "feat/cnn/temp_update": "1a7b0deba29e6d9ad4d7d107b72754a64c0ff617",
+    "feat/cnn/top_level_fsm": "54cf786724d7ada584dd9363e065117e889ae64e",
+    "feat/cnn/weight_bram_swap_fsm": "227292c25252f1652942f1659914c28d1ba70865",
+    "feat/integration/agent4": "7ce849a37a5b16f3acb1544babdacfa423cecaa3",
+    "feat/integration/agent4-rgby-pack77": "f6bad13aee3cb9b81c55b1b13dad031075e866cb",
+    "feat/integration/forearm-bounded-targets-20260928": "1dd23fe98793e3c8c683afda3ec69ff280df55c5",
+    "feat/integration/main-flow": "0aa4ec5b5f776880c4ff2a894165cb68e24f7587",
+    "feat/integration/merge-dev-robot-20260928": "90c70ae67d3cfbb4b106bb1c44147e2237b180dc",
+    "feat/integration/record-replay-uart": "8366eb1f74408bba9e907604011a53d8a51ded57",
+    "feat/integration/repeat-recorded-motion": "ed0e317f424a3b8ffeea68f0a645cc5da2869e90",
+    "feat/integration/rgby-pack77-pwm": "6d10b3b34a65a2dd360564707591772d93e1093e",
+    "feat/robot/agent1-stage-update": "6134ff6581f39489b20241672726f8000325fcee",
+    "feat/robot/agent3-five-axis": "7d1a19aa63bee000ce9f051ab89e32d75abc91c9",
+    "feat/robot/agent3-forearm-connect": "b02e06e8c6184c04083dd26afc91ed8855cf2705",
+    "feat/robot/agent3-startup-pwm": "1517e88c406bbf308beb8124eda11fdde33de3a8",
+    "feat/robot/human_target_angle": "5a8a23642eca0686d78bdf4718b28b68494ba291",
+    "feat/robot/integration": "b22da2a766017998b0b498db31e2a13179a065ce",
+    "feat/robot/output_controller": "a020efe3ba52df8c1f3ccfcbfa571efe26c8b964",
+    "feat/robot/robot_calibration": "5c837c416af073c1cc462e4c19fd6bfbd4d024bc",
+    "feat/web-mvp": "30b060feb8ec3ef33e0d3d2432b465270a2f120f",
+    "fix/integration/record-gripper-catchup": "b92244753fb2f933e8828fbf572c1ea181f2f5ee",
+    "main": "40d838b52f9df550a9e2dbbd3f8d8b0e0101173c",
+    "val/cnn/base": "c25525422664b160c4e1397321a1347b0a9f14d2",
+    "val/cnn/control": "339c8eb0812b9e9a3779a7278d6e4f03b818111e",
+    "val/cnn/dma_stream": "dff40d1d5fcdbb9a6a85f6f6d26a3eccec38e7bb",
+    "val/cnn/golden": "512f8dc43514c366d6c3a98bf253bb0ff7252b20",
+    "val/cnn/integration": "eb62194967a8764e6725d609bf247158ecaa7471"
+  },
+  "source_functional_changes": false,
+  "rewritten_existing_commits": false,
+  "main_merge_executed": false,
+  "force_push": false,
+  "deleted_branches": false,
+  "ruleset_changes": false,
+  "snapshot_comparison": {
+    "snapshot_advantage": "승인된 선택 경로와 간결한 통합 이력 유지",
+    "snapshot_limit": "원본 270개는 개발 ref에 보존되지만 통합 후보 조상에 미연결",
+    "ours_advantage": "기존 SHA·작성자·날짜와 파일 tree를 유지하며 원본 전체를 후보 이력에 연결",
+    "ours_tradeoff": "부모 19개의 merge graph. 이후 merge-base에 영향. 선택 제외 과거 파일도 history에 남음. Git blame·Contributors 표시 수치 동일성은 보장하지 않음"
+  },
+  "pre_push_working_file_hash_checks": 2034,
+  "pre_push_file_hash_result": "PASS (2033 clean-filter matches; .clang-format raw CRLF blob identical)",
+  "publication_scope": "일반 push와 base main / head release/main-consolidation-20261019의 Draft PR만 승인. 이 기록은 공개 전 로컬 이력 검증 결과.",
+  "main_history_preservation": "PREPARED: 향후 GitHub merge commit 방식으로 main에 병합할 때 원본 조상 관계 보존. 현재 main은 미병합.",
+  "step3_evidence": "validation/step3/STEP3_RESULTS.json (기존 실행·FAIL/BLOCKED 판정 불변)",
+  "source_tree_status": "PASS (7 source tree IDs unchanged)"
+}

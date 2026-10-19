@@ -78,15 +78,17 @@ Player fixture 7개는 CameraOverlay 96, PortOwner 88, G51 168, QuickHUD 416, Re
 
 ## Git 이력 보존 분석과 권고
 
-현재 snapshot commit은 원본 source commit 이력을 main의 조상으로 연결하지 않았다. 승인된 4개 source 이력에서 **168개**, 그 밖에 squash로 분리된 원격 feature 원본 **102개**, 합계 **270개**가 현재 통합 후보의 조상이 아니다.
+STEP 3 snapshot 시점에는 선택 source 이력 168개와 별도 feature 원본 102개, 합계 270개가 통합 후보의 조상이 아니었다. 원본 분석 [STEP3_HISTORY.json](validation/step3/STEP3_HISTORY.json)은 당시 기록으로 보존한다.
 
-- 4개 source 이력만 연결할 때의 비중복 tip은 UVM `eb621949...`, Firmware `43895a84...`, Unity `86e08ecc...` 3개다. CNN tip은 UVM tip의 조상이다.
-- 현재 원격 36개 branch의 원본 SHA까지 모두 main 조상으로 보존하려면 `git merge-base --independent`로 확인한 **18개 tip**을 고려해야 한다. 전체 SHA와 작성자 통계는 [이력 JSON](validation/step3/STEP3_HISTORY.json)에 있다.
-- 권고는 기존 commit을 재작성하지 않는 후속 `git merge -s ours --no-ff` provenance merge다. 이 전략은 현재 tree를 유지하며 parent 이력만 연결한다. 실행 전후 tree와 270개 commit의 조상 관계를 확인해야 한다. `-X ours`와 구분한다.
-- 전체 브랜치를 병합한 것으로 기록하므로 이후 merge-base에 영향을 준다. 최종 tree에서 제외한 과거 파일도 이력에는 남는다. 이 의미를 승인한 뒤 적용해야 한다. 이번에는 merge를 실행하지 않았다.
-- 최종 GitHub PR은 저장소 정책이 허용하는 **Create a merge commit** 방식이 필요하다. Squash/Rebase 방식은 원하는 원본 조상 관계를 보존하지 않는다. 정책을 우회하거나 설정을 변경하지 않는다. 모든 원본 feature까지 main ancestry에 연결할 필요가 없다면 source tip 연결과 별도 보존 ref/archive를 선택할 수 있으나, 후자는 main 조상 보존과 다르다.
+STEP 4에서 사용자 승인을 받아 `c31640cdcf9aeb4d830254e809badeb4008a804e`에 비중복 tip 18개를 연결하는 `ours` merge를 추가했다. 첫 부모는 `5ec588fa5332db16e4f5e43295d526cad24bf407`이며 부모 수는 19개다. 전후 전체 tree `61aa43cafe4e753440a70cdc55e69cd4d63d4fc1`가 동일하고 원본 **270/270개 SHA의 조상 관계가 PASS**다. 기존 commit을 재작성하지 않았다.
 
-근거: [Git ours 전략](https://git-scm.com/docs/merge-strategies), [GitHub merge 방식](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/about-merge-methods-on-github).
+- snapshot 유지의 장점은 선택 파일과 간결한 통합 이력이다. 한계는 원본 270개가 개발 ref에만 남고 후보 조상에 연결되지 않는 점이다.
+- 승인한 이력 연결 방식은 파일을 유지하면서 원본 SHA·작성자·날짜를 보존한다. 3개 source tip만 연결하면 빠지는 feature 원본 102개도 포함했다.
+- 전체 branch를 병합한 것으로 기록하므로 이후 merge-base에 영향을 준다. 선택 제외 과거 파일도 history에는 남는다. `git blame`·GitHub Contributors 표시의 동일성을 보장하지 않는다.
+- main ruleset과 Repository에서 merge commit 허용을 확인했다. 최종 main의 원본 조상 관계 보존에는 **Create a merge commit** 방식이 필요하다. squash/rebase는 이 관계를 보존하지 않는다. 규칙을 변경하거나 우회하지 않는다.
+- main 병합은 이번 승인 범위가 아니며 아직 수행하지 않았다. STEP 4 공개 후 원격 SHA·Draft PR·GitHub README 렌더링을 별도 확인한다.
+
+실제 부모·SHA·작성자·날짜·조상 검사는 [STEP 4 이력 증거](validation/step4/HISTORY_PRESERVATION.json), 범위와 비교는 [STEP4_SUMMARY.md](validation/step4/STEP4_SUMMARY.md)에 있다. 근거: [Git ours 전략](https://git-scm.com/docs/merge-strategies), [GitHub merge 방식](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/about-merge-methods-on-github).
 
 ## 업로드와 관리 변경
 
@@ -120,8 +122,8 @@ Player fixture 7개는 CameraOverlay 96, PortOwner 88, G51 168, QuickHUD 416, Re
 
 ## 판정과 후속 단계
 
-소스 통합과 문서·증거를 검토하는 Draft PR은 준비 가능하다. Git 이력 연결 범위를 결정하고 미해결 호환성 및 검증 환경 문제를 해결하기 전에는 최종 merge·실제 시스템 릴리스 승인을 권고하지 않는다. [미해결 문제](INTEGRATION_BLOCKERS.md)를 유지한다.
+소스 통합과 문서·증거를 검토하는 Draft PR은 준비 가능하다. STEP 4에서 후보의 원본 이력 270개 연결을 완료했다. 미해결 호환성 및 검증 환경 문제를 해결하기 전에는 최종 merge·실제 시스템 릴리스 승인을 권고하지 않는다. [미해결 문제](INTEGRATION_BLOCKERS.md)를 유지한다.
 
-이번 단계는 별도 로컬 문서·Git 관리 commit까지만 수행한다. source 구현과 기존 commit은 재작성하지 않는다.
+STEP 3은 로컬 문서·Git 관리 commit까지 수행했다. 후속 STEP 4는 사용자 승인에 따라 이력 연결·일반 push·Draft PR까지 진행하며, source 구현과 기존 commit은 재작성하지 않는다.
 
 공식 팀 프로젝트 README·발표 미디어는 검증·Git 관리 변경과 분리한 로컬 commit으로 기록한다. 사용자 추가 요구에 따라 개인 포트폴리오 지시를 대체했다. PPT 10페이지 시연 GIF 등 7개 미디어(20,364,090 bytes)를 사용하며, Contributors는 발표자료 2페이지의 7명 담당표에 근거한다. 슬라이드·hash·원본 움직임 보존 여부는 docs/media/에 기록했다. 발표 당시 결과를 현재 통합 검증 PASS로 확대하지 않았다.

@@ -371,5 +371,7 @@
     "terminal_marker": "POINTWISE_FAULT_RECOVERY PASS / $finish / FAULT_TIMEOUT 0 / FAULT_ERRORS 0",
     "log": ".validation/step3/readme_pointwise_example.log",
     "log_sha256": "6e711770f579f1ecb900d145da939a5cf2194bd5818e14b86bd97c9c71efabea"
-  }
+  },
+  "validated_readme_commit": "5ec588fa5332db16e4f5e43295d526cad24bf407",
+  "record_scope": "STEP 3 README 검토 당시의 hash·로컬 Browser 측정 기록. STEP 4에서는 마지막 이력 설명만 갱신했으며 현재 GitHub 렌더링은 공개 후 별도 확인."
 }
