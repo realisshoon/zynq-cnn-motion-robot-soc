@@ -1,5 +1,9 @@
 # Agent1 Human Body 기준 5축 테스트
 
+이 문서는 과거 로컬 시험 기록이다. docs/, tests/, tools/, etc/는 Git에 포함되지
+않으므로 이 문서의 경로와 실행 예는 로컬 검증 묶음이 있는 환경에서만 참고한다.
+현행 빌드 안내는 README.md를 따른다.
+
 Agent1 outputs HUMAN angles, not ROBOT servo angles.
 
 robot_arm/에서 실행한다. 입력 → relative XYZ → 양 어깨 기반 Human Body Frame

@@ -32,4 +32,5 @@ echo "Building project..."
 cmake --build "${BUILD_DIR}" --parallel
 
 echo
-echo "Build complete: ${BUILD_DIR}/robot_arm_2d_control"
+echo "Host static libraries built: ${BUILD_DIR}"
+echo "For complete board firmware, use vitis/setup_vitis.ps1."

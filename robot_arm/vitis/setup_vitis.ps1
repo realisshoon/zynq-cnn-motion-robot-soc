@@ -6,33 +6,29 @@
     1) XSA로 플랫폼(standalone, ps7_cortexa9_0)을 만들고 BSP를 빌드한다.
     2) 빈 앱 프로젝트를 만들고 저장소의 robot_arm/src 를 "링크"(복사 아님)로 붙인다.
     3) include 경로, 컴파일 심볼, 링크 라이브러리(-lm)를 설정한다.
-    4) 별도 main 3개를 빌드에서 제외하고 앱 DDR을 CNN 프레임 버퍼 아래로 제한한다.
+    4) 반대 역할 입력 파일을 제외하고 앱 DDR을 CNN 프레임 버퍼 아래로 제한한다.
     5) 앱을 빌드한다.
 
   주의
-    - 기본 빌드는 ROBOT_ARM_PWM_ENABLE을 정의하여 로봇 서보 PWM을 실제 출력한다.
-      보드에서 실행하기 전에 서보 전원과 기구 자세를 확인한다.
-    - StereoRole Left/Right는 새 dual-arm UART0 XSA를 사용하며 로봇 PWM을 기본 비활성화한다.
+    - StereoRole Left/Right를 반드시 선택한다. 두 역할 모두 로봇 PWM은 부팅 OFF다.
       각 보드가 자기 로봇을 제어한다(Left=로봇1 JC, Right=로봇0 JB).
-      EnableStereoRobotPwm은 Right의 별도 서보 시험용이며 기본 부팅은 PWM OFF다.
+      앱 심볼은 Xilinx PWM 드라이버와 역할 하나뿐이며 telemetry를 항상 포함한다.
     - 워크스페이스 경로는 짧아야 한다(80자 이하, 예: D:\vws). Windows 경로 길이 제한(260자) 때문이다.
     - 이 스크립트를 돌리는 동안 Vitis IDE는 이 워크스페이스를 열지 않은 상태여야 한다.
     - xsct 임시폴더(.Xil)와 로그는 "<워크스페이스>_setup_logs" 폴더에 만들어져서 저장소를 더럽히지 않는다.
     - 링크 안의 파일을 Vitis에서 편집/삭제하면 저장소 원본이 바뀐다. 편집은 다른 편집기에서 한다.
 
-  사용 예 (기본 XSA는 CNN + camera/robot PWM 통합 하드웨어):
-    powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws
+  사용 예 (기본 XSA는 final_uart0.xsa):
+    powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws -StereoRole Right
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Workspace,
-    [string]$Xsa,                        # 기본값: xsa\cnn_camera_gimbal_rgby_pack77.xsa
+    [string]$Xsa,                        # 기본값: xsa\final_uart0.xsa
     [string]$RepoRoot,                   # 기본값: 이 스크립트의 상위 폴더(robot_arm)
     [string]$VitisBin = "C:\Xilinx\Vitis\2020.2\bin",
     [string]$PlatformName = "cnn_camera_gimbal",
     [string]$AppName = "robot_testbench",
-    [ValidateSet("Mono", "Left", "Right")][string]$StereoRole = "Mono",
-    [switch]$EnableStereoRobotPwm,
-    [ValidateRange(9600, 921600)][int]$StereoBaud = 115200
+    [Parameter(Mandatory = $true)][ValidateSet("Left", "Right")][string]$StereoRole
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,10 +36,8 @@ $ErrorActionPreference = "Stop"
 # Windows PowerShell 5.1 에서는 param 기본값 안의 $PSScriptRoot 가 비어 있어서 본문에서 계산한다.
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 if (-not $Xsa) {
-    $xsaName = if ($StereoRole -eq "Mono") { "cnn_camera_gimbal_rgby_pack77.xsa" } else { "final_uart0.xsa" }
-    $Xsa = Join-Path $scriptDir "xsa\$xsaName"
+    $Xsa = Join-Path $scriptDir "xsa\final_uart0.xsa"
 }
-if ($EnableStereoRobotPwm -and $StereoRole -ne "Right") { throw "Stereo robot PWM can only be enabled for the Right role." }
 if (-not $RepoRoot) { $RepoRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path }
 function ToTcl([string]$p) { return ($p -replace '\\', '/') }
 
@@ -87,20 +81,23 @@ function Run-Xsct([string]$tclText, [string]$name) {
 }
 
 $ws = ToTcl $Workspace; $repo = ToTcl $RepoRoot; $xsaT = ToTcl $Xsa
-$roleSymbols = ""
-if ($StereoRole -ne "Mono") {
-    $roleSymbols = "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_$($StereoRole.ToUpperInvariant())`n" +
-                   "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_UART_BAUD=$StereoBaud`n" +
-                   "app config -name $AppName -add define-compiler-symbols ROBOT_SPLIT_BOARD_CONTROL=1`n" +
-                   "app config -name $AppName -add define-compiler-symbols ROBOT_DUAL_ARM_ENABLE=0`n" +
-                   "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_ONE_EURO_ENABLE=1`n" +
-                   "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_ONE_EURO_TUNABLE=0"
-}
-$pwmSymbol = if ($StereoRole -eq "Mono" -or $EnableStereoRobotPwm) {
-    "app config -name $AppName -add define-compiler-symbols ROBOT_ARM_PWM_ENABLE"
-} else { "" }
+$roleSymbols = "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_$($StereoRole.ToUpperInvariant())"
 
 # ---- 1단계: 플랫폼 + 앱 + 링크 + 설정 ----
+function Get-FirmwareSources {
+    foreach ($directory in @('src', 'include', 'config')) {
+        Get-ChildItem -LiteralPath (Join-Path $RepoRoot $directory) -Recurse -File |
+            Where-Object { $_.Extension -in @('.c', '.h') } | Sort-Object FullName |
+            ForEach-Object {
+                [pscustomobject]@{
+                    path = $_.FullName.Substring($RepoRoot.Length + 1).Replace('\', '/')
+                    sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+                }
+            }
+    }
+}
+$sourceBefore = @(Get-FirmwareSources)
+$xsaHash = (Get-FileHash -LiteralPath $Xsa -Algorithm SHA256).Hash
 Write-Host "1/3 플랫폼 생성(BSP 빌드 포함, 몇 분 걸림), 앱 생성, 링크, 설정"
 $phase1 = @"
 setws $ws
@@ -115,10 +112,8 @@ app create -name $AppName -platform $PlatformName -domain standalone_domain -tem
 importsources -name $AppName -path $repo/src -soft-link
 app config -name $AppName -add include-path $repo/include
 app config -name $AppName -add include-path $repo/config
-app config -name $AppName -add include-path $repo/src/cnn_firmware
+app config -name $AppName -add include-path $repo/src/app/cnn
 app config -name $AppName -add define-compiler-symbols SERVO_PWM_DRIVER_USE_XILINX
-app config -name $AppName -add define-compiler-symbols ROBOT_TRACE
-$pwmSymbol
 $roleSymbols
 app config -name $AppName -add libraries m
 puts "include-path: [app config -name $AppName include-path]"
@@ -127,12 +122,13 @@ puts "libraries: [app config -name $AppName libraries]"
 "@
 Run-Xsct $phase1 "phase1_platform_app"
 
-# ---- 2단계: 빌드에서 뺄 파일 등록 (xsct에 제외 명령이 없어 .cproject 를 직접 수정) ----
+# ---- 2단계: 역할별 입력 파일 선택 ----
 Write-Host "2/3 빌드 제외 파일 등록"
 $cp = Join-Path (Join-Path $Workspace $AppName) ".cproject"
 $txt = [IO.File]::ReadAllText($cp)
 if (([regex]::Matches($txt, 'excluding="_ide"')).Count -ne 2) { throw ".cproject 형식이 예상과 다릅니다(excluding=""_ide"" 2개 필요)" }
-$txt = $txt.Replace('excluding="_ide"', 'excluding="_ide|src/main.c|src/app/main_uart_agent1_test.c|src/human_target_angle/main_integration_shape.c"')
+$otherInput = if ($StereoRole -eq 'Left') { 'right_input.c' } else { 'left_input.c' }
+$txt = $txt.Replace('excluding="_ide"', ('excluding="_ide|src/app/board/' + $otherInput + '"'))
 [IO.File]::WriteAllText($cp, $txt, (New-Object Text.UTF8Encoding($false)))
 Write-Host "  [OK] .cproject 제외 항목 추가"
 
@@ -158,8 +154,27 @@ Run-Xsct "setws $ws`napp build -name $AppName`n" "phase3_build"
 $dbg = Join-Path (Join-Path $Workspace $AppName) "Debug"
 $elf = Join-Path $dbg "$AppName.elf"
 if (Test-Path $elf) {
+    $sourceAfter = @(Get-FirmwareSources)
+    if (($sourceBefore | ConvertTo-Json -Compress) -ne ($sourceAfter | ConvertTo-Json -Compress) -or
+        $xsaHash -ne (Get-FileHash -LiteralPath $Xsa -Algorithm SHA256).Hash) {
+        throw '빌드 중 소스/XSA가 바뀌었습니다. 이 ELF를 배포하지 말고 다시 빌드하세요.'
+    }
+    $manifest = [ordered]@{
+        schema = 1
+        built_utc = [DateTime]::UtcNow.ToString('o')
+        role = $StereoRole.ToUpperInvariant()
+        toolchain = 'Vitis 2020.2 ARM Cortex-A9 standalone'
+        symbols = @('SERVO_PWM_DRIVER_USE_XILINX', ('ROBOT_STEREO_' + $StereoRole.ToUpperInvariant()))
+        xsa = [ordered]@{ path = $Xsa; sha256 = $xsaHash }
+        elf = [ordered]@{ path = $elf; sha256 = (Get-FileHash -LiteralPath $elf -Algorithm SHA256).Hash }
+        linker = [ordered]@{ path = $ld; sha256 = (Get-FileHash -LiteralPath $ld -Algorithm SHA256).Hash }
+        script_sha256 = (Get-FileHash -LiteralPath $MyInvocation.MyCommand.Path -Algorithm SHA256).Hash
+        sources = $sourceAfter
+        installed_to_sd = $false
+    }
+    $manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $dbg 'build_manifest.json') -Encoding utf8
     Write-Host ("완료: {0}  ({1:N0} bytes)" -f $elf, (Get-Item $elf).Length)
-    Write-Host "다음: Vitis를 열고 워크스페이스를 $Workspace 로 지정하세요. 실행은 앱 우클릭 -> Debug As -> Launch on Hardware 입니다."
+    Write-Host 'build_manifest.json에 소스/XSA/링커/ELF SHA256을 기록했습니다. SD 설치·실물 검증은 별도입니다.'
 } else {
     Write-Host "ELF 가 만들어지지 않았습니다. 링크 에러를 확인하세요:"
     Write-Host "  cd $dbg ; make all   (Vitis 의 gnuwin/toolchain 이 PATH 에 있는 셸에서)"
