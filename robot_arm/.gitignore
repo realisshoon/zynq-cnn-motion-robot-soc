@@ -57,3 +57,14 @@ build/
 
 # Hand-built test executables (no extension, so not caught above)
 test_output_control
+
+__pycache__/
+/docs/
+/tests/
+/tools/
+/etc/
+captures/
+vitis/boot/
+tests/record_replay/boundaries/runs/
+tools/stereo_vision/filter_acg/
+tools/stereo_vision/filter_comparison/

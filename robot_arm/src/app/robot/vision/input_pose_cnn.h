@@ -1,0 +1,26 @@
+#ifndef INTEGRATION_INPUT_POSE_CNN_H
+#define INTEGRATION_INPUT_POSE_CNN_H
+
+#include "../../cnn/cnn_types.h"
+#include "app/robot/vision/stereo/stereo_link.h"
+#include "app/robot/vision/stereo/stereo_kalman3d.h"
+
+/* Called once for each completed CNN frame, before the Agent frame path. */
+int input_pose_cnn_publish(const cnn_result_t *result);
+unsigned input_pose_cnn_overwritten(void);
+void input_pose_cnn_set_stereo(int enabled);
+void input_pose_cnn_set_async_test(int enabled);
+int input_pose_cnn_publish_stereo(const StereoDepthResult *result);
+int input_pose_cnn_take_gripper(StereoDepthResult *result, int *new_session);
+const char *input_pose_cnn_admission_reason(void);
+int input_pose_cnn_arm_stationary(void);
+const char *input_pose_cnn_tracking_state(void);
+unsigned input_pose_cnn_reacquire_count(void);
+uint32_t input_pose_cnn_filter_epoch(void);
+StereoKalman3DConfig input_pose_cnn_kalman_config(void);
+int input_pose_cnn_kalman_configure(StereoKalman3DConfig config);
+int input_pose_cnn_take_stereo(HumanPose2D *image_pose, HumanPose3D *measured_pose, float *dt_sec);
+void input_pose_cnn_discard_stereo_pending(void);
+void input_pose_cnn_discard_stereo_arm_pending(void);
+
+#endif
