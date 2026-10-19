@@ -1,0 +1,89 @@
+PASS original CSV Startup retained
+PASS actual Player resolution 1920
+PASS explicit single human role confirmation 1
+PASS production Connect with in-memory transport Left
+PASS Connect preserves CSV owner/epoch/clip/clock
+PASS Connect auto TX zero
+PASS real RX reducer parses fake port TK and role state
+PASS PWM1/w1 TK cannot overwrite paused CSV transforms
+PASS connected unsupported firmware never reported as accepted/applied
+PASS existing hardware command owner gate preserved in CSV
+PASS explicit status query available without owner switch
+PASS status response correlation / V byte unchanged / no automatic query
+PASS CSV playback continues while TK RX stays telemetry only
+PASS STOP holds CSV despite ongoing UART RX
+PASS Disconnect retains CSV input and loaded clip
+PASS manual reconnect via production API
+PASS reconnect keeps CSV / new port generation needs fresh identity
+PASS PLAY never sends invented CSV command, E/A, or queries
+PASS port error cannot select UART owner
+PASS read failure has no retry/TX
+PASS explicit single human role confirmation 0
+PASS production Connect with in-memory transport Right
+PASS Connect preserves CSV owner/epoch/clip/clock
+PASS Connect auto TX zero
+PASS real RX reducer parses fake port TK and role state
+PASS PWM1/w1 TK cannot overwrite paused CSV transforms
+PASS connected unsupported firmware never reported as accepted/applied
+PASS existing hardware command owner gate preserved in CSV
+PASS explicit status query available without owner switch
+PASS status response correlation / V byte unchanged / no automatic query
+PASS CSV playback continues while TK RX stays telemetry only
+PASS STOP holds CSV despite ongoing UART RX
+PASS Disconnect retains CSV input and loaded clip
+PASS manual reconnect via production API
+PASS reconnect keeps CSV / new port generation needs fresh identity
+PASS PLAY never sends invented CSV command, E/A, or queries
+PASS port error cannot select UART owner
+PASS read failure has no retry/TX
+PASS CSV single PLAY UI has no Virtual/Real/Both buttons
+PASS actual Player resolution 1280
+PASS explicit single human role confirmation 1
+PASS production Connect with in-memory transport Left
+PASS Connect preserves CSV owner/epoch/clip/clock
+PASS Connect auto TX zero
+PASS real RX reducer parses fake port TK and role state
+PASS PWM1/w1 TK cannot overwrite paused CSV transforms
+PASS connected unsupported firmware never reported as accepted/applied
+PASS existing hardware command owner gate preserved in CSV
+PASS explicit status query available without owner switch
+PASS status response correlation / V byte unchanged / no automatic query
+PASS CSV playback continues while TK RX stays telemetry only
+PASS STOP holds CSV despite ongoing UART RX
+PASS Disconnect retains CSV input and loaded clip
+PASS manual reconnect via production API
+PASS reconnect keeps CSV / new port generation needs fresh identity
+PASS PLAY never sends invented CSV command, E/A, or queries
+PASS port error cannot select UART owner
+PASS read failure has no retry/TX
+PASS explicit single human role confirmation 0
+PASS production Connect with in-memory transport Right
+PASS Connect preserves CSV owner/epoch/clip/clock
+PASS Connect auto TX zero
+PASS real RX reducer parses fake port TK and role state
+PASS PWM1/w1 TK cannot overwrite paused CSV transforms
+PASS connected unsupported firmware never reported as accepted/applied
+PASS existing hardware command owner gate preserved in CSV
+PASS explicit status query available without owner switch
+PASS status response correlation / V byte unchanged / no automatic query
+PASS CSV playback continues while TK RX stays telemetry only
+PASS STOP holds CSV despite ongoing UART RX
+PASS Disconnect retains CSV input and loaded clip
+PASS manual reconnect via production API
+PASS reconnect keeps CSV / new port generation needs fresh identity
+PASS PLAY never sends invented CSV command, E/A, or queries
+PASS port error cannot select UART owner
+PASS read failure has no retry/TX
+PASS CSV single PLAY UI has no Virtual/Real/Both buttons
+PASS explicit Manual handoff
+PASS Manual port connection
+PASS Manual owner also independent of port
+PASS Manual RX is parsed without claiming visual owner
+PASS explicit UART input handoff retained
+PASS UART mode still applies verified TK to existing G51
+PASS independent LEFT connection
+PASS duplicate port rejected without disconnecting either board
+PASS LEFT disconnect preserves RIGHT transport
+PASS four explicitly requested MOCK V bytes only; no targets/E/A/O/H/S/X
+PASS physical UART TX zero; all connections injected, no COM opened
+RESULT=PASS

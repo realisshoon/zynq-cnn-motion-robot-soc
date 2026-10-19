@@ -1,0 +1,97 @@
+PASS Startup retained
+PASS existing UART Startup without automatic connect
+PASS disconnected overlay disabled, no automatic COM
+PASS disabled listener cannot transmit
+PASS actual Player resolution 1920
+PASS explicit CSV owner for display-only path
+PASS only fake transports created
+PASS production RIGHT connect injected
+PASS only fake transports created
+PASS production LEFT connect injected
+PASS connect/status RX produces zero automatic TX and preserves CSV
+PASS connection is not overlay state confirmation
+PASS visible enabled Camera overlay toggle
+PASS actual pointer hit Camera overlay toggle
+PASS RIGHT click sends one b to RIGHT fake port only
+PASS write/pending never displayed as mode success
+PASS duplicate pending listener blocked
+PASS RIGHT response reports full joints
+PASS visible enabled Camera overlay toggle
+PASS actual pointer hit Camera overlay toggle
+PASS LEFT independent b / six-point response
+PASS visible enabled Camera overlay toggle
+PASS actual pointer hit Camera overlay toggle
+PASS BOTH exact b bytes, no prefixes or queries
+PASS BOTH different reported states remain independent
+PASS CSV owner unchanged / motion TX guards preserved
+PASS enabled color stable without blink
+PASS Korean button label fits detail width
+PASS Korean glyph 점
+PASS Korean glyph 전
+PASS Korean glyph 체
+PASS Korean glyph 관
+PASS Korean glyph 절
+PASS Korean glyph 토
+PASS Korean glyph 글
+PASS actual detail button unclipped 1920
+PASS existing command UI retained E
+PASS existing command UI retained A
+PASS existing command UI retained S
+PASS existing command UI retained X
+PASS existing command UI retained O
+PASS existing command UI retained H
+PASS explicit UART owner still supported
+PASS compact Dock overlay visible
+PASS compact button unclipped 1920
+PASS compact caption fits 1920
+PASS disconnect invalidates LEFT / BOTH disabled
+PASS BOTH missing peer cannot toggle/close RIGHT
+PASS RIGHT still independent after LEFT disconnect
+PASS actual Player resolution 1280
+PASS explicit CSV owner for display-only path
+PASS only fake transports created
+PASS production RIGHT connect injected
+PASS only fake transports created
+PASS production LEFT connect injected
+PASS connect/status RX produces zero automatic TX and preserves CSV
+PASS connection is not overlay state confirmation
+PASS visible enabled Camera overlay toggle
+PASS actual pointer hit Camera overlay toggle
+PASS RIGHT click sends one b to RIGHT fake port only
+PASS write/pending never displayed as mode success
+PASS duplicate pending listener blocked
+PASS RIGHT response reports full joints
+PASS visible enabled Camera overlay toggle
+PASS actual pointer hit Camera overlay toggle
+PASS LEFT independent b / six-point response
+PASS visible enabled Camera overlay toggle
+PASS actual pointer hit Camera overlay toggle
+PASS BOTH exact b bytes, no prefixes or queries
+PASS BOTH different reported states remain independent
+PASS CSV owner unchanged / motion TX guards preserved
+PASS enabled color stable without blink
+PASS Korean button label fits detail width
+PASS Korean glyph 점
+PASS Korean glyph 전
+PASS Korean glyph 체
+PASS Korean glyph 관
+PASS Korean glyph 절
+PASS Korean glyph 토
+PASS Korean glyph 글
+PASS actual detail button unclipped 1280
+PASS existing command UI retained E
+PASS existing command UI retained A
+PASS existing command UI retained S
+PASS existing command UI retained X
+PASS existing command UI retained O
+PASS existing command UI retained H
+PASS explicit UART owner still supported
+PASS compact Dock overlay visible
+PASS compact button unclipped 1280
+PASS compact caption fits 1280
+PASS disconnect invalidates LEFT / BOTH disabled
+PASS BOTH missing peer cannot toggle/close RIGHT
+PASS RIGHT still independent after LEFT disconnect
+PASS 8 explicitly clicked MOCK b bytes only; no E/A/S/X/O/H/V/T/t
+PASS actual COM never created / physical TX=0
+RESULT=PASS

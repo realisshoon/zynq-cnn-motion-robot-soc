@@ -1,0 +1,28 @@
+# 로컬 검증 산출물과 개발 도구 캐시
+/.validation/
+/.Xil/
+/.vscode/
+/.vs/
+/.idea/
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+
+# CNN 시뮬레이터 생성물
+/CNN/uvm/*/output/
+/CNN/uvm/*/work/
+/csrc/
+/simv
+/simv.daidir/
+/xsim.dir/
+/xvlog.log
+/xvlog.pb
+/xelab.log
+/xelab.pb
+/xsim.log
+/ucli.key
+/*.vdb/
+/verdiLog/
+/vdCovLog/
+/Unity/Tools/LivePose/native/gcc_err.txt

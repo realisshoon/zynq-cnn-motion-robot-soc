@@ -1,0 +1,2 @@
+COMMAND $REPO\.validation\step3\py310\Scripts\python.exe -B $REPO\CNN\golden_py_model\cnn_model_v4.py run --packed $REPO\CNN\golden_py_model\generated\weights_v4.bin --manifest $REPO\CNN\golden_py_model\generated\manifest.json --image $REPO\CNN\golden_py_model\images_npy\frame_00124.npy --out $REPO\.validation\step3\golden_pinned\frame_00124
+saved $REPO\.validation\step3\golden_pinned\frame_00124

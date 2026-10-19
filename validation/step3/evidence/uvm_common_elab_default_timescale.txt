@@ -1,0 +1,48 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xelab.bat -L uvm --uvm_version 1.2 --timescale 1ns/1ps --debug typical --mt 2 -s uvm_common_ts work.tb_top
+Vivado Simulator 2020.2
+Copyright 1986-1999, 2001-2020 Xilinx, Inc. All Rights Reserved.
+Running: C:/Xilinx/Vivado/2020.2/bin/unwrapped/win64.o/xelab.exe -L uvm --uvm_version 1.2 --timescale 1ns/1ps --debug typical --mt 2 -s uvm_common_ts work.tb_top
+Using 2 slave threads.
+Starting static elaboration
+Pass Through NonSizing Optimizer
+Completed static elaboration
+Starting simulation data flow analysis
+WARNING: [XSIM 43-4468] File : /proj/xbuilds/SWIP/2020.2_0711_1805/installs/lin64/Vivado/2020.2/data/system_verilog/uvm_1.2/xlnx_uvm_package.sv, Line : 25994, RANDC variable size more than 8 bits. This will be treated as a RAND variable instead.
+Completed simulation data flow analysis
+Time Resolution for simulation is 1ps
+Compiling package uvm.uvm_pkg
+Compiling package std.std
+Compiling package work.cnn_base_pkg
+Compiling module work.ctrl_drv_cb
+Compiling module work.image_drv_cb
+Compiling module work.weight_drv_cb
+Compiling module work.feature_in_drv_cb
+Compiling module work.m_axil_rsp_cb
+Compiling module work.mon_cb
+Compiling module work.cnn_if
+Compiling module work.top_level_fsm
+Compiling module work.layer_param_rom
+Compiling module work.weight_bram_swap_fsm
+Compiling module work.feature_map_io
+Compiling module work.line_buffer
+Compiling module work.input_conv_pe
+Compiling module work.depthwise_conv_pe
+Compiling module work.pointwise_u8s8_dsp_mult
+Compiling module work.pointwise_s16_pair_add_lut
+Compiling module work.pointwise_rshift_even_43_lut
+Compiling module work.pointwise_conv_pe_default
+Compiling module work.downsample_module
+Compiling module work.argmax_offset_select
+Compiling module work.coord_restore
+Compiling module work.color_marker_detect
+Compiling module work.cnn_accelerator_top
+Compiling module work.tb_top
+Built simulation snapshot uvm_common_ts
+
+****** Webtalk v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source $REPO/.validation/step3/uvm_common/xsim.dir/uvm_common_ts/webtalk/xsim_webtalk.tcl -notrace
+INFO: [Common 17-206] Exiting Webtalk at Mon Oct 19 14:06:03 2026...

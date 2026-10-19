@@ -1,0 +1,157 @@
+PASS original Startup exists
+PASS Startup CSV → G51 retained
+PASS UTF8 Korean/spaces dual-role CSV fully loads
+PASS actual Player resolution 1920
+PASS canonical CSV role 0
+PASS native owner role reset 0
+PASS visible/enabled UI CSV start
+PASS PAUSE freezes pose and timeline
+PASS RESUME preserves position
+PASS STOP holds last pose
+PASS PLAY starts first row
+PASS COMPLETE then paused/HOLD
+PASS actual joint/gripper Transform 0 / 0
+PASS actual joint/gripper Transform 0 / 1
+PASS actual joint/gripper Transform 0 / 2
+PASS actual joint/gripper Transform 0 / 3
+PASS actual joint/gripper Transform 0 / 4
+PASS actual joint/gripper Transform 0 / 5
+PASS role final M0~M4 settled exact 0
+PASS complete posture retained
+PASS repeated PLAY resets epoch/rows
+PASS canonical CSV role 1
+PASS native owner role reset 1
+PASS visible/enabled UI CSV start
+PASS PAUSE freezes pose and timeline
+PASS RESUME preserves position
+PASS STOP holds last pose
+PASS PLAY starts first row
+PASS COMPLETE then paused/HOLD
+PASS actual joint/gripper Transform 1 / 0
+PASS actual joint/gripper Transform 1 / 1
+PASS actual joint/gripper Transform 1 / 2
+PASS actual joint/gripper Transform 1 / 3
+PASS actual joint/gripper Transform 1 / 4
+PASS actual joint/gripper Transform 1 / 5
+PASS role final M0~M4 settled exact 1
+PASS complete posture retained
+PASS repeated PLAY resets epoch/rows
+PASS canonical CSV role 2
+PASS native owner role reset 2
+PASS visible/enabled UI CSV start
+PASS PAUSE freezes pose and timeline
+PASS RESUME preserves position
+PASS STOP holds last pose
+PASS PLAY starts first row
+PASS COMPLETE then paused/HOLD
+PASS actual joint/gripper Transform 2 / 0
+PASS actual joint/gripper Transform 2 / 1
+PASS actual joint/gripper Transform 2 / 2
+PASS actual joint/gripper Transform 2 / 3
+PASS actual joint/gripper Transform 2 / 4
+PASS actual joint/gripper Transform 2 / 5
+PASS role final M0~M4 settled exact 2
+PASS complete posture retained
+PASS repeated PLAY resets epoch/rows
+PASS horizontal bounds 1920 / CSV target 0
+PASS horizontal bounds 1920 / CSV target 1
+PASS horizontal bounds 1920 / CSV target 2
+PASS horizontal bounds 1920 / CSV choose file
+PASS horizontal bounds 1920 / CSV confirm single target
+PASS horizontal bounds 1920 / CSV cancel binding
+PASS horizontal bounds 1920 / CSV start
+PASS horizontal bounds 1920 / CSV pause compact
+PASS horizontal bounds 1920 / CSV resume compact
+PASS horizontal bounds 1920 / CSV stop compact
+PASS legacy black backdrop disabled
+PASS CSV output toggles removed; unsupported-board target TX remains zero
+PASS actual Player resolution 1280
+PASS canonical CSV role 0
+PASS native owner role reset 0
+PASS visible/enabled UI CSV start
+PASS PAUSE freezes pose and timeline
+PASS RESUME preserves position
+PASS STOP holds last pose
+PASS PLAY starts first row
+PASS COMPLETE then paused/HOLD
+PASS actual joint/gripper Transform 0 / 0
+PASS actual joint/gripper Transform 0 / 1
+PASS actual joint/gripper Transform 0 / 2
+PASS actual joint/gripper Transform 0 / 3
+PASS actual joint/gripper Transform 0 / 4
+PASS actual joint/gripper Transform 0 / 5
+PASS role final M0~M4 settled exact 0
+PASS complete posture retained
+PASS repeated PLAY resets epoch/rows
+PASS canonical CSV role 1
+PASS native owner role reset 1
+PASS visible/enabled UI CSV start
+PASS PAUSE freezes pose and timeline
+PASS RESUME preserves position
+PASS STOP holds last pose
+PASS PLAY starts first row
+PASS COMPLETE then paused/HOLD
+PASS actual joint/gripper Transform 1 / 0
+PASS actual joint/gripper Transform 1 / 1
+PASS actual joint/gripper Transform 1 / 2
+PASS actual joint/gripper Transform 1 / 3
+PASS actual joint/gripper Transform 1 / 4
+PASS actual joint/gripper Transform 1 / 5
+PASS role final M0~M4 settled exact 1
+PASS complete posture retained
+PASS repeated PLAY resets epoch/rows
+PASS canonical CSV role 2
+PASS native owner role reset 2
+PASS visible/enabled UI CSV start
+PASS PAUSE freezes pose and timeline
+PASS RESUME preserves position
+PASS STOP holds last pose
+PASS PLAY starts first row
+PASS COMPLETE then paused/HOLD
+PASS actual joint/gripper Transform 2 / 0
+PASS actual joint/gripper Transform 2 / 1
+PASS actual joint/gripper Transform 2 / 2
+PASS actual joint/gripper Transform 2 / 3
+PASS actual joint/gripper Transform 2 / 4
+PASS actual joint/gripper Transform 2 / 5
+PASS role final M0~M4 settled exact 2
+PASS complete posture retained
+PASS repeated PLAY resets epoch/rows
+PASS horizontal bounds 1280 / CSV target 0
+PASS horizontal bounds 1280 / CSV target 1
+PASS horizontal bounds 1280 / CSV target 2
+PASS horizontal bounds 1280 / CSV choose file
+PASS horizontal bounds 1280 / CSV confirm single target
+PASS horizontal bounds 1280 / CSV cancel binding
+PASS horizontal bounds 1280 / CSV start
+PASS horizontal bounds 1280 / CSV pause compact
+PASS horizontal bounds 1280 / CSV resume compact
+PASS horizontal bounds 1280 / CSV stop compact
+PASS legacy black backdrop disabled
+PASS CSV output toggles removed; unsupported-board target TX remains zero
+PASS invalid file rejected, previous owner/data preserved
+PASS invalid file rejected, previous owner/data preserved
+PASS invalid file rejected, previous owner/data preserved
+PASS invalid file rejected, previous owner/data preserved
+PASS invalid file rejected, previous owner/data preserved
+PASS invalid file rejected, previous owner/data preserved
+PASS single RIGHT loads
+PASS single RIGHT never copied to LEFT
+PASS legacy Agent1 schema stages unassigned stream
+PASS explicit RIGHT consent before playback
+PASS explicit LEFT human uses existing LEFT ABI3 Native
+PASS COMPLETE then paused/HOLD
+PASS legacy LEFT scheduler consumes original 477 rows
+PASS async load commits on Unity main thread
+PASS pending async result cannot steal new owner
+PASS CSV owner restored for TX guard
+PASS MOCK observer only, no COM open
+PASS legacy output observer cannot arm/send CSV targets
+PASS no COM transports or physical TX during all CSV tests
+PASS RIGHT-only default fixture before LEFT startup
+PASS CSV startup retains LEFT even when default RIGHT sample cannot load
+PASS CSV file chooser accessible without compatible default file
+PASS unbound previous epoch cannot play/resume
+PASS LEFT startup can load proper LEFT sequence without resetting selection
+PASS LEFT startup fallback has no COM/TX
+RESULT=PASS

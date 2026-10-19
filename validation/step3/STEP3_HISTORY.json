@@ -1,0 +1,232 @@
+{
+  "base_integration_commit": "b7eb63cb6b79a5b22a6e6b6e9fceb70eec67aa46",
+  "current_parents": [
+    "40d838b52f9df550a9e2dbbd3f8d8b0e0101173c"
+  ],
+  "source_history": [
+    {
+      "branch": "dev/cnn",
+      "sha": "8f3bbb9afbe476be09bbd979952190e9c6272c87",
+      "reachable_commits": 29,
+      "commits_not_ancestors_of_integration": 28,
+      "authors": [
+        "10\tyounghyun lee",
+        "     9\thans",
+        "     4\tjimin-max",
+        "     4\tjjm15955",
+        "     1\trealisshoon",
+        "     1\tyounghyun0702"
+      ]
+    },
+    {
+      "branch": "val/cnn/integration",
+      "sha": "eb62194967a8764e6725d609bf247158ecaa7471",
+      "reachable_commits": 86,
+      "commits_not_ancestors_of_integration": 85,
+      "authors": [
+        "25\tjimin-max",
+        "    23\trealisshoon",
+        "    17\tjjm15955",
+        "    10\thans",
+        "    10\tyounghyun lee",
+        "     1\tyounghyun0702"
+      ]
+    },
+    {
+      "branch": "dev/integration",
+      "sha": "43895a84857e19b3e53a8c5ebdc54e35a4847b9e",
+      "reachable_commits": 80,
+      "commits_not_ancestors_of_integration": 78,
+      "authors": [
+        "49\tron2011",
+        "    16\tMin-star-prog",
+        "    10\t이승열",
+        "     3\thans",
+        "     2\tyounghyun0702"
+      ]
+    },
+    {
+      "branch": "dev/unity",
+      "sha": "86e08eccf32c13164d2b69ff0b591d01b9429527",
+      "reachable_commits": 62,
+      "commits_not_ancestors_of_integration": 60,
+      "authors": [
+        "29\tron2011",
+        "    15\tMin-star-prog",
+        "    10\t이승열",
+        "     3\thans",
+        "     3\trealisshoon",
+        "     1\tlsy49055089",
+        "     1\tyounghyun0702"
+      ]
+    }
+  ],
+  "union_source_commits_not_ancestors": 168,
+  "minimal_source_tip_parents_to_preserve_all_four_histories": [
+    "eb62194967a8764e6725d609bf247158ecaa7471",
+    "43895a84857e19b3e53a8c5ebdc54e35a4847b9e",
+    "86e08eccf32c13164d2b69ff0b591d01b9429527"
+  ],
+  "recommendation": "현행 commit을 재작성하지 않고, 후속 별도 승인 시 현재 tree를 유지하는 ours 전략 provenance merge commit에 비중복 원본 tip들을 부모로 연결한 뒤 GitHub Create a merge commit 방식으로 main에 반영한다. Squash/Rebase merge는 원본 조상 관계를 보존하지 않는다.",
+  "risks": [
+    "명시적으로 선택하지 않은 과거 파일도 commit 이력에서는 조회 가능하다. 최종 tree에는 추가되지 않아야 한다.",
+    "ours merge는 전체 브랜치를 병합한 것으로 기록하므로 이후 merge-base에 영향을 준다. 선택 경로와 제외 경로를 명확히 기록해야 한다."
+  ],
+  "executed_history_merge": false,
+  "active_remote_heads_at_last_fetch": 36,
+  "additional_feature_commits_outside_selected_sources": 102,
+  "branches_with_additional_original_feature_history": [
+    {
+      "branch": "feat/cnn/cnn_acc_top",
+      "sha": "7516105e5f9ef3cefabb1c00fde54c36e6815daa",
+      "commits_outside_selected_source_histories": 2
+    },
+    {
+      "branch": "feat/cnn/cnn_wrapper",
+      "sha": "a7a6cdf3297025527461b7dda1e133ed96f43e50",
+      "commits_outside_selected_source_histories": 5
+    },
+    {
+      "branch": "feat/cnn/feature_map_io",
+      "sha": "755a81cae17e814aad0118afc2f3dc7c43963a9b",
+      "commits_outside_selected_source_histories": 1
+    },
+    {
+      "branch": "feat/cnn/input_conv_pe",
+      "sha": "86ff0a78c07e25f1b888bd750446ab58460d20d6",
+      "commits_outside_selected_source_histories": 1
+    },
+    {
+      "branch": "feat/cnn/temp_update",
+      "sha": "1a7b0deba29e6d9ad4d7d107b72754a64c0ff617",
+      "commits_outside_selected_source_histories": 7
+    },
+    {
+      "branch": "feat/cnn/top_level_fsm",
+      "sha": "54cf786724d7ada584dd9363e065117e889ae64e",
+      "commits_outside_selected_source_histories": 1
+    },
+    {
+      "branch": "feat/cnn/weight_bram_swap_fsm",
+      "sha": "227292c25252f1652942f1659914c28d1ba70865",
+      "commits_outside_selected_source_histories": 1
+    },
+    {
+      "branch": "feat/integration/merge-dev-robot-20260928",
+      "sha": "90c70ae67d3cfbb4b106bb1c44147e2237b180dc",
+      "commits_outside_selected_source_histories": 1
+    },
+    {
+      "branch": "feat/robot/agent1-stage-update",
+      "sha": "6134ff6581f39489b20241672726f8000325fcee",
+      "commits_outside_selected_source_histories": 2
+    },
+    {
+      "branch": "feat/robot/agent3-five-axis",
+      "sha": "7d1a19aa63bee000ce9f051ab89e32d75abc91c9",
+      "commits_outside_selected_source_histories": 1
+    },
+    {
+      "branch": "feat/robot/agent3-forearm-connect",
+      "sha": "b02e06e8c6184c04083dd26afc91ed8855cf2705",
+      "commits_outside_selected_source_histories": 1
+    },
+    {
+      "branch": "feat/robot/agent3-startup-pwm",
+      "sha": "1517e88c406bbf308beb8124eda11fdde33de3a8",
+      "commits_outside_selected_source_histories": 1
+    },
+    {
+      "branch": "feat/robot/human_target_angle",
+      "sha": "5a8a23642eca0686d78bdf4718b28b68494ba291",
+      "commits_outside_selected_source_histories": 36
+    },
+    {
+      "branch": "feat/robot/output_controller",
+      "sha": "a020efe3ba52df8c1f3ccfcbfa571efe26c8b964",
+      "commits_outside_selected_source_histories": 3
+    },
+    {
+      "branch": "feat/robot/robot_calibration",
+      "sha": "5c837c416af073c1cc462e4c19fd6bfbd4d024bc",
+      "commits_outside_selected_source_histories": 39
+    }
+  ],
+  "all_feature_history_note": "권고한 3개 tip 연결은 승인된 4개 원본 브랜치의 이력을 보존한다. squash로 분리된 feature 원본 SHA까지 모두 main 조상으로 보존하려면 아래 추가 feature 이력의 범위도 별도로 결정해야 한다. 원격 feature ref와 기존 로컬 이력은 이번 단계에서 삭제하지 않았다.",
+  "full_active_remote_history_parent_candidates": [
+    {
+      "branch": "dev/integration",
+      "sha": "43895a84857e19b3e53a8c5ebdc54e35a4847b9e"
+    },
+    {
+      "branch": "dev/unity",
+      "sha": "86e08eccf32c13164d2b69ff0b591d01b9429527"
+    },
+    {
+      "branch": "feat/cnn/cnn_acc_top",
+      "sha": "7516105e5f9ef3cefabb1c00fde54c36e6815daa"
+    },
+    {
+      "branch": "feat/cnn/cnn_wrapper",
+      "sha": "a7a6cdf3297025527461b7dda1e133ed96f43e50"
+    },
+    {
+      "branch": "feat/cnn/feature_map_io",
+      "sha": "755a81cae17e814aad0118afc2f3dc7c43963a9b"
+    },
+    {
+      "branch": "feat/cnn/input_conv_pe",
+      "sha": "86ff0a78c07e25f1b888bd750446ab58460d20d6"
+    },
+    {
+      "branch": "feat/cnn/temp_update",
+      "sha": "1a7b0deba29e6d9ad4d7d107b72754a64c0ff617"
+    },
+    {
+      "branch": "feat/cnn/top_level_fsm",
+      "sha": "54cf786724d7ada584dd9363e065117e889ae64e"
+    },
+    {
+      "branch": "feat/cnn/weight_bram_swap_fsm",
+      "sha": "227292c25252f1652942f1659914c28d1ba70865"
+    },
+    {
+      "branch": "feat/integration/merge-dev-robot-20260928",
+      "sha": "90c70ae67d3cfbb4b106bb1c44147e2237b180dc"
+    },
+    {
+      "branch": "feat/robot/agent1-stage-update",
+      "sha": "6134ff6581f39489b20241672726f8000325fcee"
+    },
+    {
+      "branch": "feat/robot/agent3-five-axis",
+      "sha": "7d1a19aa63bee000ce9f051ab89e32d75abc91c9"
+    },
+    {
+      "branch": "feat/robot/agent3-forearm-connect",
+      "sha": "b02e06e8c6184c04083dd26afc91ed8855cf2705"
+    },
+    {
+      "branch": "feat/robot/agent3-startup-pwm",
+      "sha": "1517e88c406bbf308beb8124eda11fdde33de3a8"
+    },
+    {
+      "branch": "feat/robot/human_target_angle",
+      "sha": "5a8a23642eca0686d78bdf4718b28b68494ba291"
+    },
+    {
+      "branch": "feat/robot/output_controller",
+      "sha": "a020efe3ba52df8c1f3ccfcbfa571efe26c8b964"
+    },
+    {
+      "branch": "feat/robot/robot_calibration",
+      "sha": "5c837c416af073c1cc462e4c19fd6bfbd4d024bc"
+    },
+    {
+      "branch": "val/cnn/integration",
+      "sha": "eb62194967a8764e6725d609bf247158ecaa7471"
+    }
+  ],
+  "all_active_remote_commits_not_ancestors_of_integration": 270,
+  "full_history_recommendation": "현재 원격 36개 branch의 원본 SHA까지 모두 main 조상으로 남기는 목적이면 비중복 tip 후보 전체를 후속 ours provenance merge의 부모로 연결하고 최종 PR은 merge commit으로 반영한다. 코드 tree 불변을 필수 검증한다. 3개 source tip만 연결하면 별도 feature 원본 102개는 보존 범위에서 빠진다. 이번에는 이력을 연결하거나 재작성하지 않는다."
+}

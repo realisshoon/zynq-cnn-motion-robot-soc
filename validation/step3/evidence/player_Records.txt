@@ -1,0 +1,245 @@
+PASS: original KO controller initialized
+PASS: original Startup retained
+PASS: Startup UART selection / no automatic COM
+PASS: before fixture: actual ports disconnected TX=0
+PASS: real-disconnected button locked Start recording
+PASS: disabled listener cannot open COM Start recording
+PASS: real-disconnected button locked Play SD record
+PASS: disabled listener cannot open COM Play SD record
+PASS: real-disconnected button locked Return to follow
+PASS: disabled listener cannot open COM Return to follow
+PASS: actual resolution 1920
+PASS: clickable Refresh SD list
+PASS: actual pointer hit Refresh SD list
+PASS: PLAY button enabled with Follow OFF
+PASS: clickable Play SD record
+PASS: actual pointer hit Play SD record
+PASS: pointer PLAY sends fake P once
+PASS: wait until MENU/HOLDING
+PASS: actual panel sends correct SELECT once
+PASS: PLAYING complete
+PASS: RIGHT requests never reach LEFT
+PASS: clickable Stop playback
+PASS: actual pointer hit Stop playback
+PASS: clickable Save SD recording
+PASS: actual pointer hit Save SD recording
+PASS: SAVED alone not success
+PASS: saved MENU enables explicit return
+PASS: save never automatically returns
+PASS: clickable Return to follow
+PASS: actual pointer hit Return to follow
+PASS: return click V only
+PASS: verified save then CANCEL
+PASS: IDLE not LIVE does not issue A
+PASS: confirmed LIVE then A
+PASS: A approved then T
+PASS: return approval completed
+PASS: 1920 scrollable unclipped Start recording
+PASS: original Korean caption fits Start recording
+PASS: glyph 녹
+PASS: glyph 화
+PASS: glyph 준
+PASS: glyph 비
+PASS: 1920 scrollable unclipped Cancel preparation
+PASS: original Korean caption fits Cancel preparation
+PASS: glyph 준
+PASS: glyph 비
+PASS: glyph 취
+PASS: glyph 소
+PASS: 1920 scrollable unclipped Finish recording
+PASS: original Korean caption fits Finish recording
+PASS: glyph 녹
+PASS: glyph 화
+PASS: glyph 종
+PASS: glyph 료
+PASS: 1920 scrollable unclipped Enter recording menu
+PASS: original Korean caption fits Enter recording menu
+PASS: glyph 메
+PASS: glyph 뉴
+PASS: glyph 열
+PASS: glyph 기
+PASS: 1920 scrollable unclipped Stop playback
+PASS: original Korean caption fits Stop playback
+PASS: glyph 재
+PASS: glyph 생
+PASS: glyph 중
+PASS: glyph 지
+PASS: 1920 scrollable unclipped Refresh SD list
+PASS: original Korean caption fits Refresh SD list
+PASS: glyph 목
+PASS: glyph 록
+PASS: glyph 조
+PASS: glyph 회
+PASS: 1920 scrollable unclipped Save SD recording
+PASS: original Korean caption fits Save SD recording
+PASS: glyph 에
+PASS: glyph 저
+PASS: glyph 장
+PASS: 1920 scrollable unclipped SD catalog IDs
+PASS: original Korean caption fits SD catalog IDs
+PASS: glyph 먼
+PASS: glyph 저
+PASS: glyph 목
+PASS: glyph 록
+PASS: glyph 을
+PASS: glyph 조
+PASS: glyph 회
+PASS: glyph 하
+PASS: glyph 세
+PASS: glyph 요
+PASS: 1920 scrollable unclipped Play SD record
+PASS: original Korean caption fits Play SD record
+PASS: glyph 선
+PASS: glyph 택
+PASS: glyph 및
+PASS: glyph 반
+PASS: glyph 복
+PASS: glyph 재
+PASS: glyph 생
+PASS: 1920 scrollable unclipped Request SD deletion
+PASS: original Korean caption fits Request SD deletion
+PASS: glyph 삭
+PASS: glyph 제
+PASS: glyph 준
+PASS: glyph 비
+PASS: 1920 scrollable unclipped Confirm SD deletion
+PASS: original Korean caption fits Confirm SD deletion
+PASS: glyph 삭
+PASS: glyph 제
+PASS: glyph 확
+PASS: glyph 인
+PASS: 1920 scrollable unclipped Cancel recording workflow
+PASS: original Korean caption fits Cancel recording workflow
+PASS: glyph 이
+PASS: glyph 름
+PASS: glyph 메
+PASS: glyph 뉴
+PASS: glyph 삭
+PASS: glyph 제
+PASS: glyph 취
+PASS: glyph 소
+PASS: 1920 scrollable unclipped Return to follow
+PASS: original Korean caption fits Return to follow
+PASS: glyph 추
+PASS: glyph 종
+PASS: glyph 복
+PASS: glyph 귀
+PASS: physical UART TX=0; all above wires are fake
+PASS: actual resolution 1280
+PASS: clickable Refresh SD list
+PASS: actual pointer hit Refresh SD list
+PASS: PLAY button enabled with Follow OFF
+PASS: clickable Play SD record
+PASS: actual pointer hit Play SD record
+PASS: pointer PLAY sends fake P once
+PASS: wait until MENU/HOLDING
+PASS: actual panel sends correct SELECT once
+PASS: PLAYING complete
+PASS: RIGHT requests never reach LEFT
+PASS: clickable Stop playback
+PASS: actual pointer hit Stop playback
+PASS: clickable Save SD recording
+PASS: actual pointer hit Save SD recording
+PASS: SAVED alone not success
+PASS: saved MENU enables explicit return
+PASS: save never automatically returns
+PASS: clickable Return to follow
+PASS: actual pointer hit Return to follow
+PASS: return click V only
+PASS: verified save then CANCEL
+PASS: IDLE not LIVE does not issue A
+PASS: confirmed LIVE then A
+PASS: A approved then T
+PASS: return approval completed
+PASS: 1280 scrollable unclipped Start recording
+PASS: original Korean caption fits Start recording
+PASS: glyph 녹
+PASS: glyph 화
+PASS: glyph 준
+PASS: glyph 비
+PASS: 1280 scrollable unclipped Cancel preparation
+PASS: original Korean caption fits Cancel preparation
+PASS: glyph 준
+PASS: glyph 비
+PASS: glyph 취
+PASS: glyph 소
+PASS: 1280 scrollable unclipped Finish recording
+PASS: original Korean caption fits Finish recording
+PASS: glyph 녹
+PASS: glyph 화
+PASS: glyph 종
+PASS: glyph 료
+PASS: 1280 scrollable unclipped Enter recording menu
+PASS: original Korean caption fits Enter recording menu
+PASS: glyph 메
+PASS: glyph 뉴
+PASS: glyph 열
+PASS: glyph 기
+PASS: 1280 scrollable unclipped Stop playback
+PASS: original Korean caption fits Stop playback
+PASS: glyph 재
+PASS: glyph 생
+PASS: glyph 중
+PASS: glyph 지
+PASS: 1280 scrollable unclipped Refresh SD list
+PASS: original Korean caption fits Refresh SD list
+PASS: glyph 목
+PASS: glyph 록
+PASS: glyph 조
+PASS: glyph 회
+PASS: 1280 scrollable unclipped Save SD recording
+PASS: original Korean caption fits Save SD recording
+PASS: glyph 에
+PASS: glyph 저
+PASS: glyph 장
+PASS: 1280 scrollable unclipped SD catalog IDs
+PASS: original Korean caption fits SD catalog IDs
+PASS: glyph 먼
+PASS: glyph 저
+PASS: glyph 목
+PASS: glyph 록
+PASS: glyph 을
+PASS: glyph 조
+PASS: glyph 회
+PASS: glyph 하
+PASS: glyph 세
+PASS: glyph 요
+PASS: 1280 scrollable unclipped Play SD record
+PASS: original Korean caption fits Play SD record
+PASS: glyph 선
+PASS: glyph 택
+PASS: glyph 및
+PASS: glyph 반
+PASS: glyph 복
+PASS: glyph 재
+PASS: glyph 생
+PASS: 1280 scrollable unclipped Request SD deletion
+PASS: original Korean caption fits Request SD deletion
+PASS: glyph 삭
+PASS: glyph 제
+PASS: glyph 준
+PASS: glyph 비
+PASS: 1280 scrollable unclipped Confirm SD deletion
+PASS: original Korean caption fits Confirm SD deletion
+PASS: glyph 삭
+PASS: glyph 제
+PASS: glyph 확
+PASS: glyph 인
+PASS: 1280 scrollable unclipped Cancel recording workflow
+PASS: original Korean caption fits Cancel recording workflow
+PASS: glyph 이
+PASS: glyph 름
+PASS: glyph 메
+PASS: glyph 뉴
+PASS: glyph 삭
+PASS: glyph 제
+PASS: glyph 취
+PASS: glyph 소
+PASS: 1280 scrollable unclipped Return to follow
+PASS: original Korean caption fits Return to follow
+PASS: glyph 추
+PASS: glyph 종
+PASS: glyph 복
+PASS: glyph 귀
+PASS: physical UART TX=0; all above wires are fake
+RESULT=PASS

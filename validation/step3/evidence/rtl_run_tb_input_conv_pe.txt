@@ -1,0 +1,17 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_input_conv_pe -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_input_conv_pe/xsim_script.tcl
+# xsim {tb_input_conv_pe} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+TB_INPUT_CONV_PE_PASS seed=449756911 cycles=937078 inputs=65536 outputs=98304
+$finish called at time : 9370775 ns : File "$REPO/CNN/tb/tb_input_conv_pe.v" Line 391
+run: Time (s): cpu = 00:00:03 ; elapsed = 00:00:34 . Memory (MB): peak = 925.223 ; gain = 0.000
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:15:25 2026...

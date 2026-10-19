@@ -1,0 +1,101 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_downsample_module -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_downsample_module/xsim_script.tcl
+# xsim {tb_downsample_module} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+INVALID CFG PASS op_id range/reserved guard
+CASE 19 PASS
+CASE 20 PASS
+CASE 21 PASS
+CASE 26 PASS
+CASE 27 PASS
+CASE 28 PASS
+CASE 39 PASS fault plus FIFO read; invalid DMA discarded
+FIFO STORED LAST DEFENSIVE FAULT PASS
+FAULT PLUS TAP_LAST CANDIDATE PASS
+CASE 29 PASS 481st-beat defensive range fault
+RANGE subcase=0 PASS
+RANGE subcase=1 PASS
+RANGE subcase=2 PASS
+RANGE subcase=3 PASS
+RANGE subcase=4 PASS
+RANGE subcase=5 PASS
+RANGE subcase=6 PASS
+RANGE subcase=7 PASS
+RANGE subcase=8 PASS
+RANGE subcase=9 PASS
+CASE 25 PASS fault plus final output same-edge
+CASE 30 PASS 145th-row defensive fault
+CASE 37 PASS fault priority exact-cycle done suppressed
+FRAME PASS seed=1 operation=35 DMA=69120 source=184320 REAL=36864 TOTAL=65536 tap=184320 tap_last=1 done=1 fault=0
+COVERAGE full=136073 selected_stall=5280 skip_stall=18417 fifo_rw=2 wr_wrap=135 rd_wrap=135 append_pop=67152 fifo_last=144 row_end=144 final_stall=6
+CASE 1 PASS
+CASE 2 PASS
+CASE 3 PASS
+CASE 4 PASS
+CASE 5 PASS
+CASE 6 PASS
+CASE 7 PASS
+CASE 8 PASS
+CASE 9 PASS
+CASE 10 PASS
+CASE 11 PASS
+CASE 12 PASS
+CASE 13 PASS
+CASE 14 PASS
+CASE 15 PASS
+CASE 16 PASS
+CASE 17 PASS
+CASE 18 PASS
+CASE 24 PASS
+CASE 31 PASS FIFO simultaneous read/write
+CASE 32 PASS FIFO pointer wrap data/last
+CASE 33 PASS FIFO last ordering
+CASE 34 PASS active cfg_desc mutation
+CASE 35 PASS holding append+pop
+CASE 36 PASS row residual
+CASE 22 PASS
+CASE 23 PASS
+FRAME PASS seed=1 operation=38 DMA=69120 source=184320 REAL=36864 TOTAL=65536 tap=184320 tap_last=1 done=1 fault=0
+COVERAGE full=136023 selected_stall=5339 skip_stall=18326 fifo_rw=2 wr_wrap=135 rd_wrap=135 append_pop=67173 fifo_last=144 row_end=144 final_stall=6
+CASE 1 PASS
+CASE 2 PASS
+CASE 3 PASS
+CASE 4 PASS
+CASE 5 PASS
+CASE 6 PASS
+CASE 7 PASS
+CASE 8 PASS
+CASE 9 PASS
+CASE 10 PASS
+CASE 11 PASS
+CASE 12 PASS
+CASE 13 PASS
+CASE 14 PASS
+CASE 15 PASS
+CASE 16 PASS
+CASE 17 PASS
+CASE 18 PASS
+CASE 24 PASS
+CASE 31 PASS FIFO simultaneous read/write
+CASE 32 PASS FIFO pointer wrap data/last
+CASE 33 PASS FIFO last ordering
+CASE 34 PASS active cfg_desc mutation
+CASE 35 PASS holding append+pop
+CASE 36 PASS row residual
+RESET X/Z = 0
+CANONICAL RESET MISMATCH = 0
+POST-RESET IDLE X/Z = 0
+4-STATE RESET = PASS
+TEST RESULT: PASS
+$finish called at time : 7126320 ns : File "$REPO/CNN/tb/tb_downsample_module.v" Line 506
+run: Time (s): cpu = 00:00:04 ; elapsed = 00:00:33 . Memory (MB): peak = 924.348 ; gain = 374.887
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:14:04 2026...

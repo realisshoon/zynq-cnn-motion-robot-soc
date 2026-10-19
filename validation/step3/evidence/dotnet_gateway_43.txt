@@ -1,0 +1,44 @@
+PASS exact existing firmware response HDMI overlay: robot 6 points
+PASS exact existing firmware response HDMI overlay: body joints (next CNN result)
+PASS malformed/unrelated response ignored: HDMI overlay: BODY JOINTS
+PASS malformed/unrelated response ignored: prefix HDMI overlay: body joints
+PASS malformed/unrelated response ignored: HDMI overlay: body joints unexpected
+PASS malformed/unrelated response ignored: HDMI overlay: robot 6 points trailing
+PASS malformed/unrelated response ignored: HDMI overlay: upper body
+PASS malformed/unrelated response ignored: body joints
+PASS malformed/unrelated response ignored:
+PASS construct/connect/state observation no automatic TX
+PASS no assumed default overlay mode
+PASS RIGHT request
+PASS RIGHT wire is one lowercase b only
+PASS write receipt is not display confirmation
+PASS double click while pending cannot toggle twice
+PASS pre-write buffered response ignored
+PASS PWM response cannot confirm overlay
+PASS LEFT unsolicited status cannot ACK RIGHT request
+PASS only matching RIGHT response confirms full joints
+PASS LEFT request
+PASS LEFT independent one b / confirmed response
+PASS BOTH request after independent preflight
+PASS BOTH two existing ports; no r/l/both prefix, newline or extra command
+PASS BOTH response states independent
+PASS BOTH may remain different; no synthetic forced synchronization
+PASS existing input boundary guard
+PASS name menu protected
+PASS RX-only fixture cannot send
+PASS CSV/display exception cannot send E
+PASS owner exception restricted to exact display request
+PASS disconnect invalidates display report
+PASS unavailable BOTH peer blocks preflight without touching RIGHT
+PASS reconnect needs new role state and new overlay response
+PASS manual request after new state
+PASS timeout gives UNKNOWN, never assumed mode
+PASS no automatic retry and existing uncertain-outcome guard
+PASS second enqueue failure reported
+PASS no rollback/retry toggle on first board after second enqueue failure
+PASS pending request before firmware reboot
+PASS BOOT generation invalidates pending and confirmed mode
+PASS explicit rejection test request
+PASS board rejection shown, no guessed mode
+PASS unverified role blocks display TX
+RESULT=PASS checks=43 actual_COM=0 actual_UART_TX=0 (all byte assertions use in-memory gateways)

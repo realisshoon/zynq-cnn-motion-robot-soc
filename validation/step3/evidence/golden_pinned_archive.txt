@@ -1,0 +1,11 @@
+COMMAND $REPO\.validation\step3\py310\Scripts\python.exe -B $REPO\CNN\golden_py_model\cnn_model_v4.py run --weights $REPO\CNN\golden_py_model\weights_export.zip --manifest $REPO\CNN\golden_py_model\generated\manifest.json --image $REPO\CNN\golden_py_model\images_npy\frame_00121.npy --out $REPO\.validation\step3\golden_pinned_archive
+Traceback (most recent call last):
+  File "$REPO\CNN\golden_py_model\cnn_model_v4.py", line 240, in <module>
+    if __name__=='__main__':main()
+  File "$REPO\CNN\golden_py_model\cnn_model_v4.py", line 234, in main
+    m=json.loads(Path(a.manifest).read_text());hm,off,stats=forward(im,PackedWeights(a.packed,m) if a.packed else Weights(a.weights),m,out/'features' if a.dump else None)
+  File "$REPO\CNN\golden_py_model\cnn_model_v4.py", line 143, in forward
+    validate_manifest(manifest,weights)
+  File "$REPO\CNN\golden_py_model\cnn_model_v4.py", line 98, in validate_manifest
+    if man['version']!=VERSION or man['weights_sha256']!=weights.sha256: raise ValueError('version/hash mismatch')
+ValueError: version/hash mismatch

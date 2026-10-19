@@ -1,0 +1,16 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_cnn_accelerator_top_partial -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_cnn_accelerator_top_partial/xsim_script.tcl
+# xsim {tb_cnn_accelerator_top_partial} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+RESET_SMOKE_PASS cycles=40 spontaneous_done=0 spontaneous_fault=0
+$finish called at time : 470 ns : File "$REPO/CNN/tb/tb_cnn_accelerator_top_partial.v" Line 216
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 13:57:49 2026...

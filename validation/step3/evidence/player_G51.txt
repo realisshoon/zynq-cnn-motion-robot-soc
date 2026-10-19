@@ -1,0 +1,169 @@
+PASS: existing G51 initialized
+PASS: Startup retained
+PASS: original UART startup owns BOARD
+PASS: no COM opened at startup
+PASS: unknown selection has no fallback
+PASS: actual resolution 1920
+PASS: Control selection accepted 0
+PASS: canonical source 0
+PASS: selection TX=0
+PASS: RIGHT → RIGHT TK M0~M4 exact (no additional calibration)
+PASS: original G51 axis/offset M0
+PASS: original G51 axis/offset M1
+PASS: original G51 axis/offset M2
+PASS: original G51 axis/offset M3
+PASS: RIGHT ignores LEFT-only RX
+PASS: Control selection accepted 1
+PASS: canonical source 1
+PASS: selection TX=0
+PASS: LEFT → LEFT TK M0~M4 exact (no additional calibration)
+PASS: original G51 axis/offset M0
+PASS: original G51 axis/offset M1
+PASS: original G51 axis/offset M2
+PASS: original G51 axis/offset M3
+PASS: LEFT moves actual M0 Transform
+PASS: LEFT moves actual M1 Transform
+PASS: LEFT moves actual M2 Transform
+PASS: LEFT moves actual M3 Transform
+PASS: LEFT moves actual gripper gear/jaw 4
+PASS: LEFT moves actual gripper gear/jaw 5
+PASS: LEFT moves actual gripper gear/jaw 6
+PASS: LEFT moves actual gripper gear/jaw 7
+PASS: LEFT ignores RIGHT-only RX
+PASS: Control selection accepted 2
+PASS: canonical source 2
+PASS: selection TX=0
+PASS: BOTH → RIGHT TK (no synthesis) M0~M4 exact (no additional calibration)
+PASS: BOTH ignores LEFT-only RX
+PASS: BOTH HUD explains RIGHT visualization
+PASS: Control selection accepted 1
+PASS: canonical source 1
+PASS: selection TX=0
+PASS: fresh target switch 1 M0~M4 exact (no additional calibration)
+PASS: Control selection accepted 0
+PASS: canonical source 0
+PASS: selection TX=0
+PASS: fresh target switch 0 M0~M4 exact (no additional calibration)
+PASS: Control selection accepted 1
+PASS: canonical source 1
+PASS: selection TX=0
+PASS: fresh target switch 1 M0~M4 exact (no additional calibration)
+PASS: Control selection accepted 2
+PASS: canonical source 2
+PASS: selection TX=0
+PASS: fresh target switch 2 M0~M4 exact (no additional calibration)
+PASS: Control button visible 0
+PASS: Control actual pointer hit 0
+PASS: real Control click selects visualization 0
+PASS: Control button visible 1
+PASS: Control actual pointer hit 1
+PASS: real Control click selects visualization 1
+PASS: Control button visible 2
+PASS: Control actual pointer hit 2
+PASS: real Control click selects visualization 2
+PASS: actual resolution 1280
+PASS: Control selection accepted 0
+PASS: canonical source 0
+PASS: selection TX=0
+PASS: RIGHT → RIGHT TK M0~M4 exact (no additional calibration)
+PASS: original G51 axis/offset M0
+PASS: original G51 axis/offset M1
+PASS: original G51 axis/offset M2
+PASS: original G51 axis/offset M3
+PASS: RIGHT ignores LEFT-only RX
+PASS: Control selection accepted 1
+PASS: canonical source 1
+PASS: selection TX=0
+PASS: LEFT → LEFT TK M0~M4 exact (no additional calibration)
+PASS: original G51 axis/offset M0
+PASS: original G51 axis/offset M1
+PASS: original G51 axis/offset M2
+PASS: original G51 axis/offset M3
+PASS: LEFT moves actual M0 Transform
+PASS: LEFT moves actual M1 Transform
+PASS: LEFT moves actual M2 Transform
+PASS: LEFT moves actual M3 Transform
+PASS: LEFT moves actual gripper gear/jaw 4
+PASS: LEFT moves actual gripper gear/jaw 5
+PASS: LEFT moves actual gripper gear/jaw 6
+PASS: LEFT moves actual gripper gear/jaw 7
+PASS: LEFT ignores RIGHT-only RX
+PASS: Control selection accepted 2
+PASS: canonical source 2
+PASS: selection TX=0
+PASS: BOTH → RIGHT TK (no synthesis) M0~M4 exact (no additional calibration)
+PASS: BOTH ignores LEFT-only RX
+PASS: BOTH HUD explains RIGHT visualization
+PASS: Control selection accepted 1
+PASS: canonical source 1
+PASS: selection TX=0
+PASS: fresh target switch 1 M0~M4 exact (no additional calibration)
+PASS: Control selection accepted 0
+PASS: canonical source 0
+PASS: selection TX=0
+PASS: fresh target switch 0 M0~M4 exact (no additional calibration)
+PASS: Control selection accepted 1
+PASS: canonical source 1
+PASS: selection TX=0
+PASS: fresh target switch 1 M0~M4 exact (no additional calibration)
+PASS: Control selection accepted 2
+PASS: canonical source 2
+PASS: selection TX=0
+PASS: fresh target switch 2 M0~M4 exact (no additional calibration)
+PASS: Control button visible 0
+PASS: Control actual pointer hit 0
+PASS: real Control click selects visualization 0
+PASS: Control button visible 1
+PASS: Control actual pointer hit 1
+PASS: real Control click selects visualization 1
+PASS: Control button visible 2
+PASS: Control actual pointer hit 2
+PASS: real Control click selects visualization 2
+PASS: Control selection accepted 1
+PASS: canonical source 1
+PASS: selection TX=0
+PASS: w=0 stays HOLD; approval unchanged
+PASS: err=1 stays HOLD
+PASS: PWM OFF stays HOLD
+PASS: duplicate tick rejected
+PASS: reverse tick rejected
+PASS: aged RX cannot apply
+PASS: Control selection accepted 0
+PASS: canonical source 0
+PASS: selection TX=0
+PASS: Control selection accepted 1
+PASS: canonical source 1
+PASS: selection TX=0
+PASS: switch to stale LEFT holds RIGHT pose; no forced cached apply M0~M4 exact (no additional calibration)
+PASS: nonfinite TK rejected by existing parser
+PASS: selected disconnect HOLD without RIGHT fallback
+PASS: new generation requires role state
+PASS: new generation applies only new verified TK
+PASS: wrong board role rejected
+PASS: Control selection accepted 0
+PASS: canonical source 0
+PASS: selection TX=0
+PASS: Control selection accepted 1
+PASS: canonical source 1
+PASS: selection TX=0
+PASS: identical final LEFT/RIGHT command has identical original visual mapping
+PASS: Control selection accepted 0
+PASS: canonical source 0
+PASS: selection TX=0
+PASS: existing Local CSV source loads
+PASS: CSV owns router
+PASS: explicit RIGHT consent for historical unassigned human stream
+PASS: CSV PLAY cannot be overwritten by BOARD TK or target change
+PASS: CSV PAUSE retains virtual pose against live TK
+PASS: existing Manual handoff retained
+PASS: existing Manual command accepted
+PASS: Manual owns G51, no BOARD override
+PASS: explicit BOARD handoff uses existing owner path
+PASS: Control selection accepted 2
+PASS: canonical source 2
+PASS: selection TX=0
+PASS: 20-second dual 50Hz synthetic RX processed >=990 ticks per side
+PASS: RIGHT LIVE / LEFT PLAY state independent during visual RX
+PASS: dual stream retains RIGHT-only BOTH visualization M0~M4 exact (no additional calibration)
+PASS: all tests real COM open/TX=0
+RESULT=PASS

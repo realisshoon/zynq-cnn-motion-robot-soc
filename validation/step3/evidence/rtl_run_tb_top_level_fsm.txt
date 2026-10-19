@@ -1,0 +1,29 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_top_level_fsm -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_top_level_fsm/xsim_script.tcl
+# xsim {tb_top_level_fsm} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+PASS: full 16-stage frame, 29 descriptors/loads, AXI ordering, atomic result
+PASS: new done over W1C clear
+PASS: new error over W1C clear
+PASS: BRESP fault lock
+PASS: RRESP fault
+PASS: DMA status error
+PASS: AXI response over DMA status
+PASS: fault over publish
+PASS: illegal state
+PASS: progress over watchdog terminal
+PASS: DMA status over watchdog
+PASS: identical DMA polling does not reload watchdog
+PASS: public reset contract and X/Z: 59 outputs x 56 edges = 3304 checks
+PASS: tb_top_level_fsm
+$finish called at time : 26855 ns : File "$REPO/CNN/tb/tb_top_level_fsm.v" Line 1325
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:17:11 2026...

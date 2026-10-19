@@ -1,0 +1,59 @@
+{
+  "ids": {
+    "VERSION": {
+      "rtl": "00040003",
+      "firmware": "00040004"
+    },
+    "FEATURES": {
+      "rtl": "0000000d",
+      "firmware": "0000001D"
+    },
+    "PACK_ID": {
+      "rtl": "c9854bb2",
+      "firmware": "77D4E3BB"
+    }
+  },
+  "id_compatibility": "BLOCKED",
+  "yellow_firmware_registers": [
+    "0x104",
+    "0x108",
+    "0x10C"
+  ],
+  "yellow_addresses_in_rtl": {
+    "104": false,
+    "108": false,
+    "10c": false
+  },
+  "xsa": {
+    "sha256": "855c071f846140e8707bebb949b2977bdaf474425a79052190e239cf8be4da48",
+    "bitstream_sha256": "a504b083415cdc6d98599de630b4f51ca1480bc2845bb72f65cf3e7b5638cb16",
+    "rtl_sources_in_archive": [],
+    "modules": [
+      {
+        "instance": "cnn_accelerator_top_0",
+        "base": "0x43C60000"
+      },
+      {
+        "instance": "servo_pwm_0",
+        "base": "0x43C70000"
+      },
+      {
+        "instance": "servo_pwm_arm2_0",
+        "base": "0x43CA0000"
+      }
+    ]
+  },
+  "uart": {
+    "firmware_fields_including_tag": {
+      "TK": 17,
+      "A1": 14,
+      "A2": 15,
+      "P3": 23
+    },
+    "unity_TK_required_fields": 17,
+    "TK_field_contract": "PASS (정적 비교 및 C# fixture; 실보드 NOT RUN)",
+    "A1_A2_P3_unity_runtime_parsers": "NOT RUN/미구현: TK 표시 경로와 구분",
+    "hardware_uart": "NOT RUN"
+  },
+  "source_issue_classification": "ID/Yellow 및 누락 입력은 선택된 원본에 존재하며, 검증 통과를 위한 코드 변경은 없음"
+}

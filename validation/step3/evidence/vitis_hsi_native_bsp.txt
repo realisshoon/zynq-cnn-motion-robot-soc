@@ -1,0 +1,228 @@
+COMMAND C:\Xilinx\Vitis\2020.2\bin\xsct.bat D:\vws\mci3-hsi-b7eb63c\generate_native.tcl
+INFO: [Hsi 55-2053] elapsed time for repository (C:/Xilinx/Vitis/2020.2/data\embeddedsw) loading 3 seconds
+hsi::open_hw_design: Time (s): cpu = 00:00:09 ; elapsed = 00:00:18 . Memory (MB): peak = 899.145 ; gain = 470.496
+"Running Make include in ps7_cortexa9_0/libsrc/axivdma_v6_8/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/coresightps_dcc_v1_8/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/cpu_cortexa9_v2_10/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/ddrps_v1_2/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/devcfg_v3_7/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/dmaps_v2_7/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/dynclk_v1_1/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/emacps_v3_12/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/gpiops_v3_8/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/iicps_v3_12/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/MIPI_CSI_2_RX_v1_0/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/MIPI_D_PHY_RX_v1_0/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/qspips_v3_8/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/scugic_v4_3/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/scutimer_v2_3/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/scuwdt_v2_3/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/sdps_v3_10/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/servo_pwm_v1_0/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/standalone_v7_3/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/tmrctr_v4_7/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/uartps_v3_10/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/usbps_v2_6/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/vtc_v8_3/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/xadcps_v2_5/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/xilffs_v4_4/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/dynclk_v1_1/src"
+
+"Compiling ddynclk"
+
+In file included from ddynclk.h:16,
+                 from ddynclk.c:4:
+ddynclk.c: In function 'DDynClk_SetRate':
+../../../include/xil_io.h:207:13: warning: 'clkReg.fltr_lockH' may be used uninitialized in this function [-Wmaybe-uninitialized]
+  207 |  *LocalAddr = Value;
+      |  ~~~~~~~~~~~^~~~~~~
+ddynclk.c:365:26: note: 'clkReg.fltr_lockH' was declared here
+  365 |  struct dglnt_dynclk_reg clkReg;
+      |                          ^~~~~~
+In file included from ddynclk.h:16,
+                 from ddynclk.c:4:
+../../../include/xil_io.h:207:13: warning: 'clkReg.lockL' may be used uninitialized in this function [-Wmaybe-uninitialized]
+  207 |  *LocalAddr = Value;
+      |  ~~~~~~~~~~~^~~~~~~
+ddynclk.c:365:26: note: 'clkReg.lockL' was declared here
+  365 |  struct dglnt_dynclk_reg clkReg;
+      |                          ^~~~~~
+In file included from ddynclk.h:16,
+                 from ddynclk.c:4:
+../../../include/xil_io.h:207:13: warning: 'clkReg.divclk' may be used uninitialized in this function [-Wmaybe-uninitialized]
+  207 |  *LocalAddr = Value;
+      |  ~~~~~~~~~~~^~~~~~~
+ddynclk.c:365:26: note: 'clkReg.divclk' was declared here
+  365 |  struct dglnt_dynclk_reg clkReg;
+      |                          ^~~~~~
+In file included from ddynclk.h:16,
+                 from ddynclk.c:4:
+../../../include/xil_io.h:207:13: warning: 'clkReg.clkFBL' may be used uninitialized in this function [-Wmaybe-uninitialized]
+  207 |  *LocalAddr = Value;
+      |  ~~~~~~~~~~~^~~~~~~
+ddynclk.c:365:26: note: 'clkReg.clkFBL' was declared here
+  365 |  struct dglnt_dynclk_reg clkReg;
+      |                          ^~~~~~
+arm-none-eabi-ar: creating ../../../lib/libxil.a
+
+"Running Make libs in ps7_cortexa9_0/libsrc/MIPI_CSI_2_RX_v1_0/src"
+
+"Compiling MIPI_CSI_2_RX"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/MIPI_D_PHY_RX_v1_0/src"
+
+"Compiling MIPI_D_PHY_RX"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/servo_pwm_v1_0/src"
+
+"Compiling servo_pwm..."
+
+servo_pwm_selftest.c: In function 'SERVO_PWM_Reg_SelfTest':
+servo_pwm_selftest.c:52:58: warning: comparison of integer expressions of different signedness: 'u32' {aka 'long unsigned int'} and 'int' [-Wsign-compare]
+   52 |    if ( SERVO_PWM_mReadReg (baseaddr, read_loop_index*4) != (read_loop_index+1)*READ_WRITE_MUL_FACTOR){
+      |                                                          ^~
+servo_pwm_selftest.c:36:6: warning: unused variable 'Index' [-Wunused-variable]
+   36 |  int Index;
+      |      ^~~~~
+'Finished building libraries sequentially.'
+
+"Running Make include in ps7_cortexa9_0/libsrc/axivdma_v6_8/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/coresightps_dcc_v1_8/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/cpu_cortexa9_v2_10/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/ddrps_v1_2/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/devcfg_v3_7/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/dmaps_v2_7/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/dynclk_v1_1/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/emacps_v3_12/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/gpiops_v3_8/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/iicps_v3_12/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/MIPI_CSI_2_RX_v1_0/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/MIPI_D_PHY_RX_v1_0/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/qspips_v3_8/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/scugic_v4_3/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/scutimer_v2_3/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/scuwdt_v2_3/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/sdps_v3_10/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/servo_pwm_v1_0/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/standalone_v7_3/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/tmrctr_v4_7/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/uartps_v3_10/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/usbps_v2_6/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/vtc_v8_3/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/xadcps_v2_5/src"
+
+"Running Make include in ps7_cortexa9_0/libsrc/xilffs_v4_4/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/axivdma_v6_8/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/coresightps_dcc_v1_8/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/cpu_cortexa9_v2_10/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/ddrps_v1_2/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/devcfg_v3_7/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/dmaps_v2_7/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/emacps_v3_12/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/gpiops_v3_8/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/iicps_v3_12/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/scugic_v4_3/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/qspips_v3_8/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/scutimer_v2_3/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/scuwdt_v2_3/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/sdps_v3_10/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/standalone_v7_3/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/tmrctr_v4_7/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/uartps_v3_10/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/usbps_v2_6/src"
+
+In file included from usleep.c:34:
+xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+"Running Make libs in ps7_cortexa9_0/libsrc/vtc_v8_3/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/xadcps_v2_5/src"
+
+"Running Make libs in ps7_cortexa9_0/libsrc/xilffs_v4_4/src"
+
+In file included from xtime_l.c:27:
+xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+In file included from sleep.c:31:
+xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+In file included from xil_sleeptimer.c:32:
+xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+'Finished building libraries parallelly.'
+
+'Finished building libraries'
+
+hsi::generate_bsp: Time (s): cpu = 00:00:00 ; elapsed = 00:01:29 . Memory (MB): peak = 899.145 ; gain = 0.000
+hsi::generate_app: Time (s): cpu = 00:00:01 ; elapsed = 00:00:15 . Memory (MB): peak = 899.145 ; gain = 0.000
+HSI_BSP_GENERATION_COMPLETE

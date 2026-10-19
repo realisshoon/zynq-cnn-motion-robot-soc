@@ -1,0 +1,28 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_cnn_accelerator_top_reset4 -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_cnn_accelerator_top_reset4/xsim_script.tcl
+# xsim {tb_cnn_accelerator_top_reset4} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+PB2R1_4STATE_RESET_SUMMARY
+RESET_SAMPLED_EDGES=6
+RESET_XZ_FAILURES=0
+RESET_VALUE_FAILURES=0
+POST_RESET_IDLE_CYCLES=40
+POST_RESET_IDLE_XZ_FAILURES=0
+FEATURE_INVALID_DATA_ZERO_FAILURES=0
+SPONTANEOUS_DONE=0
+SPONTANEOUS_FAULT=0
+SPONTANEOUS_FEATURE_VALID=0
+SPONTANEOUS_DMA_AXIL_VALID=0
+SPONTANEOUS_RESULT_VALID=0
+PB2R1_4STATE_RESET=PASS
+$finish called at time : 456 ns : File "$REPO/CNN/tb/tb_cnn_accelerator_top_reset4.v" Line 292
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:00:16 2026...

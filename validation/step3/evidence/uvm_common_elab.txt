@@ -1,0 +1,11 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xelab.bat -L uvm --uvm_version 1.2 --debug typical --mt 2 -s uvm_common work.tb_top
+Vivado Simulator 2020.2
+Copyright 1986-1999, 2001-2020 Xilinx, Inc. All Rights Reserved.
+Running: C:/Xilinx/Vivado/2020.2/bin/unwrapped/win64.o/xelab.exe -L uvm --uvm_version 1.2 --debug typical --mt 2 -s uvm_common work.tb_top
+Using 2 slave threads.
+Starting static elaboration
+Pass Through NonSizing Optimizer
+Completed static elaboration
+Starting simulation data flow analysis
+WARNING: [XSIM 43-4468] File : /proj/xbuilds/SWIP/2020.2_0711_1805/installs/lin64/Vivado/2020.2/data/system_verilog/uvm_1.2/xlnx_uvm_package.sv, Line : 25994, RANDC variable size more than 8 bits. This will be treated as a RAND variable instead.
+ERROR: [XSIM 43-4100] "$REPO/CNN/uvm/pkg/cnn_base_pkg.sv" Line 1. Module cnn_base_pkg has a timescale but at least one module in design doesn't have timescale.

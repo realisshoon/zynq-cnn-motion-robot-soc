@@ -1,0 +1,28 @@
+COMMAND C:\Xilinx\Vitis\2020.2\bin\xsct.bat D:\vws\mci3-hsi-b7eb63c\generate.tcl
+INFO: [Hsi 55-2053] elapsed time for repository (C:/Xilinx/Vitis/2020.2/data\embeddedsw) loading 22 seconds
+hsi::open_hw_design: Time (s): cpu = 00:00:08 ; elapsed = 00:00:43 . Memory (MB): peak = 913.754 ; gain = 840.914
+Invalid workspace. set workspace using setws command
+Invalid workspace. set workspace using setws command
+    while executing
+"error "Invalid workspace. set workspace using setws command""
+    (procedure "check_sdk_workspace" line 4)
+    invoked from within
+"check_sdk_workspace"
+    (procedure "getsdkchan" line 7)
+    invoked from within
+"getsdkchan"
+    (procedure "::sdk::getprojects" line 19)
+    invoked from within
+"::sdk::getprojects"
+    (procedure "get_hw" line 3)
+    invoked from within
+"get_hw [lindex $args 0]"
+    (procedure "openhw" line 14)
+    invoked from within
+"openhw $hdfpath"
+    (procedure "set_current_hw_sw" line 5)
+    invoked from within
+"set_current_hw_sw $params(hw) $params(sw)"
+    (procedure "hsi::utils::add_library_to_sw" line 10)
+    invoked from within
+"hsi::utils::add_library_to_sw -hw $hw -sw mci3 -name xilffs -ver 4.4"

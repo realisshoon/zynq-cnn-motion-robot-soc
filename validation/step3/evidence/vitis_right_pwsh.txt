@@ -1,0 +1,5 @@
+COMMAND "C:\Program Files\PowerShell\7\pwsh.exe" -NoProfile -ExecutionPolicy Bypass -File $REPO\robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws\mci3-right-pwsh-b7eb63c -StereoRole Right
+1/3 플랫폼 생성(BSP 빌드 포함, 몇 분 걸림), 앱 생성, 링크, 설정
+  [OK] phase1_platform_app
+2/3 빌드 제외 파일 등록
+setup_vitis.ps1: Exception calling "ReadAllText" with "1" argument(s): "Could not find a part of the path 'D:\vws\mci3-right-pwsh-b7eb63c\robot_testbench\.cproject'."

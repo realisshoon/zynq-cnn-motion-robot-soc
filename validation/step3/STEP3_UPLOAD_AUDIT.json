@@ -1,0 +1,216 @@
+{
+  "basis": "b7eb63cb6b79a5b22a6e6b6e9fceb70eec67aa46",
+  "github_documentation": "https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github",
+  "rules": "일반 Git 파일은 50 MiB 초과 시 경고, 100 MiB 초과 시 차단. 브라우저 업로드 제한과 구분한다.",
+  "head_tracked_files": 1947,
+  "head_tracked_bytes": 1104498260,
+  "head_largest_10": [
+    {
+      "path": "Unity/Tools/MediaPipePoseTest/models/pose_landmarker_heavy.task",
+      "bytes": 30664242,
+      "blob": "45449d98ebc71322c4c5ee03a1ae31400ae8deee"
+    },
+    {
+      "path": "robot_arm/vitis/boot/stereo_absolute_async_20261002/left/BOOT.BIN",
+      "bytes": 4493904,
+      "blob": "fb7f13e5869cc1b0e22560b3fac28689ca2d6d90"
+    },
+    {
+      "path": "robot_arm/vitis/boot/stereo_absolute_async_20261002/right/BOOT.BIN",
+      "bytes": 4493904,
+      "blob": "a182a970387b440394eb5258767ad7332b6d2367"
+    },
+    {
+      "path": "robot_arm/vitis/boot/stereo_filtered_fifo_20261002/left/BOOT.BIN",
+      "bytes": 4493904,
+      "blob": "081d09717ba3e0a369c5efc2c787c924a60d44d0"
+    },
+    {
+      "path": "robot_arm/vitis/boot/stereo_filtered_fifo_20261002/right/BOOT.BIN",
+      "bytes": 4493904,
+      "blob": "f5362585d845db3fa186bc50d6f7c6ae4f5423f6"
+    },
+    {
+      "path": "robot_arm/vitis/boot/stereo_person_axes_20261002/left/BOOT.BIN",
+      "bytes": 4493904,
+      "blob": "37a3079461f704a0ebeb8dc674519eb578b5da34"
+    },
+    {
+      "path": "robot_arm/vitis/boot/stereo_person_axes_20261002/right/BOOT.BIN",
+      "bytes": 4493904,
+      "blob": "63fee4ca6128c585079bd4ace3108af1a3ee1fb6"
+    },
+    {
+      "path": "Unity/Assets/Models/G51/MG996R/MG996R_Clean_Shoulder_XAxis.obj",
+      "bytes": 4279704,
+      "blob": "b532b21402372e32507a7c94b170186b4039ad50"
+    },
+    {
+      "path": "Unity/Assets/Models/G51/MG996R_Clean_Shoulder_XAxis.obj",
+      "bytes": 4279704,
+      "blob": "b532b21402372e32507a7c94b170186b4039ad50"
+    },
+    {
+      "path": "Unity/Assets/Models/G51/MG996R_UnityMeters.obj",
+      "bytes": 3881427,
+      "blob": "e7491f3cbc82d513d7f365d017843d2ccdf1567d"
+    }
+  ],
+  "current_branch_reachable": {
+    "unique_blobs": 1914,
+    "logical_blob_bytes": 1098164218,
+    "at_least_50_MB": [],
+    "at_least_100_MB": [],
+    "over_50_MiB": [],
+    "over_100_MiB": [],
+    "largest_10": [
+      {
+        "blob": "45449d98ebc71322c4c5ee03a1ae31400ae8deee",
+        "bytes": 30664242,
+        "path_example": "Unity/Tools/MediaPipePoseTest/models/pose_landmarker_heavy.task"
+      },
+      {
+        "blob": "fb7f13e5869cc1b0e22560b3fac28689ca2d6d90",
+        "bytes": 4493904,
+        "path_example": "robot_arm/vitis/boot/stereo_absolute_async_20261002/left/BOOT.BIN"
+      },
+      {
+        "blob": "a182a970387b440394eb5258767ad7332b6d2367",
+        "bytes": 4493904,
+        "path_example": "robot_arm/vitis/boot/stereo_absolute_async_20261002/right/BOOT.BIN"
+      },
+      {
+        "blob": "081d09717ba3e0a369c5efc2c787c924a60d44d0",
+        "bytes": 4493904,
+        "path_example": "robot_arm/vitis/boot/stereo_filtered_fifo_20261002/left/BOOT.BIN"
+      },
+      {
+        "blob": "f5362585d845db3fa186bc50d6f7c6ae4f5423f6",
+        "bytes": 4493904,
+        "path_example": "robot_arm/vitis/boot/stereo_filtered_fifo_20261002/right/BOOT.BIN"
+      },
+      {
+        "blob": "37a3079461f704a0ebeb8dc674519eb578b5da34",
+        "bytes": 4493904,
+        "path_example": "robot_arm/vitis/boot/stereo_person_axes_20261002/left/BOOT.BIN"
+      },
+      {
+        "blob": "63fee4ca6128c585079bd4ace3108af1a3ee1fb6",
+        "bytes": 4493904,
+        "path_example": "robot_arm/vitis/boot/stereo_person_axes_20261002/right/BOOT.BIN"
+      },
+      {
+        "blob": "b532b21402372e32507a7c94b170186b4039ad50",
+        "bytes": 4279704,
+        "path_example": "Unity/Assets/Models/G51/MG996R/MG996R_Clean_Shoulder_XAxis.obj"
+      },
+      {
+        "blob": "e7491f3cbc82d513d7f365d017843d2ccdf1567d",
+        "bytes": 3881427,
+        "path_example": "Unity/Assets/Models/G51/MG996R_UnityMeters.obj"
+      },
+      {
+        "blob": "7311a8900a1d38f3c752e1086296ea132137e92d",
+        "bytes": 3437945,
+        "path_example": "Unity/Assets/Models/G51/MG996R_pivot_ready.obj"
+      }
+    ]
+  },
+  "source_history_union_if_later_linked": {
+    "unique_blobs": 2973,
+    "logical_blob_bytes": 1421067979,
+    "at_least_50_MB": [],
+    "at_least_100_MB": [],
+    "over_50_MiB": [],
+    "over_100_MiB": [],
+    "largest_10": [
+      {
+        "blob": "45449d98ebc71322c4c5ee03a1ae31400ae8deee",
+        "bytes": 30664242,
+        "path_example": "Unity/Tools/MediaPipePoseTest/models/pose_landmarker_heavy.task"
+      },
+      {
+        "blob": "4486c96bc592e417168dc9b28e142cefb8c5168e",
+        "bytes": 16800750,
+        "path_example": "robot_arm/etc/example5_pose_overlay_1280x720_20hz.mp4"
+      },
+      {
+        "blob": "4c26df8cbb3567e5d3cb9eb11b17082119b23df6",
+        "bytes": 13957105,
+        "path_example": "robot_arm/etc/elbow_roll_real_test_overlay_1280x720_20hz.mp4"
+      },
+      {
+        "blob": "ca1e285da3c808c72d6b2385234ccb6288e61be5",
+        "bytes": 13566455,
+        "path_example": "robot_arm/etc/example_agent3_xyz.mp4"
+      },
+      {
+        "blob": "8c39c319d6bb4c77cb43432d1c443dfee1b4ea27",
+        "bytes": 13256691,
+        "path_example": "robot_arm/etc/example_agent1_xyz.mp4"
+      },
+      {
+        "blob": "820d09e12d7012904b73b64949851bf44e26f1ea",
+        "bytes": 12249903,
+        "path_example": "robot_arm/etc/agent1_xyz_side_by_side_v3.mp4"
+      },
+      {
+        "blob": "0192f1163d12f8da1608f953e0454a6bf77882df",
+        "bytes": 11676830,
+        "path_example": "robot_arm/etc/agent1_xyz_side_by_side_v2.mp4"
+      },
+      {
+        "blob": "5a6d8857f7a826ad0cf560e7b3ca8afff107bb28",
+        "bytes": 11609635,
+        "path_example": "robot_arm/etc/example_agent4_xyz.mp4"
+      },
+      {
+        "blob": "0a321f45735b255484191c8c22fe7693991055dd",
+        "bytes": 11381641,
+        "path_example": "robot_arm/etc/example_pose_overlay_1280x720_20hz.mp4"
+      },
+      {
+        "blob": "c1531b2d7446ad65c04a0953b3ccc9e7b793d875",
+        "bytes": 10703349,
+        "path_example": "robot_arm/etc/wrist_roll_front_overlay_1280x720_20hz.mp4"
+      }
+    ]
+  },
+  "lfs_files": [],
+  "tracked_cache_logs": [
+    "robot_arm/pc/__pycache__/send_pose_uart_with_video.cpython-314.pyc",
+    "robot_arm/pc/__pycache__/send_pose_uart.cpython-314.pyc",
+    "Unity/Tools/LivePose/native/gcc_err.txt"
+  ],
+  "all_active_remote_history_union": {
+    "branch_count": 36,
+    "over_50_MiB": [],
+    "over_100_MiB": []
+  },
+  "hygiene_cleanup": {
+    "removed_from_tracking_only": [
+      "robot_arm/pc/__pycache__/send_pose_uart.cpython-314.pyc",
+      "robot_arm/pc/__pycache__/send_pose_uart_with_video.cpython-314.pyc",
+      "Unity/Tools/LivePose/native/gcc_err.txt"
+    ],
+    "kept_on_disk": true,
+    "validation_evidence_is_intentional": [
+      "validation/step3/*.json",
+      "validation/step3/evidence/*.txt"
+    ]
+  },
+  "existing_workstation_default_path_examples": [
+    {
+      "path": "Unity/Tools/AgentReplay/build_and_convert.ps1",
+      "description": "기존 RepoRoot 기본값에 작업 PC 경로가 있다. 실행 시 RepoRoot를 전달해야 한다. 원본 도구는 이번에 수정하지 않았다."
+    },
+    {
+      "path": "Unity/Tools/AgentReplay/build_and_convert_external_repo.ps1",
+      "description": "기존 RepoRoot 기본값에 작업 PC 경로가 있다. 실행 시 RepoRoot를 전달해야 한다. 원본 도구는 이번에 수정하지 않았다."
+    },
+    {
+      "path": "Unity/Tools/DualReplay/build_dual_unity_preview.ps1",
+      "description": "기존 RepoRoot 기본값에 작업 PC 경로가 있다. 실행 시 RepoRoot를 전달해야 한다. 원본 도구는 이번에 수정하지 않았다."
+    }
+  ]
+}

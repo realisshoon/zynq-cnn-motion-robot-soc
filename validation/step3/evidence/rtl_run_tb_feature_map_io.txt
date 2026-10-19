@@ -1,0 +1,18 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_feature_map_io -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_feature_map_io/xsim_script.tcl
+# xsim {tb_feature_map_io} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+TEST A/B/D/G1/I/O: Cin24 read-only, output first
+TEST O: new cfg clears prior completion
+TIMEOUT PASS=200110 FAIL=0
+$stop called at time : 2 ms : File "$REPO/CNN/tb/tb_feature_map_io.v" Line 374
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:14:27 2026...

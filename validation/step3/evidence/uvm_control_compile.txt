@@ -1,0 +1,53 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xvlog.bat --sv --uvm_version 1.2 -L uvm -i C:\Xilinx\Vivado\2020.2\data\system_verilog\uvm_1.2 -i $REPO\CNN\uvm\common -i $REPO\CNN\uvm\control -i $REPO\CNN\uvm\control\items -i $REPO\CNN\uvm\control\drivers -i $REPO\CNN\uvm\control\responders -i $REPO\CNN\uvm\control\monitors -i $REPO\CNN\uvm\control\checkers -i $REPO\CNN\uvm\control\coverage -i $REPO\CNN\uvm\control\sequences -i $REPO\CNN\uvm\control\tests -i $REPO\CNN\rtl $REPO\CNN\rtl\argmax_offset_select.v $REPO\CNN\rtl\cnn_accelerator_top.v $REPO\CNN\rtl\color_marker_detect.v $REPO\CNN\rtl\coord_restore.v $REPO\CNN\rtl\depthwise_conv_pe.v $REPO\CNN\rtl\downsample_module.v $REPO\CNN\rtl\feature_map_io.v $REPO\CNN\rtl\input_conv_pe.v $REPO\CNN\rtl\layer_param_rom.v $REPO\CNN\rtl\line_buffer.v $REPO\CNN\rtl\pointwise_conv_pe.v $REPO\CNN\rtl\top_level_fsm.v $REPO\CNN\rtl\weight_bram_swap_fsm.v $REPO\CNN\uvm\common\cnn_if.sv $REPO\CNN\uvm\pkg\cnn_base_pkg.sv $REPO\CNN\uvm\control\cnn_ctrl_pkg.sv $REPO\CNN\uvm\control\assertions\cnn_c05_fsm_sva.sv $REPO\CNN\uvm\control\assertions\cnn_c06_reset_sva.sv $REPO\CNN\uvm\control\assertions\cnn_c07_irq_sva.sv $REPO\CNN\uvm\control\assertions\cnn_c08_fault_sva.sv $REPO\CNN\uvm\tb_top.sv
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/argmax_offset_select.v" into library work
+INFO: [VRFC 10-311] analyzing module argmax_offset_select
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/cnn_accelerator_top.v" into library work
+INFO: [VRFC 10-311] analyzing module cnn_accelerator_top
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/color_marker_detect.v" into library work
+INFO: [VRFC 10-311] analyzing module color_marker_detect
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/coord_restore.v" into library work
+INFO: [VRFC 10-311] analyzing module coord_restore
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/depthwise_conv_pe.v" into library work
+INFO: [VRFC 10-311] analyzing module depthwise_conv_pe
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/downsample_module.v" into library work
+INFO: [VRFC 10-311] analyzing module downsample_module
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/feature_map_io.v" into library work
+INFO: [VRFC 10-311] analyzing module feature_map_io
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/input_conv_pe.v" into library work
+INFO: [VRFC 10-311] analyzing module input_conv_pe
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/layer_param_rom.v" into library work
+INFO: [VRFC 10-311] analyzing module layer_param_rom
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/line_buffer.v" into library work
+INFO: [VRFC 10-311] analyzing module line_buffer
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/pointwise_conv_pe.v" into library work
+INFO: [VRFC 10-311] analyzing module pointwise_u8s8_dsp_mult
+INFO: [VRFC 10-311] analyzing module pointwise_s16_pair_add_lut
+INFO: [VRFC 10-311] analyzing module pointwise_rshift_even_43_lut
+INFO: [VRFC 10-311] analyzing module pointwise_conv_pe
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/top_level_fsm.v" into library work
+INFO: [VRFC 10-311] analyzing module top_level_fsm
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/rtl/weight_bram_swap_fsm.v" into library work
+INFO: [VRFC 10-311] analyzing module weight_bram_swap_fsm
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/uvm/common/cnn_if.sv" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/uvm/pkg/cnn_base_pkg.sv" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "$REPO/CNN/uvm/control/cnn_ctrl_pkg.sv" into library work
+ERROR: [VRFC 10-4982] syntax error near 'soft' [$REPO\CNN\uvm\control\sequences/cnn_c06_reset_seq.sv:14]
+ERROR: [VRFC 10-2790] SystemVerilog keyword soft used in incorrect context [$REPO\CNN\uvm\control\sequences/cnn_c06_reset_seq.sv:14]
+ERROR: [VRFC 10-4982] syntax error near 'checker' [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:6]
+ERROR: [VRFC 10-2790] SystemVerilog keyword checker used in incorrect context [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:6]
+ERROR: [VRFC 10-4982] syntax error near 'checker' [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:46]
+ERROR: [VRFC 10-2790] SystemVerilog keyword checker used in incorrect context [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:46]
+ERROR: [VRFC 10-4982] syntax error near 'checker' [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:78]
+ERROR: [VRFC 10-2790] SystemVerilog keyword checker used in incorrect context [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:78]
+ERROR: [VRFC 10-4982] syntax error near 'checker' [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:100]
+ERROR: [VRFC 10-2790] SystemVerilog keyword checker used in incorrect context [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:100]
+ERROR: [VRFC 10-4982] syntax error near 'checker' [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:112]
+ERROR: [VRFC 10-2790] SystemVerilog keyword checker used in incorrect context [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:112]
+ERROR: [VRFC 10-4982] syntax error near 'checker' [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:114]
+ERROR: [VRFC 10-2790] SystemVerilog keyword checker used in incorrect context [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:114]
+ERROR: [VRFC 10-4982] syntax error near 'checker' [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:130]
+ERROR: [VRFC 10-2790] SystemVerilog keyword checker used in incorrect context [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:130]
+ERROR: [VRFC 10-4982] syntax error near 'checker' [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:134]
+ERROR: [VRFC 10-2790] SystemVerilog keyword checker used in incorrect context [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:134]
+ERROR: [VRFC 10-4982] syntax error near 'checker' [$REPO\CNN\uvm\control\sequences/cnn_c08_fault_seq.sv:137]
+INFO: [#UNDEF] Sorry, too many errors..

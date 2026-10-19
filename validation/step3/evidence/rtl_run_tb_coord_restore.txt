@@ -1,0 +1,70 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_coord_restore -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_coord_restore/xsim_script.tcl
+# xsim {tb_coord_restore} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+============================================================
+ coord_restore CNN-v4.0 self-checking testbench
+============================================================
+
+[TEST 1] 17-joint Python-reference comparison
+[PASS][50000] cfg_ready is zero during synchronous reset
+[PASS][50000] 4-state public output reset values are canonical and known
+[PASS][70000] cfg accepted and module entered active operation
+[PASS][130000] 5-stage no-stall latency observed for joint0
+[PASS][130000] joint0 result = ec147178 good=1
+[PASS][140000] joint1 result = d2028050 good=1
+[PASS][150000] joint2 result = d1000000 good=0
+[PASS][160000] joint3 result = 00028000 good=1
+[PASS][170000] joint4 result = 0a0284ff good=1
+[PASS][180000] joint5 result = 0b000000 good=0
+[PASS][190000] joint6 result = 0c000050 good=1
+[PASS][200000] joint7 result = 0d2cf050 good=1
+[PASS][240000] output payload/index/last/good remained stable during stall
+[PASS][240000] joint8 result = 0e000000 good=0
+[PASS][250000] joint9 result = 0f000000 good=0
+[PASS][260000] joint10 result = 10031116 good=1
+[PASS][270000] joint11 result = 111f02f1 good=1
+[PASS][280000] joint12 result = 140280e8 good=1
+[PASS][290000] joint13 result = 152b0050 good=1
+[PASS][300000] joint14 result = d30c80f0 good=1
+[PASS][310000] joint15 result = 7f2c0478 good=1
+[PASS][340000] output payload/index/last/good remained stable during stall
+[PASS][340000] joint16 result = 80000000 good=0
+[PASS][350000] joint16 accept -> next-cycle done pulse
+[PASS][360000] done is a one-cycle pulse
+[PASS][360000] exactly 17 input joints accepted
+[PASS][360000] exactly 17 output joints accepted
+[PASS][360000] joint8 output stall exercised for 3 cycles
+[PASS][360000] joint16 output stall exercised for 2 cycles
+[PASS][360000] module returned to idle after final output accept
+
+[TEST 2] sticky protocol fault and reset recovery
+[PASS][410000] cfg_ready is zero during synchronous reset
+[PASS][410000] 4-state public output reset values are canonical and known
+[PASS][450000] wrong first joint raised sticky fault
+[PASS][450000] sticky fault blocks new cfg
+[PASS][450000] sticky fault blocks new input work
+[PASS][450000] fault has priority over done
+[PASS][480000] fault remains sticky until reset
+[PASS][530000] cfg_ready is zero during synchronous reset
+[PASS][530000] 4-state public output reset values are canonical and known
+[PASS][540000] synchronous reset clears sticky fault
+[PASS][540000] module accepts new work again after reset
+
+============================================================
+ checks = 41
+ errors = 0
+ TEST PASS: coord_restore contract checks passed
+ VCD = tb_coord_restore.vcd
+============================================================
+$finish called at time : 540 ns : File "$REPO/CNN/tb/tb_coord_restore.v" Line 804
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:12:26 2026...

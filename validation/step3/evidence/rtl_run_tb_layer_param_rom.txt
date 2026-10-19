@@ -1,0 +1,75 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_layer_param_rom -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_layer_param_rom/xsim_script.tcl
+# xsim {tb_layer_param_rom} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+
+==============================================
+ layer_param_rom Testbench Start
+==============================================
+
+[PASS] Reset test
+
+[TEST 1] op0 normal request / response
+[PASS] op0 descriptor received
+[PASS] TEST 1
+
+[TEST 2] Response stall / payload hold
+[PASS] rsp_desc remained stable while rsp_valid && !rsp_ready
+[PASS] TEST 2
+
+[TEST 3] op1 ~ op28 descriptor mapping
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] op          x descriptor correct
+[PASS] TEST 3
+
+[TEST 4] op28 boundary / op29~31 sticky fault
+[PASS] op28 is valid
+[PASS] op29 generated sticky fault
+[PASS] fault remains sticky
+[PASS] Reset test
+[PASS] reset cleared sticky fault
+[PASS] op30 generated fault
+[PASS] Reset test
+[PASS] op31 generated fault
+
+==============================================
+ PASS : layer_param_rom all tests passed
+==============================================
+
+$finish called at time : 1530 ns : File "$REPO/CNN/tb/tb_layer_param_rom.v" Line 833
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:15:56 2026...

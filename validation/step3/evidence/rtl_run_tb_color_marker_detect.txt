@@ -1,0 +1,34 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_color_marker_detect -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_color_marker_detect/xsim_script.tcl
+# xsim {tb_color_marker_detect} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+TEST1 snapshot/boundary/last/floor/four-divider
+FAIL red_word actual=00000000 expected=80005005
+FAIL blue_word actual=00000000 expected=80005008
+FAIL four nonzero coordinates did not launch four divisions
+FAIL four launched divisions did not complete
+TEST2 simultaneous dual-color hit
+FAIL red_word actual=00000000 expected=8001b84d
+FAIL blue_word actual=00000000 expected=8001b84d
+FAIL dual-color hit did not launch both color coordinate pairs
+TEST3 count zero skips divider
+TEST4 MIN_COUNT-1
+FAIL nonzero below-threshold red count did not run x/y divisions
+TEST5 MIN_COUNT exact
+FAIL red_word actual=00000000 expected=80005003
+FAIL MIN_COUNT red frame did not run exactly two divisions
+TEST6 sticky tap protocol fault and reset recovery
+TEST7 active-operation frame_start fault
+SUCCESS: The process with PID 22720 (child process of PID 44200) has been terminated.
+SUCCESS: The process with PID 44200 (child process of PID 57112) has been terminated.
+SUCCESS: The process with PID 12864 (child process of PID 51924) has been terminated.
+SUCCESS: The process with PID 57112 (child process of PID 51924) has been terminated.
+SUCCESS: The process with PID 51924 (child process of PID 46776) has been terminated.

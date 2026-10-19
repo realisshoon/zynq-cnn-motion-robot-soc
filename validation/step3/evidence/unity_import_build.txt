@@ -1,0 +1,1 @@
+COMMAND D:\Unity\Hub\Editor\6000.3.24f1\Editor\Unity.exe -batchmode -nographics -quit -projectPath $REPO\Unity -executeMethod CameraPreviewSizeBatch.BuildLatest --camera-player-output $REPO\.validation\step3\unity_player\HumanMotionDigitalTwin.exe -logFile $REPO\.validation\step3\unity_editor.log

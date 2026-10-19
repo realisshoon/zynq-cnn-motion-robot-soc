@@ -1,0 +1,43 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat uvm_common_ts -runall -testplusarg UVM_TESTNAME=cnn_base_test
+Expected a switch but found c
+XSim simulation executable
+Usage: C:/Xilinx/Vivado/2020.2/bin/unwrapped/win64.o/xsim.exe [options]
+(Switches with double dash '--' can also be used with a single dash '-')
+    --R                  : Run simulation till end i.e. do 'run all;quit'
+    --cov_db_dir         : Functional Coverage database dump directory. The coverage data will be present under <arg>/xsim.covdb/<cov_db_name> directory. Default is ./ or inherits value set in xelab.
+    --cov_db_name        : Functional Coverage database name. The coverage data will be present under <cov_db_dir>/xsim.covdb/<arg> directory. Default is snapshot name or inherits value set in xelab.
+    --downgrade_error2info : Downgrade severity level of HDL messages from Error to Info.
+    --downgrade_error2warning : Downgrade severity level of HDL messages from Error to Warning.
+    --downgrade_fatal2info : Downgrade severity level of HDL messages from Fatal to Info.
+    --downgrade_fatal2warning : Downgrade severity level of HDL messages from Fatal to Warning.
+    --downgrade_severity : Downgrade severity level of HDL messages. Choices are:error2warning|error2info|fatal2warning|fatal2info
+    --f                  : Take command line options from a file
+    --file               : Take command line options from a file
+    --g                  : Run with interactive GUI
+    --gui                : Run with interactive GUI
+    --h                  : Print help message and exit
+    --help               : Print help message and exit
+    --ieeewarnings       : Enable warnings from VHDL IEEE functions
+    --ignore_assertions  : Ignore System Verilog Concurrent Assertions.
+    --ignore_coverage    : Ignore System Verilog Functional Coverage.
+    --ignore_feature     : Ignore effect of specific HDL feature or construct. Choices are: assertion
+    --log                : Specify the log file name
+    --maxdeltaid         : Specify the maximum delta number. Will report error if it exceeds maximum simulation loops at the same time
+    --maxlogsize         : Set the maximum size a log file can reach in MB. The default setting is unlimited
+    --nolog              : Suppress log file generation
+    --nosignalhandlers   : Run with no signal handlers to avoid conflict with security software.
+    --onerror            : Specify behavior upon simulation run-time error: quit|stop
+    --onfinish           : Specify behavior at end of simulation: quit|stop
+    --protoinst          : Specify a .protoinst file for protocol analysis
+    --runall             : Run simulation till end i.e. do 'run all;quit'
+    --stats              : Display memory and cpu stats upon exiting
+    --sv_seed            : seed for sv constraint random
+    --t                  : Specify the TCL file for batch mode execution
+    --tclbatch           : Specify the TCL file for batch mode execution
+    --tempDir            : Specify the temporary directory name
+    --testplusarg        : Specify plus args to be used by $test$plusargs and $value$plusargs system functions
+    --tl                 : Enable printing of file name and line number of statements being executed.
+    --tp                 : Enable printing of hierarchical names of process being executed.
+    --version            : Print the simulator version and quit.
+    --view               : Open a wave configuration file. This switch should be used together with -gui switch
+    --wdb                : Specify the waveform database output file.

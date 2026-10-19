@@ -1,0 +1,40 @@
+COMMAND $BUNDLED_PYTHON -B $REPO\CNN\uvm\golden\golden_io\weights_to_stream_hex.py $REPO\CNN\golden_py_model\generated\weights_v4.bin $REPO\CNN\golden_py_model\generated\manifest.json $REPO\.validation\step3\uvm_generated_weight_stream
+========================================
+WEIGHT stream conversion
+========================================
+OP 00 | features.conv0.conv            | bytes=   960 | beats=   120
+OP 01 | features.conv1.depthwise       | bytes=   512 | beats=    64
+OP 02 | features.conv1.pointwise       | bytes=  1920 | beats=   240
+OP 03 | features.conv2.depthwise       | bytes=   960 | beats=   120
+OP 04 | features.conv2.pointwise       | bytes=  6912 | beats=   864
+OP 05 | features.conv3.depthwise       | bytes=  1664 | beats=   208
+OP 06 | features.conv3.pointwise       | bytes=  9984 | beats=  1248
+OP 07 | features.conv4.depthwise       | bytes=  1664 | beats=   208
+OP 08 | features.conv4.pointwise       | bytes= 19968 | beats=  2496
+OP 09 | features.conv5.depthwise       | bytes=  3264 | beats=   408
+OP 10 | features.conv5.pointwise       | bytes= 38400 | beats=  4800
+OP 11 | features.conv6.depthwise       | bytes=  3264 | beats=   408
+OP 12 | features.conv6.pointwise       | bytes= 76800 | beats=  9600
+OP 13 | features.conv7.depthwise       | bytes=  6528 | beats=   816
+OP 14 | features.conv7.pointwise       | bytes=150528 | beats= 18816
+OP 15 | features.conv8.depthwise       | bytes=  6528 | beats=   816
+OP 16 | features.conv8.pointwise       | bytes=150528 | beats= 18816
+OP 17 | features.conv9.depthwise       | bytes=  6528 | beats=   816
+OP 18 | features.conv9.pointwise       | bytes=150528 | beats= 18816
+OP 19 | features.conv10.depthwise      | bytes=  6528 | beats=   816
+OP 20 | features.conv10.pointwise      | bytes=150528 | beats= 18816
+OP 21 | features.conv11.depthwise      | bytes=  6528 | beats=   816
+OP 22 | features.conv11.pointwise      | bytes=150528 | beats= 18816
+OP 23 | features.conv12.depthwise      | bytes=  6528 | beats=   816
+OP 24 | features.conv12.pointwise      | bytes=150528 | beats= 18816
+OP 25 | features.conv13.depthwise      | bytes=  6528 | beats=   816
+OP 26 | features.conv13.pointwise      | bytes=150528 | beats= 18816
+OP 27 | heatmap                        | bytes=  7872 | beats=   984
+OP 28 | offset                         | bytes= 14144 | beats=  1768
+========================================
+WEIGHT stream conversion PASS
+packed bytes : 1287680
+total beats  : 160960
+ops          : 29
+output dir   : $REPO\.validation\step3\uvm_generated_weight_stream
+========================================

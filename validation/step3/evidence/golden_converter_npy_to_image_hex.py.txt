@@ -1,0 +1,13 @@
+COMMAND $BUNDLED_PYTHON -B $REPO\CNN\uvm\golden\golden_io\npy_to_image_hex.py $REPO\CNN\golden_py_model\images_npy\frame_00121.npy $REPO\.validation\step3\uvm_generated_image\frame121.hex
+IMAGE stream conversion PASS
+input       : $REPO\CNN\golden_py_model\images_npy\frame_00121.npy
+output      : $REPO\.validation\step3\uvm_generated_image\frame121.hex
+frame shape : (720, 1280, 3)
+dtype       : uint8
+DMA rows    : 144
+bytes/row   : 3840
+beats/row   : 480
+total bytes : 552960
+total beats : 69120
+keep        : 0xFF for every beat
+last        : asserted on beat 479 of every DMA row

@@ -1,0 +1,9 @@
+COMMAND powershell -NoProfile -ExecutionPolicy Bypass -File $REPO\robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws\mci3-right-b7eb63c -StereoRole Right
+ForEach-Object : The term 'Get-FileHash' is not recognized as the name of a cmdlet, function, script file, or operable
+program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At $REPO\robot_arm\vitis\setup_vitis.
+ps1:91 char:13
++             ForEach-Object {
++             ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (Get-FileHash:String) [ForEach-Object], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException,Microsoft.PowerShell.Commands.ForEachObjectCommand

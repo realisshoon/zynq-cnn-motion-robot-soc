@@ -1,0 +1,17 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_depthwise_conv_pe_full_layer -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_depthwise_conv_pe_full_layer/xsim_script.tcl
+# xsim {tb_depthwise_conv_pe_full_layer} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+FULL_LAYER_SUMMARY Cin=96 pixels=1 batches=3 taps=27 outputs=3 weight_expected=27 weight_actual=27 params=96 quant=96 ii_gaps=0 max_latency=45 nonfinal_continue=0 owner_access=1 source_gaps=0 output_stalls=0 errors=0
+PASS FULL_LAYER Cin96 pixels=1 stall=0
+$finish called at time : 1536 ns
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:13:07 2026...

@@ -1,0 +1,423 @@
+PASS: original KO controller initialized
+PASS: Startup unchanged; HUD hidden
+PASS: G51/UART START retained; no automatic COM
+PASS: before fixture: physical ports disconnected TX=0
+PASS: disconnected REC/PLAY disabled
+PASS: disabled listener produces zero TX
+PASS: actual Player resolution 1920
+PASS: viewport-relative 200x54 bottom-left anchor 1920
+PASS: four buttons single row/unclipped 1920
+PASS: overlay does not reframe camera or viewport
+PASS: HUD captures UI pointer
+PASS: outside HUD viewport remains non-UI
+PASS: real InputSystem zoom outside HUD
+PASS: real InputSystem orbit outside HUD
+PASS: clickable Control target 1
+PASS: actual pointer hit Control target 1 top=Control target 1 bounds=(x:1642.40, y:851.60, width:120.80, height:34.00)
+PASS: Control LEFT shared after UI frame: target=1 records=Left HUD=LEFT / robot1 · 연결 포트 UNKNOWN
+PWM ON · FOLLOW OFF
+재생 준비 완료 · 보드 보고값 기준
+G51 LEFT / HOLD: WAITING NEW TK
+PASS: LEFT G51 source explicitly displayed
+PASS: clickable Quick list
+PASS: actual pointer hit Quick list top=Quick list bounds=(x:142.00, y:54.00, width:40.00, height:36.00)
+PASS: LEFT list independent actual ID 9
+PASS: clickable Quick SD ID 9
+PASS: actual pointer hit Quick SD ID 9 top=Quick SD ID 9 bounds=(x:40.00, y:277.00, width:274.00, height:32.00)
+PASS: popup selection shared with detailed Records
+PASS: selection and popup close have no fake TX
+PASS: clickable Quick REC
+PASS: actual pointer hit Quick REC top=Quick REC bounds=(x:38.00, y:54.00, width:56.00, height:36.00)
+PASS: actual LEFT HUD REC routes only LEFT R
+PASS: clickable Quick REC
+PASS: actual pointer hit Quick REC top=Quick REC bounds=(x:38.00, y:54.00, width:56.00, height:36.00)
+PASS: LEFT finish/autoname uses LEFT catalog, no RIGHT duplicate names
+PASS: LEFT own saved ID auto-selected
+PASS: clickable Quick return
+PASS: actual pointer hit Quick return top=Quick return bounds=(x:186.00, y:54.00, width:40.00, height:36.00)
+PASS: clickable Quick PWM idle
+PASS: actual pointer hit Quick PWM idle top=Quick PWM idle bounds=(x:40.00, y:111.00, width:274.00, height:34.00)
+PASS: LEFT saved record -> explicit PWM idle; no RIGHT command
+PASS: clickable Quick PLAY
+PASS: actual pointer hit Quick PLAY top=Quick PLAY bounds=(x:98.00, y:54.00, width:40.00, height:36.00)
+PASS: LEFT PLAY while RIGHT LIVE: only LEFT P
+PASS: clickable Control target 0
+PASS: actual pointer hit Control target 0 top=Control target 0 bounds=(x:1514.40, y:851.60, width:120.80, height:34.00)
+PASS: pending PLAY target pinned
+PASS: LEFT SELECT correct ID / no RIGHT request
+PASS: ALIGN stop remains accessible after approval
+PASS: LEFT PLAY leaves RIGHT LIVE state unchanged
+PASS: clickable Control target 0
+PASS: actual pointer hit Control target 0 top=Control target 0 bounds=(x:1514.40, y:851.60, width:120.80, height:34.00)
+PASS: approved LEFT PLAY allows RIGHT inspection without stopping LEFT or sending RIGHT command
+PASS: RIGHT independent PLAY accepted:
+PASS: RIGHT freshness query and PLAY use only RIGHT gateway while LEFT PLAY continues
+PASS: RIGHT role-owned selected ID cannot leak to LEFT
+PASS: both offline controllers execute independently
+PASS: explicit RIGHT stop has only RIGHT P
+PASS: approved repeat ALIGN keeps independent selection
+PASS: clickable Control target 1
+PASS: actual pointer hit Control target 1 top=Control target 1 bounds=(x:1642.40, y:851.60, width:120.80, height:34.00)
+PASS: LEFT return preserves its record ID and playback
+PASS: clickable Quick PLAY
+PASS: actual pointer hit Quick PLAY top=Quick PLAY bounds=(x:98.00, y:54.00, width:40.00, height:36.00)
+PASS: second PLAY stops via P / no S
+PASS: clickable Control target 0
+PASS: actual pointer hit Control target 0 top=Control target 0 bounds=(x:1514.40, y:851.60, width:120.80, height:34.00)
+PASS: RIGHT catalog selection restored independently
+PASS: clickable Quick list
+PASS: actual pointer hit Quick list top=Quick list bounds=(x:142.00, y:54.00, width:40.00, height:36.00)
+PASS: clickable Quick SD ID 3
+PASS: actual pointer hit Quick SD ID 3 top=Quick SD ID 3 bounds=(x:40.00, y:243.00, width:274.00, height:32.00)
+PASS: RIGHT ID3 selected
+PASS: clickable Control target 1
+PASS: actual pointer hit Control target 1 top=Control target 1 bounds=(x:1642.40, y:851.60, width:120.80, height:34.00)
+PASS: LEFT ID9 preserved across switching
+PASS: clickable Control target 2
+PASS: actual pointer hit Control target 2 top=Control target 2 bounds=(x:1770.40, y:851.60, width:120.80, height:34.00)
+PASS: BOTH HUD REC/PLAY disabled / no broadcast
+PASS: BOTH never reports one board PWM as aggregate
+PASS: clickable Control target 0
+PASS: actual pointer hit Control target 0 top=Control target 0 bounds=(x:1514.40, y:851.60, width:120.80, height:34.00)
+PASS: clickable Quick REC
+PASS: actual pointer hit Quick REC top=Quick REC bounds=(x:38.00, y:54.00, width:56.00, height:36.00)
+PASS: RIGHT REC only RIGHT R / no E A
+PASS: clickable Control target 1
+PASS: actual pointer hit Control target 1 top=Control target 1 bounds=(x:1642.40, y:851.60, width:120.80, height:34.00)
+PASS: REC response waiting pins target
+PASS: actual recording notice+state shared
+PASS: recording button colour fixed without pulse
+PASS: opening detailed Records never stops HUD recording
+PASS: clickable Quick REC
+PASS: actual pointer hit Quick REC top=Quick REC bounds=(x:38.00, y:54.00, width:56.00, height:36.00)
+PASS: second REC original finish R
+PASS: settling sends no save
+PASS: NAME requests duplicate list once
+PASS: duplicate timestamp _02 no overwrite
+PASS: SAVED alone not SD save success
+PASS: saved state refreshes catalog
+PASS: actual saved ID auto-selected; no LEFT side effect
+PASS: record finish/save never auto-follow or discard RAM
+PASS: clickable Quick return
+PASS: actual pointer hit Quick return top=Quick return bounds=(x:186.00, y:54.00, width:40.00, height:36.00)
+PASS: clickable Quick follow return
+PASS: actual pointer hit Quick follow return top=Quick follow return bounds=(x:40.00, y:149.00, width:274.00, height:34.00)
+PASS: explicit follow return starts V only
+PASS: saved MENU -> CANCEL -> actual LIVE -> A once
+PASS: A approval then T
+PASS: T confirmed follow return
+PASS: clickable Quick return
+PASS: actual pointer hit Quick return top=Quick return bounds=(x:186.00, y:54.00, width:40.00, height:36.00)
+PASS: clickable Quick PWM idle
+PASS: actual pointer hit Quick PWM idle top=Quick PWM idle bounds=(x:40.00, y:111.00, width:274.00, height:34.00)
+PASS: explicit PWM idle only verified V T S
+PASS: PWM ON FOLLOW OFF LIVE verified / no X E A
+PASS: Presentation hides HUD without board command
+PASS: Presentation returns HUD, no physical TX
+PASS: RIGHT selected: LEFT valid command does not overwrite RIGHT G51
+PASS: disconnect makes UNKNOWN and blocks follow-up
+PASS: disconnect no commands
+PASS: new generation requires fresh board state
+PASS: HUD Korean glyph 선
+PASS: HUD Korean glyph 택
+PASS: HUD Korean glyph 은
+PASS: HUD Korean glyph 보
+PASS: HUD Korean glyph 드
+PASS: HUD Korean glyph 승
+PASS: HUD Korean glyph 인
+PASS: HUD Korean glyph 상
+PASS: HUD Korean glyph 태
+PASS: HUD Korean glyph 가
+PASS: HUD Korean glyph 아
+PASS: HUD Korean glyph 닙
+PASS: HUD Korean glyph 니
+PASS: HUD Korean glyph 다
+PASS: HUD Korean glyph 점
+PASS: HUD Korean glyph 전
+PASS: HUD Korean glyph 체
+PASS: HUD Korean glyph 관
+PASS: HUD Korean glyph 절
+PASS: HUD Korean glyph 토
+PASS: HUD Korean glyph 글
+PASS: HUD Korean glyph 보
+PASS: HUD Korean glyph 드
+PASS: HUD Korean glyph 응
+PASS: HUD Korean glyph 답
+PASS: HUD Korean glyph 연
+PASS: HUD Korean glyph 결
+PASS: HUD Korean glyph 세
+PASS: HUD Korean glyph 대
+PASS: HUD Korean glyph 오
+PASS: HUD Korean glyph 류
+PASS: HUD Korean glyph 변
+PASS: HUD Korean glyph 경
+PASS: HUD Korean glyph 새
+PASS: HUD Korean glyph 필
+PASS: HUD Korean glyph 요
+PASS: HUD Korean glyph 확
+PASS: HUD Korean glyph 인
+PASS: HUD Korean glyph 보
+PASS: HUD Korean glyph 드
+PASS: HUD Korean glyph 선
+PASS: HUD Korean glyph 택
+PASS: HUD Korean glyph 변
+PASS: HUD Korean glyph 경
+PASS: HUD Korean glyph 완
+PASS: HUD Korean glyph 료
+PASS: HUD Korean glyph 만
+PASS: HUD Korean glyph 으
+PASS: HUD Korean glyph 로
+PASS: HUD Korean glyph 명
+PASS: HUD Korean glyph 령
+PASS: HUD Korean glyph 을
+PASS: HUD Korean glyph 전
+PASS: HUD Korean glyph 송
+PASS: HUD Korean glyph 하
+PASS: HUD Korean glyph 지
+PASS: HUD Korean glyph 않
+PASS: HUD Korean glyph 습
+PASS: HUD Korean glyph 니
+PASS: HUD Korean glyph 다
+PASS: HUD Korean glyph 연
+PASS: HUD Korean glyph 결
+PASS: HUD Korean glyph 포
+PASS: HUD Korean glyph 트
+PASS: HUD Korean glyph 사
+PASS: HUD Korean glyph 용
+PASS: HUD Korean glyph 자
+PASS: HUD Korean glyph 가
+PASS: HUD Korean glyph 재
+PASS: HUD Korean glyph 생
+PASS: HUD Korean glyph 중
+PASS: HUD Korean glyph 지
+PASS: HUD Korean glyph 를
+PASS: HUD Korean glyph 요
+PASS: HUD Korean glyph 청
+PASS: HUD Korean glyph 했
+PASS: HUD Korean glyph 습
+PASS: HUD Korean glyph 니
+PASS: HUD Korean glyph 다
+PASS: HUD Korean glyph 기
+PASS: HUD Korean glyph 존
+PASS: HUD Korean glyph 응
+PASS: HUD Korean glyph 답
+PASS: HUD Korean glyph 으
+PASS: HUD Korean glyph 로
+PASS: HUD Korean glyph 실
+PASS: HUD Korean glyph 제
+PASS: HUD Korean glyph 상
+PASS: HUD Korean glyph 태
+PASS: HUD Korean glyph 확
+PASS: HUD Korean glyph 인
+PASS: HUD Korean glyph 하
+PASS: HUD Korean glyph 세
+PASS: physical COM unopened / TX=0 at 1920
+PASS: actual Player resolution 1280
+PASS: viewport-relative 200x54 bottom-left anchor 1280
+PASS: four buttons single row/unclipped 1280
+PASS: overlay does not reframe camera or viewport
+PASS: HUD captures UI pointer
+PASS: outside HUD viewport remains non-UI
+PASS: real InputSystem zoom outside HUD
+PASS: real InputSystem orbit outside HUD
+PASS: clickable Control target 1
+PASS: actual pointer hit Control target 1 top=Control target 1 bounds=(x:1052.27, y:556.40, width:101.87, height:34.00)
+PASS: Control LEFT shared after UI frame: target=1 records=Left HUD=LEFT / robot1 · 연결 포트 UNKNOWN
+PWM ON · FOLLOW OFF
+사용자가 재생 중지를 요청했습니다. 기존 P 응답으로 실제 상태를 확인하세요.
+G51 LEFT / HOLD: WAITING NEW TK
+PASS: LEFT G51 source explicitly displayed
+PASS: clickable Quick list
+PASS: actual pointer hit Quick list top=Quick list bounds=(x:142.00, y:54.00, width:40.00, height:36.00)
+PASS: LEFT list independent actual ID 9
+PASS: clickable Quick SD ID 9
+PASS: actual pointer hit Quick SD ID 9 top=Quick SD ID 9 bounds=(x:40.00, y:277.00, width:274.00, height:32.00)
+PASS: popup selection shared with detailed Records
+PASS: selection and popup close have no fake TX
+PASS: clickable Quick REC
+PASS: actual pointer hit Quick REC top=Quick REC bounds=(x:38.00, y:54.00, width:56.00, height:36.00)
+PASS: actual LEFT HUD REC routes only LEFT R
+PASS: clickable Quick REC
+PASS: actual pointer hit Quick REC top=Quick REC bounds=(x:38.00, y:54.00, width:56.00, height:36.00)
+PASS: LEFT finish/autoname uses LEFT catalog, no RIGHT duplicate names
+PASS: LEFT own saved ID auto-selected
+PASS: clickable Quick return
+PASS: actual pointer hit Quick return top=Quick return bounds=(x:186.00, y:54.00, width:40.00, height:36.00)
+PASS: clickable Quick PWM idle
+PASS: actual pointer hit Quick PWM idle top=Quick PWM idle bounds=(x:40.00, y:111.00, width:274.00, height:34.00)
+PASS: LEFT saved record -> explicit PWM idle; no RIGHT command
+PASS: clickable Quick PLAY
+PASS: actual pointer hit Quick PLAY top=Quick PLAY bounds=(x:98.00, y:54.00, width:40.00, height:36.00)
+PASS: LEFT PLAY while RIGHT LIVE: only LEFT P
+PASS: clickable Control target 0
+PASS: actual pointer hit Control target 0 top=Control target 0 bounds=(x:945.60, y:556.40, width:101.87, height:34.00)
+PASS: pending PLAY target pinned
+PASS: LEFT SELECT correct ID / no RIGHT request
+PASS: ALIGN stop remains accessible after approval
+PASS: LEFT PLAY leaves RIGHT LIVE state unchanged
+PASS: clickable Control target 0
+PASS: actual pointer hit Control target 0 top=Control target 0 bounds=(x:945.60, y:556.40, width:101.87, height:34.00)
+PASS: approved LEFT PLAY allows RIGHT inspection without stopping LEFT or sending RIGHT command
+PASS: RIGHT independent PLAY accepted:
+PASS: RIGHT freshness query and PLAY use only RIGHT gateway while LEFT PLAY continues
+PASS: RIGHT role-owned selected ID cannot leak to LEFT
+PASS: both offline controllers execute independently
+PASS: explicit RIGHT stop has only RIGHT P
+PASS: approved repeat ALIGN keeps independent selection
+PASS: clickable Control target 1
+PASS: actual pointer hit Control target 1 top=Control target 1 bounds=(x:1052.27, y:556.40, width:101.87, height:34.00)
+PASS: LEFT return preserves its record ID and playback
+PASS: clickable Quick PLAY
+PASS: actual pointer hit Quick PLAY top=Quick PLAY bounds=(x:98.00, y:54.00, width:40.00, height:36.00)
+PASS: second PLAY stops via P / no S
+PASS: clickable Control target 0
+PASS: actual pointer hit Control target 0 top=Control target 0 bounds=(x:945.60, y:556.40, width:101.87, height:34.00)
+PASS: RIGHT catalog selection restored independently
+PASS: clickable Quick list
+PASS: actual pointer hit Quick list top=Quick list bounds=(x:142.00, y:54.00, width:40.00, height:36.00)
+PASS: clickable Quick SD ID 3
+PASS: actual pointer hit Quick SD ID 3 top=Quick SD ID 3 bounds=(x:40.00, y:243.00, width:274.00, height:32.00)
+PASS: RIGHT ID3 selected
+PASS: clickable Control target 1
+PASS: actual pointer hit Control target 1 top=Control target 1 bounds=(x:1052.27, y:556.40, width:101.87, height:34.00)
+PASS: LEFT ID9 preserved across switching
+PASS: clickable Control target 2
+PASS: actual pointer hit Control target 2 top=Control target 2 bounds=(x:1158.93, y:556.40, width:101.87, height:34.00)
+PASS: BOTH HUD REC/PLAY disabled / no broadcast
+PASS: BOTH never reports one board PWM as aggregate
+PASS: clickable Control target 0
+PASS: actual pointer hit Control target 0 top=Control target 0 bounds=(x:945.60, y:556.40, width:101.87, height:34.00)
+PASS: clickable Quick REC
+PASS: actual pointer hit Quick REC top=Quick REC bounds=(x:38.00, y:54.00, width:56.00, height:36.00)
+PASS: RIGHT REC only RIGHT R / no E A
+PASS: clickable Control target 1
+PASS: actual pointer hit Control target 1 top=Control target 1 bounds=(x:1052.27, y:556.40, width:101.87, height:34.00)
+PASS: REC response waiting pins target
+PASS: actual recording notice+state shared
+PASS: recording button colour fixed without pulse
+PASS: opening detailed Records never stops HUD recording
+PASS: clickable Quick REC
+PASS: actual pointer hit Quick REC top=Quick REC bounds=(x:38.00, y:54.00, width:56.00, height:36.00)
+PASS: second REC original finish R
+PASS: settling sends no save
+PASS: NAME requests duplicate list once
+PASS: duplicate timestamp _02 no overwrite
+PASS: SAVED alone not SD save success
+PASS: saved state refreshes catalog
+PASS: actual saved ID auto-selected; no LEFT side effect
+PASS: record finish/save never auto-follow or discard RAM
+PASS: clickable Quick return
+PASS: actual pointer hit Quick return top=Quick return bounds=(x:186.00, y:54.00, width:40.00, height:36.00)
+PASS: clickable Quick follow return
+PASS: actual pointer hit Quick follow return top=Quick follow return bounds=(x:40.00, y:149.00, width:274.00, height:34.00)
+PASS: explicit follow return starts V only
+PASS: saved MENU -> CANCEL -> actual LIVE -> A once
+PASS: A approval then T
+PASS: T confirmed follow return
+PASS: clickable Quick return
+PASS: actual pointer hit Quick return top=Quick return bounds=(x:186.00, y:54.00, width:40.00, height:36.00)
+PASS: clickable Quick PWM idle
+PASS: actual pointer hit Quick PWM idle top=Quick PWM idle bounds=(x:40.00, y:111.00, width:274.00, height:34.00)
+PASS: explicit PWM idle only verified V T S
+PASS: PWM ON FOLLOW OFF LIVE verified / no X E A
+PASS: Presentation hides HUD without board command
+PASS: Presentation returns HUD, no physical TX
+PASS: RIGHT selected: LEFT valid command does not overwrite RIGHT G51
+PASS: disconnect makes UNKNOWN and blocks follow-up
+PASS: disconnect no commands
+PASS: new generation requires fresh board state
+PASS: HUD Korean glyph 선
+PASS: HUD Korean glyph 택
+PASS: HUD Korean glyph 은
+PASS: HUD Korean glyph 보
+PASS: HUD Korean glyph 드
+PASS: HUD Korean glyph 승
+PASS: HUD Korean glyph 인
+PASS: HUD Korean glyph 상
+PASS: HUD Korean glyph 태
+PASS: HUD Korean glyph 가
+PASS: HUD Korean glyph 아
+PASS: HUD Korean glyph 닙
+PASS: HUD Korean glyph 니
+PASS: HUD Korean glyph 다
+PASS: HUD Korean glyph 점
+PASS: HUD Korean glyph 전
+PASS: HUD Korean glyph 체
+PASS: HUD Korean glyph 관
+PASS: HUD Korean glyph 절
+PASS: HUD Korean glyph 토
+PASS: HUD Korean glyph 글
+PASS: HUD Korean glyph 보
+PASS: HUD Korean glyph 드
+PASS: HUD Korean glyph 응
+PASS: HUD Korean glyph 답
+PASS: HUD Korean glyph 연
+PASS: HUD Korean glyph 결
+PASS: HUD Korean glyph 세
+PASS: HUD Korean glyph 대
+PASS: HUD Korean glyph 오
+PASS: HUD Korean glyph 류
+PASS: HUD Korean glyph 변
+PASS: HUD Korean glyph 경
+PASS: HUD Korean glyph 새
+PASS: HUD Korean glyph 필
+PASS: HUD Korean glyph 요
+PASS: HUD Korean glyph 확
+PASS: HUD Korean glyph 인
+PASS: HUD Korean glyph 보
+PASS: HUD Korean glyph 드
+PASS: HUD Korean glyph 선
+PASS: HUD Korean glyph 택
+PASS: HUD Korean glyph 변
+PASS: HUD Korean glyph 경
+PASS: HUD Korean glyph 완
+PASS: HUD Korean glyph 료
+PASS: HUD Korean glyph 만
+PASS: HUD Korean glyph 으
+PASS: HUD Korean glyph 로
+PASS: HUD Korean glyph 명
+PASS: HUD Korean glyph 령
+PASS: HUD Korean glyph 을
+PASS: HUD Korean glyph 전
+PASS: HUD Korean glyph 송
+PASS: HUD Korean glyph 하
+PASS: HUD Korean glyph 지
+PASS: HUD Korean glyph 않
+PASS: HUD Korean glyph 습
+PASS: HUD Korean glyph 니
+PASS: HUD Korean glyph 다
+PASS: HUD Korean glyph 연
+PASS: HUD Korean glyph 결
+PASS: HUD Korean glyph 포
+PASS: HUD Korean glyph 트
+PASS: HUD Korean glyph 사
+PASS: HUD Korean glyph 용
+PASS: HUD Korean glyph 자
+PASS: HUD Korean glyph 가
+PASS: HUD Korean glyph 재
+PASS: HUD Korean glyph 생
+PASS: HUD Korean glyph 중
+PASS: HUD Korean glyph 지
+PASS: HUD Korean glyph 를
+PASS: HUD Korean glyph 요
+PASS: HUD Korean glyph 청
+PASS: HUD Korean glyph 했
+PASS: HUD Korean glyph 습
+PASS: HUD Korean glyph 니
+PASS: HUD Korean glyph 다
+PASS: HUD Korean glyph 기
+PASS: HUD Korean glyph 존
+PASS: HUD Korean glyph 응
+PASS: HUD Korean glyph 답
+PASS: HUD Korean glyph 으
+PASS: HUD Korean glyph 로
+PASS: HUD Korean glyph 실
+PASS: HUD Korean glyph 제
+PASS: HUD Korean glyph 상
+PASS: HUD Korean glyph 태
+PASS: HUD Korean glyph 확
+PASS: HUD Korean glyph 인
+PASS: HUD Korean glyph 하
+PASS: HUD Korean glyph 세
+PASS: physical COM unopened / TX=0 at 1280
+RESULT=PASS

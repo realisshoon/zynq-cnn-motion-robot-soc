@@ -1,0 +1,15 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xelab.bat -L uvm --uvm_version 1.2 --debug typical --mt 2 -s uvm_dma_stream work.tb_top
+Vivado Simulator 2020.2
+Copyright 1986-1999, 2001-2020 Xilinx, Inc. All Rights Reserved.
+Running: C:/Xilinx/Vivado/2020.2/bin/unwrapped/win64.o/xelab.exe -L uvm --uvm_version 1.2 --debug typical --mt 2 -s uvm_dma_stream work.tb_top
+Using 2 slave threads.
+Starting static elaboration
+Pass Through NonSizing Optimizer
+Completed static elaboration
+WARNING: [XSIM 43-4127] File "$REPO/CNN/uvm/dma_stream/checkers/cnn_dma_stream_assertions.sv" Line 80 : The "System Verilog Cover" is not supported yet for simulation. The statement will be ignored.
+WARNING: [XSIM 43-4127] File "$REPO/CNN/uvm/dma_stream/checkers/cnn_dma_stream_assertions.sv" Line 92 : The "System Verilog Cover" is not supported yet for simulation. The statement will be ignored.
+WARNING: [XSIM 43-4127] File "$REPO/CNN/uvm/dma_stream/checkers/cnn_dma_stream_assertions.sv" Line 133 : The "System Verilog Cover" is not supported yet for simulation. The statement will be ignored.
+WARNING: [XSIM 43-4127] File "$REPO/CNN/uvm/dma_stream/checkers/cnn_dma_stream_assertions.sv" Line 134 : The "System Verilog Cover" is not supported yet for simulation. The statement will be ignored.
+WARNING: [XSIM 43-4127] File "$REPO/CNN/uvm/dma_stream/checkers/cnn_dma_stream_assertions.sv" Line 135 : The "System Verilog Cover" is not supported yet for simulation. The statement will be ignored.
+Starting simulation data flow analysis
+ERROR: [XSIM 43-4099] "/proj/xbuilds/SWIP/2020.2_0711_1805/installs/lin64/Vivado/2020.2/data/system_verilog/uvm_1.2/xlnx_uvm_package.sv" Line 4356. Module uvm_pkg doesn't have a timescale but at least one module in design has a timescale.

@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
-  "stage": "STEP_2",
-  "description": "main 기준 통합 후보의 원본 SHA, 경로, Git 객체 비교 결과와 미해결 호환성 문제를 기록한다. 기능 변경과 실행 검증은 수행하지 않았다.",
+  "schema_version": 2,
+  "stage": "STEP_3",
+  "description": "STEP 2 원본 출처를 보존하고 STEP 3 실행 증거·문서·허용된 cache 추적 해제 결과를 추가했다. 구현과 검증 기준은 변경하지 않았다.",
   "repository": "https://github.com/realisshoon/zynq-cnn-motion-robot-soc",
   "integration_branch": "release/main-consolidation-20261019",
   "base": {
@@ -19,9 +19,12 @@
       "source_tracked_files": 16,
       "initial_import_tree": "3d2face26c4bd1ae9ed4ce1297f4cead272fe1a1",
       "integrated_tree": "3d2face26c4bd1ae9ed4ce1297f4cead272fe1a1",
-      "comparison_tree_excluding_approved_additions": "3d2face26c4bd1ae9ed4ce1297f4cead272fe1a1",
       "approved_additions": [],
-      "result": "EXACT_TREE_MATCH"
+      "result": "EXACT_TREE_MATCH",
+      "step2_integrated_tree": "3d2face26c4bd1ae9ed4ce1297f4cead272fe1a1",
+      "step2_comparison_tree_excluding_approved_additions": "3d2face26c4bd1ae9ed4ce1297f4cead272fe1a1",
+      "approved_removed_artifacts": [],
+      "step3_blob_mode_verification": "PASS"
     },
     {
       "source_branch": "dev/cnn",
@@ -32,9 +35,12 @@
       "source_tracked_files": 15,
       "initial_import_tree": "e7d3f9fea8c691bcc0ac72e61e731dcb241b8ecd",
       "integrated_tree": "e7d3f9fea8c691bcc0ac72e61e731dcb241b8ecd",
-      "comparison_tree_excluding_approved_additions": "e7d3f9fea8c691bcc0ac72e61e731dcb241b8ecd",
       "approved_additions": [],
-      "result": "EXACT_TREE_MATCH"
+      "result": "EXACT_TREE_MATCH",
+      "step2_integrated_tree": "e7d3f9fea8c691bcc0ac72e61e731dcb241b8ecd",
+      "step2_comparison_tree_excluding_approved_additions": "e7d3f9fea8c691bcc0ac72e61e731dcb241b8ecd",
+      "approved_removed_artifacts": [],
+      "step3_blob_mode_verification": "PASS"
     },
     {
       "source_branch": "dev/cnn",
@@ -45,9 +51,12 @@
       "source_tracked_files": 25,
       "initial_import_tree": "39f64095cbec0a1a983057e687a36f087c72bc9d",
       "integrated_tree": "39f64095cbec0a1a983057e687a36f087c72bc9d",
-      "comparison_tree_excluding_approved_additions": "39f64095cbec0a1a983057e687a36f087c72bc9d",
       "approved_additions": [],
-      "result": "EXACT_TREE_MATCH"
+      "result": "EXACT_TREE_MATCH",
+      "step2_integrated_tree": "39f64095cbec0a1a983057e687a36f087c72bc9d",
+      "step2_comparison_tree_excluding_approved_additions": "39f64095cbec0a1a983057e687a36f087c72bc9d",
+      "approved_removed_artifacts": [],
+      "step3_blob_mode_verification": "PASS"
     },
     {
       "source_branch": "dev/cnn",
@@ -58,11 +67,14 @@
       "source_tracked_files": 749,
       "initial_import_tree": "f531b2be24e2722309e56d4dd333f5c3160cfc71",
       "integrated_tree": "bfe521bd2bafa6dc163aafa5a1ccada5ddc0173b",
-      "comparison_tree_excluding_approved_additions": "f531b2be24e2722309e56d4dd333f5c3160cfc71",
       "approved_additions": [
         "CNN/golden_py_model/requirements.txt"
       ],
-      "result": "EXACT_SOURCE_WITH_APPROVED_ADDITION"
+      "result": "EXACT_SOURCE_WITH_APPROVED_ADDITION",
+      "step2_integrated_tree": "bfe521bd2bafa6dc163aafa5a1ccada5ddc0173b",
+      "step2_comparison_tree_excluding_approved_additions": "f531b2be24e2722309e56d4dd333f5c3160cfc71",
+      "approved_removed_artifacts": [],
+      "step3_blob_mode_verification": "PASS"
     },
     {
       "source_branch": "val/cnn/integration",
@@ -73,9 +85,12 @@
       "source_tracked_files": 130,
       "initial_import_tree": "183f103acf1423b43627758e1ad2555ee15cdbc1",
       "integrated_tree": "183f103acf1423b43627758e1ad2555ee15cdbc1",
-      "comparison_tree_excluding_approved_additions": "183f103acf1423b43627758e1ad2555ee15cdbc1",
       "approved_additions": [],
-      "result": "EXACT_TREE_MATCH"
+      "result": "EXACT_TREE_MATCH",
+      "step2_integrated_tree": "183f103acf1423b43627758e1ad2555ee15cdbc1",
+      "step2_comparison_tree_excluding_approved_additions": "183f103acf1423b43627758e1ad2555ee15cdbc1",
+      "approved_removed_artifacts": [],
+      "step3_blob_mode_verification": "PASS"
     },
     {
       "source_branch": "dev/integration",
@@ -85,10 +100,16 @@
       "source_tree": "3d3f428daf754560ac38d9151aa702bec88dd888",
       "source_tracked_files": 178,
       "initial_import_tree": "3d3f428daf754560ac38d9151aa702bec88dd888",
-      "integrated_tree": "3d3f428daf754560ac38d9151aa702bec88dd888",
-      "comparison_tree_excluding_approved_additions": "3d3f428daf754560ac38d9151aa702bec88dd888",
+      "integrated_tree": "a986d6c3882230ac44ab5f6c31e6c55903f81f7c",
       "approved_additions": [],
-      "result": "EXACT_TREE_MATCH"
+      "result": "SOURCE_MATCH_WITH_APPROVED_HYGIENE",
+      "step2_integrated_tree": "3d3f428daf754560ac38d9151aa702bec88dd888",
+      "step2_comparison_tree_excluding_approved_additions": "3d3f428daf754560ac38d9151aa702bec88dd888",
+      "approved_removed_artifacts": [
+        "robot_arm/pc/__pycache__/send_pose_uart.cpython-314.pyc",
+        "robot_arm/pc/__pycache__/send_pose_uart_with_video.cpython-314.pyc"
+      ],
+      "step3_blob_mode_verification": "PASS"
     },
     {
       "source_branch": "dev/unity",
@@ -98,10 +119,15 @@
       "source_tree": "a66ee9f1efd46842711095cb00becac1c0dc59c2",
       "source_tracked_files": 829,
       "initial_import_tree": "a66ee9f1efd46842711095cb00becac1c0dc59c2",
-      "integrated_tree": "a66ee9f1efd46842711095cb00becac1c0dc59c2",
-      "comparison_tree_excluding_approved_additions": "a66ee9f1efd46842711095cb00becac1c0dc59c2",
+      "integrated_tree": "98c4ff28141cf05acb40a35bfcf96b3a57b958f3",
       "approved_additions": [],
-      "result": "EXACT_TREE_MATCH"
+      "result": "SOURCE_MATCH_WITH_APPROVED_HYGIENE",
+      "step2_integrated_tree": "a66ee9f1efd46842711095cb00becac1c0dc59c2",
+      "step2_comparison_tree_excluding_approved_additions": "a66ee9f1efd46842711095cb00becac1c0dc59c2",
+      "approved_removed_artifacts": [
+        "Unity/Tools/LivePose/native/gcc_err.txt"
+      ],
+      "step3_blob_mode_verification": "PASS"
     }
   ],
   "additional_dependency_files": [
@@ -122,25 +148,6 @@
       "purpose": "UVM 공통 환경과 VCS filelist 사용 설명의 원본을 보존한다."
     }
   ],
-  "preserved_base_files": [
-    {
-      "path": ".coderabbit.yaml",
-      "blob": "7295994453e03fbfd82bf89e8397cf77b9ce2b6e"
-    },
-    {
-      "path": "README.md",
-      "blob": "0da8735d4dd4f1cbadec9ff23755d7a1e7be8516"
-    }
-  ],
-  "inventory": {
-    "source_files": 1942,
-    "additional_dependency_files": 2,
-    "source_and_dependency_files": 1944,
-    "source_and_dependency_bytes": 1104487484,
-    "base_files": 2,
-    "provenance_files": 1,
-    "expected_total_tracked_files": 1947
-  },
   "verification": {
     "raw_import_tree": "54707f2cab78bec47fe6f848360add5789130d56",
     "source_and_dependencies_tree_before_this_manifest": "a37aef7fd1fced11c11e63c4b21e012ffa75e59a",
@@ -154,7 +161,8 @@
     "lfs_pointer_files": [],
     "lfs_note": "선택한 원본 경로에 LFS 포인터가 없으며 일반 Git blob 전체를 보존했다.",
     "original_worktree_head_index_untracked_stash_and_existing_local_branches": "PASS",
-    "functional_validation": "NOT_RUN"
+    "functional_validation": "BLOCKED",
+    "step3_source_implementation_blobs": "PASS"
   },
   "blockers": [
     {
@@ -169,7 +177,7 @@
     },
     {
       "id": "XSA_BOOT_PROVENANCE",
-      "status": "UNVERIFIED",
+      "status": "BLOCKED",
       "description": "선택한 RTL, 현재 XSA, 과거 BOOT 및 현재 Firmware 소스 사이의 동일성은 확인되지 않았다."
     },
     {
@@ -184,27 +192,114 @@
     },
     {
       "id": "GOLDEN_ARCHIVE_HASH",
-      "status": "BLOCKED",
+      "status": "FAIL",
       "description": "원본 weights_export.zip SHA256은 manifest의 weights_sha256과 다르다. weights_v4.bin 크기와 packed_sha256은 일치한다."
+    },
+    {
+      "id": "DIRECTED_ARGMAX_MODULE",
+      "status": "FAIL",
+      "description": "원본 TB가 현재 RTL에 없는 argmax_threshold를 참조하여 XSim elaboration 실패."
+    },
+    {
+      "id": "DIRECTED_COLOR_MARKER",
+      "status": "FAIL",
+      "description": "원본 검사 실패 후 wall guard에 도달함. 기존 SV timeout·expected는 변경하지 않음."
+    },
+    {
+      "id": "UVM_XSIM_CONTROL",
+      "status": "FAIL",
+      "description": "XSim 2020.2에서 checker 식별자 compile 오류. VCS 원본 회귀는 NOT RUN."
+    },
+    {
+      "id": "UVM_XSIM_DMA_ELAB",
+      "status": "FAIL",
+      "description": "XSim 2020.2 elaboration 중 EXCEPTION_ACCESS_VIOLATION; 도구 오류로 기능 회귀 BLOCKED."
+    },
+    {
+      "id": "VITIS_IDE_AUTOMATION",
+      "status": "BLOCKED",
+      "description": "표준 IDE 경로는 연결 timeout. Native HSI BSP+동일 Vitis ARM GCC의 RIGHT/LEFT 직접 compile/link는 PASS."
+    },
+    {
+      "id": "MAIN_HISTORY_ANCESTRY",
+      "status": "BLOCKED",
+      "description": "원격 원본 commit 270개의 main 조상 연결은 권고안만 작성했고 실행하지 않음. 비중복 tip 18개 범위 결정 필요."
     }
   ],
   "step3_follow_up": [
-    "CNN RTL 필수 모듈과 Directed TB 입력 벡터 생성 경로 검증",
-    "Python packed Golden, 원본 archive 해시 차이 및 UVM 입력 생성 의존성 확인",
-    "UVM Common/Golden/Control/DMA-Stream compile 및 regression. 불가능한 항목은 BLOCKED 또는 NOT_RUN으로 기록",
-    "Vitis RIGHT/LEFT 빌드 및 XSA/BSP/BOOT 출처 검증",
-    "RTL/Firmware register map과 UART TK/A1/A2/P3 연동 검증",
-    "Unity Import/Windows x64 Build 및 Native DLL 재현성 검증",
-    "루트 README와 ignore 정리, 기존 추적 캐시·로그 및 개인 경로 검토"
+    "INTEGRATION_BLOCKERS.md의 미해결 항목과 이력 연결 범위를 확인한 뒤 다음 단계 진행 여부를 결정한다."
   ],
   "scope": {
     "functional_changes": false,
-    "readme_or_ignore_cleanup": false,
-    "source_artifact_cleanup": false,
+    "readme_or_ignore_cleanup": true,
+    "source_artifact_cleanup": true,
     "hardware_programming": false,
     "robot_actuation": false,
     "push": false,
     "pull_request": false,
     "main_merge": false
+  },
+  "step2_integration_commit": "b7eb63cb6b79a5b22a6e6b6e9fceb70eec67aa46",
+  "step2_inventory": {
+    "source_files": 1942,
+    "additional_dependency_files": 2,
+    "source_and_dependency_files": 1944,
+    "source_and_dependency_bytes": 1104487484,
+    "base_files": 2,
+    "provenance_files": 1,
+    "expected_total_tracked_files": 1947
+  },
+  "step2_preserved_base_files": [
+    {
+      "path": ".coderabbit.yaml",
+      "blob": "7295994453e03fbfd82bf89e8397cf77b9ce2b6e"
+    },
+    {
+      "path": "README.md",
+      "blob": "0da8735d4dd4f1cbadec9ff23755d7a1e7be8516"
+    }
+  ],
+  "inventory": {
+    "source_files_before_hygiene": 1942,
+    "approved_untracked_artifacts": 3,
+    "additional_dependency_files": 2,
+    "final_count_after_staging": 2024,
+    "count_basis": "STEP 3 문서·검증 증거 및 3개 artifact 추적 해제 반영 후 index. README 별도 commit도 파일 수는 동일하다. byte 수는 STEP 2 원본 snapshot 항목을 따른다."
+  },
+  "step3": {
+    "validated_source_commit": "b7eb63cb6b79a5b22a6e6b6e9fceb70eec67aa46",
+    "summary": "VALIDATION_SUMMARY.md",
+    "blockers": "INTEGRATION_BLOCKERS.md",
+    "execution_results": "validation/step3/STEP3_RESULTS.json",
+    "history_audit": "validation/step3/STEP3_HISTORY.json",
+    "upload_audit": "validation/step3/STEP3_UPLOAD_AUDIT.json",
+    "interface_audit": "validation/step3/STEP3_INTERFACE_AUDIT.json",
+    "removed_from_tracking": [
+      {
+        "path": "robot_arm/pc/__pycache__/send_pose_uart.cpython-314.pyc",
+        "step2_blob": "74e96bfea1afc5cce2eb12e065371ab8f11fabc7",
+        "retained_on_disk": true
+      },
+      {
+        "path": "robot_arm/pc/__pycache__/send_pose_uart_with_video.cpython-314.pyc",
+        "step2_blob": "5c7112a92199a39046fdd8cc5071ffa8e3e1f360",
+        "retained_on_disk": true
+      },
+      {
+        "path": "Unity/Tools/LivePose/native/gcc_err.txt",
+        "step2_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "retained_on_disk": true
+      }
+    ],
+    "draft_pr_preparation": "PASS (미해결 사항을 공개하는 Draft용)",
+    "system_validation": "BLOCKED",
+    "history_merge_executed": false,
+    "source_history_commits_not_yet_ancestors": 168,
+    "additional_feature_commits_not_yet_ancestors": 102,
+    "all_remote_history_independent_tip_count": 18,
+    "push": false,
+    "pull_request": false,
+    "main_merge": false,
+    "readme_commit_policy": "한국어 GitHub 포트폴리오 README는 검증·Git 관리 commit과 분리한 README 전용 로컬 commit으로 기록한다."
   }
 }

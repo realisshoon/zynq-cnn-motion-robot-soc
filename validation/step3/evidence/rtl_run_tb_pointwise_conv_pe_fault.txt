@@ -1,0 +1,34 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_pointwise_conv_pe_fault -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_pointwise_conv_pe_fault/xsim_script.tcl
+# xsim {tb_pointwise_conv_pe_fault} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+FAULT_CASE_PASS INVALID_CFG
+FAULT_CASE_PASS PROTOCOL_MASK_MISMATCH
+FAULT_CASE_PASS RESET_RECOVERY_NORMAL_OPERATION
+FAULT_CASE_PASS FAULT_OVER_COMPLETION
+FAULT_INVALID_CFG PASS
+FAULT_PROTOCOL PASS
+STICKY_FAULT PASS
+NEW_CFG_BLOCKED_AFTER_FAULT PASS
+NEW_WORK_BLOCKED PASS
+DONE_SUPPRESSED PASS
+RESET_RECOVERY PASS
+FAULT_PRIORITY PASS
+PUBLIC_XZ 0
+CANONICAL_RESET_MISMATCH 0
+FAULT_DIRECTED_PASS 4
+FAULT_DIRECTED_TOTAL 4
+FAULT_TIMEOUT 0
+FAULT_ERRORS 0
+POINTWISE_FAULT_RECOVERY PASS
+$finish called at time : 716 ns : File "$REPO/CNN/tb/tb_pointwise_conv_pe_fault.v" Line 406
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:16:51 2026...

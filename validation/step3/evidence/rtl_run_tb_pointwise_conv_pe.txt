@@ -1,0 +1,26 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_pointwise_conv_pe -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_pointwise_conv_pe/xsim_script.tcl
+# xsim {tb_pointwise_conv_pe} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+POINTWISE_DIRECTED_TEST PASS
+ARITHMETIC PASS
+BODY_MODE PASS
+HEATMAP_MODE PASS
+OFFSET_MODE PASS
+TAIL_MASK PASS
+TAG PASS
+OUTPUT_STALL PASS
+WEIGHT_STALL PASS
+NO_STALL_LATENCY 11
+II 1
+$finish called at time : 1256 ns : File "$REPO/CNN/tb/tb_pointwise_conv_pe.v" Line 630
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:16:25 2026...

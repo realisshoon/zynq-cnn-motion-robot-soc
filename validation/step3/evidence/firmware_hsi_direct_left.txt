@@ -1,0 +1,37 @@
+COMMAND C:\Xilinx\Vitis\2020.2\gnu\aarch32\nt\gcc-arm-none-eabi\bin\arm-none-eabi-gcc.exe -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard -O0 -g3 -Wall -DSERVO_PWM_DRIVER_USE_XILINX -DROBOT_STEREO_LEFT -I $REPO\robot_arm\include -I $REPO\robot_arm\config -I $REPO\robot_arm\src\app\cnn -I D:\vws\mci3-hsi-b7eb63c\bsp_native\ps7_cortexa9_0\include $REPO\robot_arm\src\app\board\left_input.c $REPO\robot_arm\src\app\board\stereo_transport.c $REPO\robot_arm\src\app\cnn\cam_ae\cam_ae.c $REPO\robot_arm\src\app\cnn\cam_gpio\cam_gpio.c $REPO\robot_arm\src\app\cnn\camera_tracking\camera_tracking_app.c $REPO\robot_arm\src\app\cnn\camera_tracking\torso_tracker.c $REPO\robot_arm\src\app\cnn\cnn_app.c $REPO\robot_arm\src\app\cnn\cnn_app_event.c $REPO\robot_arm\src\app\cnn\cnn_bringup.c $REPO\robot_arm\src\app\cnn\cnn_csv_logger.c $REPO\robot_arm\src\app\cnn\cnn_diag.c $REPO\robot_arm\src\app\cnn\cnn_frame_sg.c $REPO\robot_arm\src\app\cnn\cnn_hw.c $REPO\robot_arm\src\app\cnn\cnn_sha256.c $REPO\robot_arm\src\app\cnn\cnn_types.c $REPO\robot_arm\src\app\cnn\cnn_weights.c $REPO\robot_arm\src\app\cnn\display_ctrl_hdmi\display_ctrl.c $REPO\robot_arm\src\app\cnn\filter_sw\filter_sw.c $REPO\robot_arm\src\app\cnn\frame_capture_sd.c $REPO\robot_arm\src\app\cnn\gamma\gamma.c $REPO\robot_arm\src\app\cnn\iic_sccb_cfg\iic_sccb_cfg.c $REPO\robot_arm\src\app\cnn\keypoint_overlay\keypoint_overlay.c $REPO\robot_arm\src\app\cnn\mipi_rx\mipi_rx.c $REPO\robot_arm\src\app\cnn\ov5640\OV5640.c $REPO\robot_arm\src\app\cnn\vdma_api\vdma_api.c $REPO\robot_arm\src\app\main.c $REPO\robot_arm\src\app\robot\control\forearm_calibration.c $REPO\robot_arm\src\app\robot\control\forearm_calibration_config.c $REPO\robot_arm\src\app\robot\control\forearm_motion_control.c $REPO\robot_arm\src\app\robot\control\forearm_safety_check.c $REPO\robot_arm\src\app\robot\control\gripper_control.c $REPO\robot_arm\src\app\robot\control\motion.c $REPO\robot_arm\src\app\robot\control\robot_motion.c $REPO\robot_arm\src\app\robot\control\servo_config.c $REPO\robot_arm\src\app\robot\control\servo_control.c $REPO\robot_arm\src\app\robot\control\servo_output.c $REPO\robot_arm\src\app\robot\record_replay\motion_library.c $REPO\robot_arm\src\app\robot\record_replay\motion_record_replay.c $REPO\robot_arm\src\app\robot\record_replay\motion_sd.c $REPO\robot_arm\src\app\robot\vision\human_target\forearm_mapping.c $REPO\robot_arm\src\app\robot\vision\human_target\forearm_target.c $REPO\robot_arm\src\app\robot\vision\human_target\human_target_stage.c $REPO\robot_arm\src\app\robot\vision\human_target\pose_hand.c $REPO\robot_arm\src\app\robot\vision\human_target\pose_joint.c $REPO\robot_arm\src\app\robot\vision\human_target\pose_mapping.c $REPO\robot_arm\src\app\robot\vision\human_target\pose_math.c $REPO\robot_arm\src\app\robot\vision\human_target\pose_reconstruction.c $REPO\robot_arm\src\app\robot\vision\human_target\pose_tracking.c $REPO\robot_arm\src\app\robot\vision\human_target.c $REPO\robot_arm\src\app\robot\vision\input_pose_cnn.c $REPO\robot_arm\src\app\robot\vision\stereo\robot_follow_protocol.c $REPO\robot_arm\src\app\robot\vision\stereo\stereo_calibration.c $REPO\robot_arm\src\app\robot\vision\stereo\stereo_filter_command.c $REPO\robot_arm\src\app\robot\vision\stereo\stereo_geometry.c $REPO\robot_arm\src\app\robot\vision\stereo\stereo_kalman3d.c $REPO\robot_arm\src\app\robot\vision\stereo\stereo_link.c $REPO\robot_arm\src\app\robot\vision\stereo\stereo_pose.c $REPO\robot_arm\src\app\robot\vision\stereo\stereo_pose_filter.c $REPO\robot_arm\src\app\robot\vision\stereo\stereo_uart_protocol.c $REPO\robot_arm\src\app\uart\cnn_console.c $REPO\robot_arm\src\app\uart\control_commands.c $REPO\robot_arm\src\app\uart\diagnostics.c $REPO\robot_arm\src\app\uart\telemetry.c $REPO\robot_arm\src\app\uart\uart_settings.c $REPO\robot_arm\src\drivers\pwm\camera_gimbal_pwm.c $REPO\robot_arm\src\drivers\pwm\servo_hal.c $REPO\robot_arm\src\drivers\pwm\servo_pwm_driver.c $REPO\robot_arm\src\drivers\system\board_runtime.c $REPO\robot_arm\src\drivers\uart\board_uart.c $REPO\robot_arm\src\drivers\uart\console_uart.c $REPO\robot_arm\src\drivers\uart\uart_pose_protocol.c $REPO\robot_arm\src\drivers\uart\uart_pose_rx_vitis.c -o D:\vws\mci3-hsi-b7eb63c\firmware_left\robot_testbench.elf -specs=D:\vws\mci3-hsi-b7eb63c\app_native\Xilinx.spec -Wl,-build-id=none -Wl,-T,D:\vws\mci3-hsi-b7eb63c\firmware_validation.ld -LD:\vws\mci3-hsi-b7eb63c\bsp_native\ps7_cortexa9_0\lib -Wl,--start-group -lxilffs -lxil -lgcc -lc -lm -Wl,--end-group -Wl,--gc-sections
+In file included from $REPO\robot_arm\src\app\cnn\cnn_app.c:10:
+D:\vws\mci3-hsi-b7eb63c\bsp_native\ps7_cortexa9_0\include/xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+In file included from $REPO\robot_arm\src\app\cnn\cnn_bringup.c:11:
+D:\vws\mci3-hsi-b7eb63c\bsp_native\ps7_cortexa9_0\include/xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+In file included from $REPO\robot_arm\src\app\cnn\cnn_csv_logger.c:3:
+D:\vws\mci3-hsi-b7eb63c\bsp_native\ps7_cortexa9_0\include/xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+In file included from $REPO\robot_arm\src\app\cnn\filter_sw\filter_sw.c:12:
+D:\vws\mci3-hsi-b7eb63c\bsp_native\ps7_cortexa9_0\include/xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+In file included from $REPO\robot_arm\src\app\cnn\frame_capture_sd.c:10:
+D:\vws\mci3-hsi-b7eb63c\bsp_native\ps7_cortexa9_0\include/xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+In file included from $REPO\robot_arm\src\app\robot\vision\input_pose_cnn.c:9:
+D:\vws\mci3-hsi-b7eb63c\bsp_native\ps7_cortexa9_0\include/xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+In file included from $REPO\robot_arm\src\drivers\pwm\camera_gimbal_pwm.c:6:
+D:\vws\mci3-hsi-b7eb63c\bsp_native\ps7_cortexa9_0\include/xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+In file included from $REPO\robot_arm\src\drivers\system\board_runtime.c:18:
+D:\vws\mci3-hsi-b7eb63c\bsp_native\ps7_cortexa9_0\include/xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~
+In file included from $REPO\robot_arm\src\drivers\uart\board_uart.c:7:
+D:\vws\mci3-hsi-b7eb63c\bsp_native\ps7_cortexa9_0\include/xtime_l.h:65:9: note: #pragma message: For the sleep routines, Global timer is being used
+   65 | #pragma message ("For the sleep routines, Global timer is being used")
+      |         ^~~~~~~

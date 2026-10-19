@@ -1,0 +1,62 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xvlog.bat -i $REPO\CNN\rtl $REPO\CNN\rtl\argmax_offset_select.v $REPO\CNN\rtl\cnn_accelerator_top.v $REPO\CNN\rtl\color_marker_detect.v $REPO\CNN\rtl\coord_restore.v $REPO\CNN\rtl\depthwise_conv_pe.v $REPO\CNN\rtl\downsample_module.v $REPO\CNN\rtl\feature_map_io.v $REPO\CNN\rtl\input_conv_pe.v $REPO\CNN\rtl\layer_param_rom.v $REPO\CNN\rtl\line_buffer.v $REPO\CNN\rtl\pointwise_conv_pe.v $REPO\CNN\rtl\tb_cnn_accelerator_top_reset_idle.v $REPO\CNN\rtl\top_level_fsm.v $REPO\CNN\rtl\weight_bram_swap_fsm.v $REPO\CNN\tb\tb_argmax_threshold.v $REPO\CNN\tb\tb_cnn_accelerator_top_partial.v $REPO\CNN\tb\tb_cnn_accelerator_top_reset4.v $REPO\CNN\tb\tb_color_marker_detect.v $REPO\CNN\tb\tb_coord_restore.v $REPO\CNN\tb\tb_depthwise_conv_pe.v $REPO\CNN\tb\tb_depthwise_conv_pe_full_layer.v $REPO\CNN\tb\tb_downsample_module.v $REPO\CNN\tb\tb_feature_map_io.v $REPO\CNN\tb\tb_input_conv_pe.v $REPO\CNN\tb\tb_layer_param_rom.v $REPO\CNN\tb\tb_pointwise_conv_pe.v $REPO\CNN\tb\tb_pointwise_conv_pe_fault.v $REPO\CNN\tb\tb_top_level_fsm.v $REPO\CNN\tb\tb_weight_bram_swap_fsm.v
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/argmax_offset_select.v" into library work
+INFO: [VRFC 10-311] analyzing module argmax_offset_select
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/cnn_accelerator_top.v" into library work
+INFO: [VRFC 10-311] analyzing module cnn_accelerator_top
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/color_marker_detect.v" into library work
+INFO: [VRFC 10-311] analyzing module color_marker_detect
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/coord_restore.v" into library work
+INFO: [VRFC 10-311] analyzing module coord_restore
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/depthwise_conv_pe.v" into library work
+INFO: [VRFC 10-311] analyzing module depthwise_conv_pe
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/downsample_module.v" into library work
+INFO: [VRFC 10-311] analyzing module downsample_module
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/feature_map_io.v" into library work
+INFO: [VRFC 10-311] analyzing module feature_map_io
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/input_conv_pe.v" into library work
+INFO: [VRFC 10-311] analyzing module input_conv_pe
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/layer_param_rom.v" into library work
+INFO: [VRFC 10-311] analyzing module layer_param_rom
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/line_buffer.v" into library work
+INFO: [VRFC 10-311] analyzing module line_buffer
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/pointwise_conv_pe.v" into library work
+INFO: [VRFC 10-311] analyzing module pointwise_u8s8_dsp_mult
+INFO: [VRFC 10-311] analyzing module pointwise_s16_pair_add_lut
+INFO: [VRFC 10-311] analyzing module pointwise_rshift_even_43_lut
+INFO: [VRFC 10-311] analyzing module pointwise_conv_pe
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/tb_cnn_accelerator_top_reset_idle.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_cnn_accelerator_top_reset_idle
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/top_level_fsm.v" into library work
+INFO: [VRFC 10-311] analyzing module top_level_fsm
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/rtl/weight_bram_swap_fsm.v" into library work
+INFO: [VRFC 10-311] analyzing module weight_bram_swap_fsm
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_argmax_threshold.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_argmax_threshold
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_cnn_accelerator_top_partial.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_cnn_accelerator_top_partial
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_cnn_accelerator_top_reset4.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_cnn_accelerator_top_reset4
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_color_marker_detect.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_color_marker_detect
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_coord_restore.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_coord_restore
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_depthwise_conv_pe.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_depthwise_conv_pe
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_depthwise_conv_pe_full_layer.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_depthwise_conv_pe_full_layer
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_downsample_module.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_downsample_module
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_feature_map_io.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_feature_map_io
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_input_conv_pe.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_input_conv_pe
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_layer_param_rom.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_layer_param_rom
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_pointwise_conv_pe.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_pointwise_conv_pe
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_pointwise_conv_pe_fault.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_pointwise_conv_pe_fault
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_top_level_fsm.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_top_level_fsm
+INFO: [VRFC 10-2263] Analyzing Verilog file "$REPO/CNN/tb/tb_weight_bram_swap_fsm.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_weight_bram_swap_fsm

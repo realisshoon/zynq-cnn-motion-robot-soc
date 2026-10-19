@@ -1,0 +1,16 @@
+COMMAND powershell -NoProfile -ExecutionPolicy Bypass -File $REPO\Unity\Tools\ShareValidation\Invoke-PlayerChecks.ps1 -PlayerExe $REPO\.validation\step3\unity_player\HumanMotionDigitalTwin.exe -OutputDirectory $REPO\.validation\step3\unity_player_checks
+START CameraOverlay PID 55988
+PASS CameraOverlay
+START PortOwner PID 55260
+PASS PortOwner
+START G51 PID 46060
+PASS G51
+START QuickHUD PID 52148
+PASS QuickHUD
+START Records PID 45184
+PASS Records
+START CSV PID 46436
+PASS CSV
+START Studio PID 56968
+PASS Studio
+All requested offline Player checks passed. No physical COM access is requested by these fixtures.

@@ -1,0 +1,23 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xelab.bat --debug typical --mt 2 -s tb_top_level_fsm work.tb_top_level_fsm
+Vivado Simulator 2020.2
+Copyright 1986-1999, 2001-2020 Xilinx, Inc. All Rights Reserved.
+Running: C:/Xilinx/Vivado/2020.2/bin/unwrapped/win64.o/xelab.exe --debug typical --mt 2 -s tb_top_level_fsm work.tb_top_level_fsm
+Using 2 slave threads.
+Starting static elaboration
+Pass Through NonSizing Optimizer
+WARNING: [VRFC 10-3645] port 'color_green_cfg' remains unconnected for this instance [$REPO/CNN/tb/tb_top_level_fsm.v:128]
+Completed static elaboration
+Starting simulation data flow analysis
+Completed simulation data flow analysis
+Time Resolution for simulation is 1ps
+Compiling module work.top_level_fsm
+Compiling module work.tb_top_level_fsm
+Built simulation snapshot tb_top_level_fsm
+
+****** Webtalk v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source $REPO/.validation/step3/rtl/xsim.dir/tb_top_level_fsm/webtalk/xsim_webtalk.tcl -notrace
+INFO: [Common 17-206] Exiting Webtalk at Mon Oct 19 14:17:01 2026...

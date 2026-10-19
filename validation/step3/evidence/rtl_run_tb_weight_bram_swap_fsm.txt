@@ -1,0 +1,75 @@
+COMMAND C:\Xilinx\Vivado\2020.2\bin\xsim.bat tb_weight_bram_swap_fsm -runall
+
+****** xsim v2020.2 (64-bit)
+  **** SW Build 3064766 on Wed Nov 18 09:12:45 MST 2020
+  **** IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+    ** Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+
+source xsim.dir/tb_weight_bram_swap_fsm/xsim_script.tcl
+# xsim {tb_weight_bram_swap_fsm} -autoloadwcfg -runall
+Vivado Simulator 2020.2
+Time resolution is 1 ps
+run -all
+PASS cycle=6 01 reset clears sticky fault
+PASS cycle=6 02 IDLE after reset accepts first load
+PASS cycle=6 03 unloaded stores reject PE reads
+PASS cycle=6 04 invalid-store request backpressures load without fault
+PASS cycle=251 normal load reaches COMMIT and pulses load_done
+PASS cycle=252 load_done is exactly one cycle
+PASS cycle=252 05 conv0 storage becomes valid only after COMMIT
+PASS cycle=252 06 conv0 request accepted in IDLE
+PASS cycle=253 07 conv0 response valid at N+1
+PASS cycle=253 08 conv0 216-bit record removes five padding bytes
+PASS cycle=253 09 conv0 parameter response
+PASS cycle=256 10 stalled conv0 response holds valid/data and blocks request
+PASS cycle=257 10 stalled conv0 response holds valid/data and blocks request
+PASS cycle=257 11 pending response blocks new load
+PASS cycle=257 12 response consume and new request can coincide
+PASS cycle=258 13 consume plus new request preserves II=1
+PASS cycle=390 normal load reaches COMMIT and pulses load_done
+PASS cycle=391 load_done is exactly one cycle
+PASS cycle=391 14 DW weight and parameter stores committed
+PASS cycle=392 15 DW read channels operate independently together
+PASS cycle=392 16 DW 256-bit weight bank order
+PASS cycle=392 17 DW real parameter read
+PASS cycle=394 18 DW tail lane returns zero without RAM data
+PASS cycle=878 normal load reaches COMMIT and pulses load_done
+PASS cycle=879 load_done is exactly one cycle
+PASS cycle=879 19 PW store committed
+PASS cycle=880 20 simultaneous DW/PW read accepted
+PASS cycle=881 21 one read channel can stall while another completes
+PASS cycle=881 22 PW 16-bank response order
+PASS cycle=881 23 PW four-record parameter group order
+PASS cycle=882 24 PE read wins simultaneous IDLE load presentation
+PASS cycle=2855 normal load reaches COMMIT and pulses load_done
+PASS cycle=2856 load_done is exactly one cycle
+PASS cycle=2857 25 PW final group reads packed zero dummy records
+PASS cycle=6397 normal load reaches COMMIT and pulses load_done
+PASS cycle=6398 load_done is exactly one cycle
+PASS cycle=6399 25b final op tail padding and packed dummy records
+PASS cycle=44035 normal load reaches COMMIT and pulses load_done
+PASS cycle=44036 load_done is exactly one cycle
+PASS cycle=44037 26 maximum PW address boundary
+PASS cycle=44046 27 loader CHECK/LOAD blocks every PE request
+PASS cycle=44047 28 wrong keep causes sticky fault and no done
+PASS cycle=44048 29 fault remains sticky
+PASS cycle=44053 30 reset recovers control but storage remains invalid
+PASS cycle=44057 31 early last detected on accepted beat
+PASS cycle=44305 32 missing last detected at expected byte count
+PASS cycle=44507 33 parameter bias sign-extension error detected
+PASS cycle=44709 34 parameter M range error detected
+PASS cycle=44720 35 DMA count overflow detector
+PASS cycle=44729 36 invalid kind rejected in CHECK
+PASS cycle=44737 37 nonzero reserved descriptor bits rejected
+PASS cycle=44745 38 descriptor offset/capacity contract rejected
+PASS cycle=44849 normal load reaches COMMIT and pulses load_done
+PASS cycle=44850 load_done is exactly one cycle
+PASS cycle=44851 38b tail padding does not overwrite the real parameter
+PASS cycle=44853 39 minimum Cin final dummy lane is legal
+PASS cycle=44855 40 out-of-range DW parameter request faults with no response
+PASS cycle=44861 41 final reset returns loader to clean IDLE
+REGRESSION SUMMARY PASS=58 FAIL=0
+TESTBENCH PASSED
+$finish called at time : 448606 ns : File "$REPO/CNN/tb/tb_weight_bram_swap_fsm.v" Line 688
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 14:17:34 2026...

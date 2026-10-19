@@ -1,0 +1,1680 @@
+Windows Player / EventSystem pointer verification / no physical UART
+Explicit fixture runInBackground=True
+Unity=6000.3.24f1 exe=$REPO\.validation\step3\unity_player\HumanMotionDigitalTwin.exe
+PASS: existing native/controller ready
+PASS: original initial setup visible; redesign hidden before START
+PASS: Presentation unavailable during initial setup
+CAPTURE 00_initial_setup_unchanged 1280x720
+PASS: clickable START
+PASS: actual pointer hit START
+PASS: START enters redesigned Studio with original Manual / G51 selection
+PASS: clickable Preview toggle
+PASS: actual pointer hit Preview toggle
+PASS: clickable MENU
+PASS: actual pointer hit MENU
+PASS: clickable START
+PASS: actual pointer hit START
+PASS: actual resolution 1920x1080_
+PASS: thin Toolbar / 57.6px at 1920
+PASS: 28 percent dock inside screen
+PASS: dock video real texture displayed
+PASS: dock video source aspect preserved
+PASS: dock video RawImage fills exact video area / no added bars
+PASS: dock video full stereo UV / no crop
+PASS: dock video inside screen
+PASS: open Dock clear of ForearmShaft_Visual
+PASS: open Dock clear of MetalServoOutputHub
+PASS: open Dock clear of PitchOutputBracketBridge
+PASS: open Dock clear of PitchOutputBracketPlate_Left
+PASS: open Dock clear of PitchOutputPivotBolt_Left
+PASS: open Dock clear of PitchOutputBracketPlate_Right
+PASS: open Dock clear of PitchOutputPivotBolt_Right
+PASS: open Dock clear of ForearmShaftLowerFlange
+PASS: open Dock clear of WristToGripperBridge_Visual
+PASS: open Dock clear of GripperMountPlate_Visual
+PASS: open Dock clear of M3OutputSpindle_Visual
+PASS: open Dock clear of M3OutputFlange_Visual
+PASS: open Dock clear of M3OutputCoupler_Visual
+PASS: open Dock clear of GripperServoBody
+PASS: open Dock clear of GearBackPlate
+PASS: open Dock clear of DriveHub
+PASS: open Dock clear of GearDisc_L
+PASS: open Dock clear of GearTooth_L_0
+PASS: open Dock clear of GearTooth_L_1
+PASS: open Dock clear of GearTooth_L_2
+PASS: open Dock clear of GearTooth_L_3
+PASS: open Dock clear of GearTooth_L_4
+PASS: open Dock clear of GearTooth_L_5
+PASS: open Dock clear of GearTooth_L_6
+PASS: open Dock clear of GearTooth_L_7
+PASS: open Dock clear of GearTooth_L_8
+PASS: open Dock clear of GearTooth_L_9
+PASS: open Dock clear of GearTooth_L_10
+PASS: open Dock clear of GearTooth_L_11
+PASS: open Dock clear of GearTooth_L_12
+PASS: open Dock clear of GearTooth_L_13
+PASS: open Dock clear of GearCenterBolt_L
+PASS: open Dock clear of DrivePinBolt_L
+PASS: open Dock clear of PhotoJointBolt_04
+PASS: open Dock clear of PhotoGearCenterWasher_L
+PASS: open Dock clear of PhotoGearCenterScrew_L
+PASS: open Dock clear of PhotoGearRecess_L_00
+PASS: open Dock clear of PhotoGearRecess_L_01
+PASS: open Dock clear of PhotoGearRecess_L_02
+PASS: open Dock clear of GearDisc_R
+PASS: open Dock clear of GearTooth_R_0
+PASS: open Dock clear of GearTooth_R_1
+PASS: open Dock clear of GearTooth_R_2
+PASS: open Dock clear of GearTooth_R_3
+PASS: open Dock clear of GearTooth_R_4
+PASS: open Dock clear of GearTooth_R_5
+PASS: open Dock clear of GearTooth_R_6
+PASS: open Dock clear of GearTooth_R_7
+PASS: open Dock clear of GearTooth_R_8
+PASS: open Dock clear of GearTooth_R_9
+PASS: open Dock clear of GearTooth_R_10
+PASS: open Dock clear of GearTooth_R_11
+PASS: open Dock clear of GearTooth_R_12
+PASS: open Dock clear of GearTooth_R_13
+PASS: open Dock clear of GearCenterBolt_R
+PASS: open Dock clear of DrivePinBolt_R
+PASS: open Dock clear of PhotoJointBolt_05
+PASS: open Dock clear of PhotoGearCenterWasher_R
+PASS: open Dock clear of PhotoGearCenterScrew_R
+PASS: open Dock clear of PhotoGearRecess_R_00
+PASS: open Dock clear of PhotoGearRecess_R_01
+PASS: open Dock clear of PhotoGearRecess_R_02
+PASS: open Dock clear of JawLower_L
+PASS: open Dock clear of JawStem_L
+PASS: open Dock clear of JawHook_L
+PASS: open Dock clear of FingerPad_L
+PASS: open Dock clear of JawLinkBolt_L
+PASS: open Dock clear of PhotoJointBolt_02
+PASS: open Dock clear of BaseBolt_L
+PASS: open Dock clear of PhotoJointBolt_00
+PASS: open Dock clear of PhotoFingerEndBolt_L
+PASS: open Dock clear of PhotoJawHookTip_L
+PASS: open Dock clear of PhotoJawRoundEnd_L_00
+PASS: open Dock clear of PhotoJawRoundEnd_L_01
+PASS: open Dock clear of PhotoJawRoundEnd_L_02
+PASS: open Dock clear of PhotoJawRoundEnd_L_03
+PASS: open Dock clear of PhotoJawGripTooth_L_00
+PASS: open Dock clear of PhotoJawGripTooth_L_01
+PASS: open Dock clear of PhotoJawGripTooth_L_02
+PASS: open Dock clear of JawLower_R
+PASS: open Dock clear of JawStem_R
+PASS: open Dock clear of JawHook_R
+PASS: open Dock clear of FingerPad_R
+PASS: open Dock clear of JawLinkBolt_R
+PASS: open Dock clear of PhotoJointBolt_03
+PASS: open Dock clear of BaseBolt_R
+PASS: open Dock clear of PhotoJointBolt_01
+PASS: open Dock clear of PhotoFingerEndBolt_R
+PASS: open Dock clear of PhotoJawHookTip_R
+PASS: open Dock clear of PhotoJawRoundEnd_R_00
+PASS: open Dock clear of PhotoJawRoundEnd_R_01
+PASS: open Dock clear of PhotoJawRoundEnd_R_02
+PASS: open Dock clear of PhotoJawRoundEnd_R_03
+PASS: open Dock clear of PhotoJawGripTooth_R_00
+PASS: open Dock clear of PhotoJawGripTooth_R_01
+PASS: open Dock clear of PhotoJawGripTooth_R_02
+PASS: open Dock clear of TopLink_L
+PASS: open Dock clear of TopLink_R
+PASS: open Dock clear of GripperServoFrontCover_Visual
+PASS: open Dock clear of GripperServoCoverBolt_00
+PASS: open Dock clear of GripperServoCoverBolt_01
+PASS: open Dock clear of GripperServoCoverBolt_02
+PASS: open Dock clear of GripperServoCoverBolt_03
+PASS: open Dock clear of GripperServoMountEar_L
+PASS: open Dock clear of GripperLinkageSidePlate_L
+PASS: open Dock clear of GripperSidePlateBolt_L
+PASS: open Dock clear of GripperServoMountEar_R
+PASS: open Dock clear of GripperLinkageSidePlate_R
+PASS: open Dock clear of GripperSidePlateBolt_R
+PASS: open Dock clear of GripperServoOutputBoss_Visual
+PASS: open Dock clear of GripperServoOutputShaft_Visual
+PASS: open Dock clear of GripperGearCarrier_Visual
+PASS: open Dock clear of GripperCarrierArm_L
+PASS: open Dock clear of GripperCarrierArm_R
+PASS: open Dock clear of GripperServoEndCase_Lower
+PASS: open Dock clear of GripperServoCaseSeam_Lower
+PASS: open Dock clear of GripperServoEndCase_Upper
+PASS: open Dock clear of GripperServoCaseSeam_Upper
+PASS: open Dock clear of GripperLowerGearCarrier_Visual
+PASS: open Dock clear of GripperLowerCarrierArm_L
+PASS: open Dock clear of GripperLowerCarrierArm_R
+PASS: open Dock clear of GripperM4UpperPlate_Visual
+PASS: open Dock clear of GripperM4UpperWasher_L
+PASS: open Dock clear of GripperM4UpperBolt_L
+PASS: open Dock clear of GripperM4UpperWasher_R
+PASS: open Dock clear of GripperM4UpperBolt_R
+PASS: open Dock clear of GripperM4BridgeSpine_Visual
+PASS: open Dock clear of GripperM4BridgeShoulder_L
+PASS: open Dock clear of GripperM4BridgeWasher_L
+PASS: open Dock clear of GripperM4BridgeBolt_L
+PASS: open Dock clear of GripperM4BridgeShoulder_R
+PASS: open Dock clear of GripperM4BridgeWasher_R
+PASS: open Dock clear of GripperM4BridgeBolt_R
+PASS: open Dock clear of GripperM4BridgeRecess_Visual
+PASS: open Dock clear of M3OutputFlangeBolt_00
+PASS: open Dock clear of M3OutputFlangeBolt_01
+PASS: open Dock clear of M3OutputFlangeBolt_02
+PASS: open Dock clear of M3OutputFlangeBolt_03
+PASS: open Dock clear of WristRollOutputHub_Visual
+PASS: open Dock clear of WristPitchOutputHub_Visual
+PASS: open Dock clear of Body
+PASS: open Dock clear of CaseSeam_Lower
+PASS: open Dock clear of CaseSeam_Upper
+PASS: open Dock clear of EndCase_Lower
+PASS: open Dock clear of MountingEar_Lower
+PASS: open Dock clear of EarBolt_Lower_L
+PASS: open Dock clear of EarBolt_Lower_R
+PASS: open Dock clear of EndCase_Upper
+PASS: open Dock clear of MountingEar_Upper
+PASS: open Dock clear of EarBolt_Upper_L
+PASS: open Dock clear of EarBolt_Upper_R
+PASS: open Dock clear of OutputBoss
+PASS: open Dock clear of CableExit
+PASS: open Dock clear of M3ServoSidePlate_Lower
+PASS: open Dock clear of M3ServoPlateBolt_Lower_A
+PASS: open Dock clear of M3ServoPlateBolt_Lower_B
+PASS: open Dock clear of M3ServoSidePlate_Upper
+PASS: open Dock clear of M3ServoPlateBolt_Upper_A
+PASS: open Dock clear of M3ServoPlateBolt_Upper_B
+PASS: open Dock clear of M3BracketBase_Visual
+PASS: open Dock clear of M2ToM3LBracketReturn_Left
+PASS: open Dock clear of M2ToM3LBracketBolt_Left
+PASS: open Dock clear of M3BracketConnector_Visual
+PASS: open Dock clear of M2ToM3LBracketReturn_Right
+PASS: open Dock clear of M2ToM3LBracketBolt_Right
+PASS: open Dock clear of M2ServoRoof_Visual
+PASS: open Dock clear of M2ServoRoofRound_Visual
+PASS: open Dock clear of M2ServoRoofBolt_00
+PASS: open Dock clear of M2ServoRoofBolt_01
+PASS: open Dock clear of M3MountingEarBolt_Left
+PASS: open Dock clear of M3MountingEarBolt_Right
+PASS: open Dock clear of WristJointCollar_Visual
+PASS: open Dock clear of Body
+PASS: open Dock clear of CaseSeam_Lower
+PASS: open Dock clear of CaseSeam_Upper
+PASS: open Dock clear of EndCase_Lower
+PASS: open Dock clear of MountingEar_Lower
+PASS: open Dock clear of EarBolt_Lower_L
+PASS: open Dock clear of EarBolt_Lower_R
+PASS: open Dock clear of EndCase_Upper
+PASS: open Dock clear of MountingEar_Upper
+PASS: open Dock clear of EarBolt_Upper_L
+PASS: open Dock clear of EarBolt_Upper_R
+PASS: open Dock clear of OutputBoss
+PASS: open Dock clear of OutputShaft
+PASS: open Dock clear of OutputHorn
+PASS: open Dock clear of CableExit
+PASS: open Dock clear of WristPitchBracketBase_Visual
+PASS: open Dock clear of WristPitchBracketPlate_Left
+PASS: open Dock clear of WristPitchPivotBolt_Left
+PASS: open Dock clear of WristPitchBearingSeat_Left
+PASS: open Dock clear of WristPitchBearingCollar_Left
+PASS: open Dock clear of WristPitchOutputBolt_Left_A
+PASS: open Dock clear of WristPitchOutputBolt_Left_B
+PASS: open Dock clear of WristPitchFrameBolt_Left_Lower
+PASS: open Dock clear of WristPitchFrameBolt_Left_Upper
+PASS: open Dock clear of WristPitchBracketPlate_Right
+PASS: open Dock clear of WristPitchPivotBolt_Right
+PASS: open Dock clear of WristPitchBearingSeat_Right
+PASS: open Dock clear of WristPitchBearingCollar_Right
+PASS: open Dock clear of WristPitchOutputBolt_Right_A
+PASS: open Dock clear of WristPitchOutputBolt_Right_B
+PASS: open Dock clear of WristPitchFrameBolt_Right_Lower
+PASS: open Dock clear of WristPitchFrameBolt_Right_Upper
+PASS: open Dock clear of ElbowRollRotatingPlate
+PASS: open Dock clear of ElbowPitchServoBody
+PASS: open Dock clear of ServoMountEar_L
+PASS: open Dock clear of ServoMountEar_R
+PASS: open Dock clear of M1ServoSupportFoot_Visual
+PASS: open Dock clear of M1ServoSupportRail_L
+PASS: open Dock clear of M1ServoSupportRail_R
+PASS: open Dock clear of ElbowPitchServoEndCase_Front
+PASS: open Dock clear of ElbowPitchServoEndCase_Rear
+PASS: open Dock clear of TwoTop
+PASS: open Dock clear of TwoUpperRight
+PASS: open Dock clear of TwoMiddle
+PASS: open Dock clear of TwoLowerLeft
+PASS: open Dock clear of TwoBottom
+PASS: open Dock clear of ZeroTop
+PASS: open Dock clear of ZeroBottom
+PASS: open Dock clear of ZeroLeft
+PASS: open Dock clear of ZeroRight
+PASS: open Dock clear of M0ServoOutputShaft
+PASS: open Dock clear of M0ServoOutputHub
+PASS: open Dock clear of PlatformBolt_00
+PASS: open Dock clear of PlatformBolt_01
+PASS: open Dock clear of PlatformBolt_02
+PASS: open Dock clear of PlatformBolt_03
+PASS: open Dock clear of PlatformBolt_04
+PASS: open Dock clear of PlatformBolt_05
+PASS: open Dock G51 visual renderers checked
+CAPTURE 1920x1080_01_panel_open 1920x1080
+PASS: no duplicate UART tabs in basic Dock
+PASS: existing detail workspace Ports
+PASS: detail Ports vertical scrolling only / no horizontal clipping workaround
+PASS: detail Ports horizontal bounds UART / Hardware panel
+PASS: detail Ports horizontal bounds Ports title
+PASS: detail Ports horizontal bounds Refresh COM ports
+PASS: detail Ports horizontal bounds Refresh COM ports label
+PASS: detail Ports horizontal bounds COM scan status
+PASS: detail Ports horizontal bounds Right connection area
+PASS: detail Ports horizontal bounds Right UART heading
+PASS: detail Ports horizontal bounds Right connection status
+PASS: detail Ports horizontal bounds Right COM caption
+PASS: detail Ports horizontal bounds Right baud caption
+PASS: detail Ports horizontal bounds Right COM
+PASS: detail Ports horizontal bounds Right COM value
+PASS: detail Ports horizontal bounds Right COM arrow
+PASS: detail Ports horizontal bounds Right baud
+PASS: detail Ports horizontal bounds Right baud value
+PASS: detail Ports horizontal bounds Right baud arrow
+PASS: detail Ports horizontal bounds Right Connect
+PASS: detail Ports horizontal bounds Right Connect label
+PASS: detail Ports horizontal bounds Right Disconnect
+PASS: detail Ports horizontal bounds Right Disconnect label
+PASS: detail Ports horizontal bounds Right connection summary
+PASS: detail Ports horizontal bounds Right connection guidance
+PASS: detail Ports horizontal bounds Left connection area
+PASS: detail Ports horizontal bounds Left UART heading
+PASS: detail Ports horizontal bounds Left connection status
+PASS: detail Ports horizontal bounds Left COM caption
+PASS: detail Ports horizontal bounds Left baud caption
+PASS: detail Ports horizontal bounds Left COM
+PASS: detail Ports horizontal bounds Left COM value
+PASS: detail Ports horizontal bounds Left COM arrow
+PASS: detail Ports horizontal bounds Left baud
+PASS: detail Ports horizontal bounds Left baud value
+PASS: detail Ports horizontal bounds Left baud arrow
+PASS: detail Ports horizontal bounds Left Connect
+PASS: detail Ports horizontal bounds Left Connect label
+PASS: detail Ports horizontal bounds Left Disconnect
+PASS: detail Ports horizontal bounds Left Disconnect label
+PASS: detail Ports horizontal bounds Left connection summary
+PASS: detail Ports horizontal bounds Left connection guidance
+PASS: detail Ports horizontal bounds Advanced communication diagnostics
+PASS: detail Ports horizontal bounds Advanced communication diagnostics label
+PASS: detail selection physical UART disconnected / TX=0
+CAPTURE 1920x1080_02_details_Ports_top 1920x1080
+PASS: last detail button accessible after vertical scroll: Advanced communication diagnostics
+CAPTURE 1920x1080_02_details_Ports_bottom 1920x1080
+PASS: existing detail workspace Control
+PASS: detail Control vertical scrolling only / no horizontal clipping workaround
+PASS: detail Control horizontal bounds UART / Hardware panel
+PASS: detail Control horizontal bounds Real board control title
+PASS: detail Control horizontal bounds Control target heading
+PASS: detail Control horizontal bounds Control target 0
+PASS: detail Control horizontal bounds Control target 0 label
+PASS: detail Control horizontal bounds Control target 1
+PASS: detail Control horizontal bounds Control target 1 label
+PASS: detail Control horizontal bounds Control target 2
+PASS: detail Control horizontal bounds Control target 2 label
+PASS: detail Control horizontal bounds Control selection
+PASS: detail Control horizontal bounds Control hardware warning
+PASS: detail Control horizontal bounds Board control E
+PASS: detail Control horizontal bounds Board control E label
+PASS: detail Control horizontal bounds Board control A
+PASS: detail Control horizontal bounds Board control A label
+PASS: detail Control horizontal bounds Board control S
+PASS: detail Control horizontal bounds Board control S label
+PASS: detail Control horizontal bounds Board control X
+PASS: detail Control horizontal bounds Board control X label
+PASS: detail Control horizontal bounds Board control O
+PASS: detail Control horizontal bounds Board control O label
+PASS: detail Control horizontal bounds Board control H
+PASS: detail Control horizontal bounds Board control H label
+PASS: detail Control horizontal bounds Control PWM heading
+PASS: detail Control horizontal bounds Control follow heading
+PASS: detail Control horizontal bounds Control gripper heading
+PASS: detail Control horizontal bounds Control camera overlay heading
+PASS: detail Control horizontal bounds Camera overlay toggle
+PASS: detail Control horizontal bounds Camera overlay toggle label
+PASS: detail Control horizontal bounds Camera overlay reported state
+PASS: detail Control horizontal bounds Control stop limitations
+PASS: detail Control horizontal bounds Control state heading
+PASS: detail Control horizontal bounds Right Control summary
+PASS: detail Control horizontal bounds Left Control summary
+PASS: detail Control horizontal bounds Control physical unknown
+PASS: detail Control horizontal bounds Control next guidance
+PASS: detail Control horizontal bounds Advanced board control
+PASS: detail Control horizontal bounds Advanced board control label
+PASS: detail selection physical UART disconnected / TX=0
+CAPTURE 1920x1080_02_details_Control_top 1920x1080
+PASS: last detail button accessible after vertical scroll: Advanced board control
+PASS: existing detail workspace Settings
+PASS: detail Settings vertical scrolling only / no horizontal clipping workaround
+PASS: detail Settings horizontal bounds UART / Hardware panel
+PASS: detail Settings horizontal bounds Board UART contract
+PASS: detail Settings horizontal bounds Configuration side
+PASS: detail Settings horizontal bounds Configuration RIGHT
+PASS: detail Settings horizontal bounds Configuration RIGHT label
+PASS: detail Settings horizontal bounds Configuration LEFT
+PASS: detail Settings horizontal bounds Configuration LEFT label
+PASS: detail Settings horizontal bounds CFG tab
+PASS: detail Settings horizontal bounds CFG tab label
+PASS: detail Settings horizontal bounds Filter tab
+PASS: detail Settings horizontal bounds Filter tab label
+PASS: detail Settings horizontal bounds RGBY13 tab
+PASS: detail Settings horizontal bounds RGBY13 tab label
+PASS: detail Settings horizontal bounds Settings read t
+PASS: detail Settings horizontal bounds Settings read t label
+PASS: detail Settings horizontal bounds Settings SHOW
+PASS: detail Settings horizontal bounds Settings SHOW label
+PASS: detail Settings horizontal bounds Settings SAVE
+PASS: detail Settings horizontal bounds Settings SAVE label
+PASS: detail Settings horizontal bounds Settings LOAD
+PASS: detail Settings horizontal bounds Settings LOAD label
+PASS: detail Settings horizontal bounds CFG conditions
+PASS: detail Settings horizontal bounds CFG reported settings
+PASS: detail Settings horizontal bounds Configuration transaction
+PASS: detail Settings horizontal bounds Configuration persistence notice
+PASS: detail selection physical UART disconnected / TX=0
+CAPTURE 1920x1080_02_details_Settings_top 1920x1080
+PASS: last detail button accessible after vertical scroll: Settings read t
+PASS: existing detail workspace Records
+PASS: detail Records vertical scrolling only / no horizontal clipping workaround
+PASS: detail Records horizontal bounds UART / Hardware panel
+PASS: detail Records horizontal bounds Board UART contract
+PASS: detail Records horizontal bounds Recording RIGHT
+PASS: detail Records horizontal bounds Recording RIGHT label
+PASS: detail Records horizontal bounds Recording LEFT
+PASS: detail Records horizontal bounds Recording LEFT label
+PASS: detail Records horizontal bounds Recording state
+PASS: detail Records horizontal bounds Recording budget
+PASS: detail Records horizontal bounds Start recording
+PASS: detail Records horizontal bounds Start recording label
+PASS: detail Records horizontal bounds Cancel preparation
+PASS: detail Records horizontal bounds Cancel preparation label
+PASS: detail Records horizontal bounds Finish recording
+PASS: detail Records horizontal bounds Finish recording label
+PASS: detail Records horizontal bounds Enter recording menu
+PASS: detail Records horizontal bounds Enter recording menu label
+PASS: detail Records horizontal bounds Stop playback
+PASS: detail Records horizontal bounds Stop playback label
+PASS: detail Records horizontal bounds Refresh SD list
+PASS: detail Records horizontal bounds Refresh SD list label
+PASS: detail Records horizontal bounds SD record name
+PASS: detail Records horizontal bounds SD record name value
+PASS: detail Records horizontal bounds SD record name placeholder
+PASS: detail Records horizontal bounds Save SD recording
+PASS: detail Records horizontal bounds Save SD recording label
+PASS: detail Records horizontal bounds SD catalog IDs
+PASS: detail Records horizontal bounds Selected SD entry
+PASS: detail Records horizontal bounds Dropdown arrow
+PASS: detail Records horizontal bounds Play SD record
+PASS: detail Records horizontal bounds Play SD record label
+PASS: detail Records horizontal bounds Request SD deletion
+PASS: detail Records horizontal bounds Request SD deletion label
+PASS: detail Records horizontal bounds Confirm SD deletion
+PASS: detail Records horizontal bounds Confirm SD deletion label
+PASS: detail Records horizontal bounds box
+PASS: detail Records horizontal bounds mark
+PASS: detail Records horizontal bounds acknowledgement
+PASS: detail Records horizontal bounds Cancel recording workflow
+PASS: detail Records horizontal bounds Cancel recording workflow label
+PASS: detail Records horizontal bounds Return to follow
+PASS: detail Records horizontal bounds Return to follow label
+PASS: detail Records horizontal bounds Recording feedback
+PASS: detail Records horizontal bounds Recording wire note
+PASS: detail selection physical UART disconnected / TX=0
+CAPTURE 1920x1080_02_details_Records_top 1920x1080
+PASS: last detail button accessible after vertical scroll: Cancel recording workflow
+PASS: existing detail workspace Capture
+PASS: detail Capture vertical scrolling only / no horizontal clipping workaround
+PASS: detail Capture horizontal bounds UART / Hardware panel
+PASS: detail Capture horizontal bounds Board UART contract
+PASS: detail Capture horizontal bounds Video capture controls
+PASS: detail Capture horizontal bounds Video title
+PASS: detail Capture horizontal bounds Video boundary
+PASS: detail Capture horizontal bounds Refresh video devices
+PASS: detail Capture horizontal bounds Refresh video devices label
+PASS: detail Capture horizontal bounds Previous video device
+PASS: detail Capture horizontal bounds Previous video device label
+PASS: detail Capture horizontal bounds Next video device
+PASS: detail Capture horizontal bounds Next video device label
+PASS: detail Capture horizontal bounds Selected video device
+PASS: detail Capture horizontal bounds Capture size labels
+PASS: detail Capture horizontal bounds Capture width
+PASS: detail Capture horizontal bounds Capture width value
+PASS: detail Capture horizontal bounds Capture height
+PASS: detail Capture horizontal bounds Capture height value
+PASS: detail Capture horizontal bounds Capture FPS
+PASS: detail Capture horizontal bounds Capture FPS value
+PASS: detail Capture horizontal bounds Horizontal video mirror
+PASS: detail Capture horizontal bounds Horizontal video mirror label
+PASS: detail Capture horizontal bounds Start video capture
+PASS: detail Capture horizontal bounds Start video capture label
+PASS: detail Capture horizontal bounds Stop video capture
+PASS: detail Capture horizontal bounds Stop video capture label
+PASS: detail Capture horizontal bounds Video capture state
+PASS: detail Capture horizontal bounds Video preview viewport
+PASS: detail Capture horizontal bounds Live device video
+PASS: detail Capture horizontal bounds Capture timing scope
+PASS: detail selection physical UART disconnected / TX=0
+CAPTURE 1920x1080_02_details_Capture_top 1920x1080
+PASS: last detail button accessible after vertical scroll: Start video capture
+PASS: clickable Details tab Source
+PASS: actual pointer hit Details tab Source
+PASS: existing extra workspace accessible Source
+PASS: extra workspace physical UART disconnected / TX=0
+CAPTURE 1920x1080_02_details_Source 1920x1080
+PASS: clickable Details tab Tool
+PASS: actual pointer hit Details tab Tool
+PASS: existing extra workspace accessible Tool
+PASS: extra workspace physical UART disconnected / TX=0
+CAPTURE 1920x1080_02_details_Tool 1920x1080
+PASS: clickable Details tab Status
+PASS: actual pointer hit Details tab Status
+PASS: existing extra workspace accessible Status
+PASS: extra workspace physical UART disconnected / TX=0
+CAPTURE 1920x1080_02_details_Status 1920x1080
+PASS: clickable Close detailed controls
+PASS: actual pointer hit Close detailed controls
+PASS: details close restores compact Dock
+PASS: basic button visible without clipping Control target 0
+PASS: basic button visible without clipping Control target 1
+PASS: basic button visible without clipping Control target 2
+PASS: basic button visible without clipping Board control E
+PASS: basic button visible without clipping Board control A
+PASS: basic button visible without clipping Board control S
+PASS: basic button visible without clipping Board control X
+PASS: basic button visible without clipping Board control O
+PASS: basic button visible without clipping Board control H
+PASS: clickable HIDE CONTROLS
+PASS: actual pointer hit HIDE CONTROLS
+PASS: closed Dock has edge expand control
+PASS: clickable Camera size menu toggle
+PASS: actual pointer hit Camera size menu toggle
+PASS: clickable Camera size 1
+PASS: actual pointer hit Camera size 1
+PASS: Size 1 original width 360
+PASS: Size 1 real texture displayed
+PASS: Size 1 source aspect preserved
+PASS: Size 1 RawImage fills exact video area / no added bars
+PASS: Size 1 full stereo UV / no crop
+PASS: Size 1 inside screen
+PASS: clickable Camera size menu toggle
+PASS: actual pointer hit Camera size menu toggle
+PASS: clickable Camera size 2
+PASS: actual pointer hit Camera size 2
+PASS: Size 2 original width 450
+PASS: Size 2 real texture displayed
+PASS: Size 2 source aspect preserved
+PASS: Size 2 RawImage fills exact video area / no added bars
+PASS: Size 2 full stereo UV / no crop
+PASS: Size 2 inside screen
+PASS: clickable Camera size menu toggle
+PASS: actual pointer hit Camera size menu toggle
+PASS: clickable Camera size 3
+PASS: actual pointer hit Camera size 3
+PASS: Size 3 original width 620
+PASS: Size 3 real texture displayed
+PASS: Size 3 source aspect preserved
+PASS: Size 3 RawImage fills exact video area / no added bars
+PASS: Size 3 full stereo UV / no crop
+PASS: Size 3 inside screen
+CAPTURE 1920x1080_03_closed_size3 1920x1080
+PASS: clickable Camera size menu toggle
+PASS: actual pointer hit Camera size menu toggle
+PASS: clickable Camera size 4
+PASS: actual pointer hit Camera size 4
+PASS: Size 4 original width 800
+PASS: Size 4 real texture displayed
+PASS: Size 4 source aspect preserved
+PASS: Size 4 RawImage fills exact video area / no added bars
+PASS: Size 4 full stereo UV / no crop
+PASS: Size 4 inside screen
+CAPTURE 1920x1080_03_closed_size4 1920x1080
+CAPTURE 1920x1080_04_panel_closed 1920x1080
+PASS: clickable Expand right dock
+PASS: actual pointer hit Expand right dock
+PASS: open restores size and original capture owner
+PASS: clickable PRESENTATION
+PASS: actual pointer hit PRESENTATION
+PASS: Presentation hides controls and retains live camera overlay
+PASS: Presentation real texture displayed
+PASS: Presentation source aspect preserved
+PASS: Presentation RawImage fills exact video area / no added bars
+PASS: Presentation full stereo UV / no crop
+PASS: Presentation inside screen
+PASS: Presentation overlay clear of ForearmShaft_Visual
+PASS: Presentation overlay clear of MetalServoOutputHub
+PASS: Presentation overlay clear of PitchOutputBracketBridge
+PASS: Presentation overlay clear of PitchOutputBracketPlate_Left
+PASS: Presentation overlay clear of PitchOutputPivotBolt_Left
+PASS: Presentation overlay clear of PitchOutputBracketPlate_Right
+PASS: Presentation overlay clear of PitchOutputPivotBolt_Right
+PASS: Presentation overlay clear of ForearmShaftLowerFlange
+PASS: Presentation overlay clear of WristToGripperBridge_Visual
+PASS: Presentation overlay clear of GripperMountPlate_Visual
+PASS: Presentation overlay clear of M3OutputSpindle_Visual
+PASS: Presentation overlay clear of M3OutputFlange_Visual
+PASS: Presentation overlay clear of M3OutputCoupler_Visual
+PASS: Presentation overlay clear of GripperServoBody
+PASS: Presentation overlay clear of GearBackPlate
+PASS: Presentation overlay clear of DriveHub
+PASS: Presentation overlay clear of GearDisc_L
+PASS: Presentation overlay clear of GearTooth_L_0
+PASS: Presentation overlay clear of GearTooth_L_1
+PASS: Presentation overlay clear of GearTooth_L_2
+PASS: Presentation overlay clear of GearTooth_L_3
+PASS: Presentation overlay clear of GearTooth_L_4
+PASS: Presentation overlay clear of GearTooth_L_5
+PASS: Presentation overlay clear of GearTooth_L_6
+PASS: Presentation overlay clear of GearTooth_L_7
+PASS: Presentation overlay clear of GearTooth_L_8
+PASS: Presentation overlay clear of GearTooth_L_9
+PASS: Presentation overlay clear of GearTooth_L_10
+PASS: Presentation overlay clear of GearTooth_L_11
+PASS: Presentation overlay clear of GearTooth_L_12
+PASS: Presentation overlay clear of GearTooth_L_13
+PASS: Presentation overlay clear of GearCenterBolt_L
+PASS: Presentation overlay clear of DrivePinBolt_L
+PASS: Presentation overlay clear of PhotoJointBolt_04
+PASS: Presentation overlay clear of PhotoGearCenterWasher_L
+PASS: Presentation overlay clear of PhotoGearCenterScrew_L
+PASS: Presentation overlay clear of PhotoGearRecess_L_00
+PASS: Presentation overlay clear of PhotoGearRecess_L_01
+PASS: Presentation overlay clear of PhotoGearRecess_L_02
+PASS: Presentation overlay clear of GearDisc_R
+PASS: Presentation overlay clear of GearTooth_R_0
+PASS: Presentation overlay clear of GearTooth_R_1
+PASS: Presentation overlay clear of GearTooth_R_2
+PASS: Presentation overlay clear of GearTooth_R_3
+PASS: Presentation overlay clear of GearTooth_R_4
+PASS: Presentation overlay clear of GearTooth_R_5
+PASS: Presentation overlay clear of GearTooth_R_6
+PASS: Presentation overlay clear of GearTooth_R_7
+PASS: Presentation overlay clear of GearTooth_R_8
+PASS: Presentation overlay clear of GearTooth_R_9
+PASS: Presentation overlay clear of GearTooth_R_10
+PASS: Presentation overlay clear of GearTooth_R_11
+PASS: Presentation overlay clear of GearTooth_R_12
+PASS: Presentation overlay clear of GearTooth_R_13
+PASS: Presentation overlay clear of GearCenterBolt_R
+PASS: Presentation overlay clear of DrivePinBolt_R
+PASS: Presentation overlay clear of PhotoJointBolt_05
+PASS: Presentation overlay clear of PhotoGearCenterWasher_R
+PASS: Presentation overlay clear of PhotoGearCenterScrew_R
+PASS: Presentation overlay clear of PhotoGearRecess_R_00
+PASS: Presentation overlay clear of PhotoGearRecess_R_01
+PASS: Presentation overlay clear of PhotoGearRecess_R_02
+PASS: Presentation overlay clear of JawLower_L
+PASS: Presentation overlay clear of JawStem_L
+PASS: Presentation overlay clear of JawHook_L
+PASS: Presentation overlay clear of FingerPad_L
+PASS: Presentation overlay clear of JawLinkBolt_L
+PASS: Presentation overlay clear of PhotoJointBolt_02
+PASS: Presentation overlay clear of BaseBolt_L
+PASS: Presentation overlay clear of PhotoJointBolt_00
+PASS: Presentation overlay clear of PhotoFingerEndBolt_L
+PASS: Presentation overlay clear of PhotoJawHookTip_L
+PASS: Presentation overlay clear of PhotoJawRoundEnd_L_00
+PASS: Presentation overlay clear of PhotoJawRoundEnd_L_01
+PASS: Presentation overlay clear of PhotoJawRoundEnd_L_02
+PASS: Presentation overlay clear of PhotoJawRoundEnd_L_03
+PASS: Presentation overlay clear of PhotoJawGripTooth_L_00
+PASS: Presentation overlay clear of PhotoJawGripTooth_L_01
+PASS: Presentation overlay clear of PhotoJawGripTooth_L_02
+PASS: Presentation overlay clear of JawLower_R
+PASS: Presentation overlay clear of JawStem_R
+PASS: Presentation overlay clear of JawHook_R
+PASS: Presentation overlay clear of FingerPad_R
+PASS: Presentation overlay clear of JawLinkBolt_R
+PASS: Presentation overlay clear of PhotoJointBolt_03
+PASS: Presentation overlay clear of BaseBolt_R
+PASS: Presentation overlay clear of PhotoJointBolt_01
+PASS: Presentation overlay clear of PhotoFingerEndBolt_R
+PASS: Presentation overlay clear of PhotoJawHookTip_R
+PASS: Presentation overlay clear of PhotoJawRoundEnd_R_00
+PASS: Presentation overlay clear of PhotoJawRoundEnd_R_01
+PASS: Presentation overlay clear of PhotoJawRoundEnd_R_02
+PASS: Presentation overlay clear of PhotoJawRoundEnd_R_03
+PASS: Presentation overlay clear of PhotoJawGripTooth_R_00
+PASS: Presentation overlay clear of PhotoJawGripTooth_R_01
+PASS: Presentation overlay clear of PhotoJawGripTooth_R_02
+PASS: Presentation overlay clear of TopLink_L
+PASS: Presentation overlay clear of TopLink_R
+PASS: Presentation overlay clear of GripperServoFrontCover_Visual
+PASS: Presentation overlay clear of GripperServoCoverBolt_00
+PASS: Presentation overlay clear of GripperServoCoverBolt_01
+PASS: Presentation overlay clear of GripperServoCoverBolt_02
+PASS: Presentation overlay clear of GripperServoCoverBolt_03
+PASS: Presentation overlay clear of GripperServoMountEar_L
+PASS: Presentation overlay clear of GripperLinkageSidePlate_L
+PASS: Presentation overlay clear of GripperSidePlateBolt_L
+PASS: Presentation overlay clear of GripperServoMountEar_R
+PASS: Presentation overlay clear of GripperLinkageSidePlate_R
+PASS: Presentation overlay clear of GripperSidePlateBolt_R
+PASS: Presentation overlay clear of GripperServoOutputBoss_Visual
+PASS: Presentation overlay clear of GripperServoOutputShaft_Visual
+PASS: Presentation overlay clear of GripperGearCarrier_Visual
+PASS: Presentation overlay clear of GripperCarrierArm_L
+PASS: Presentation overlay clear of GripperCarrierArm_R
+PASS: Presentation overlay clear of GripperServoEndCase_Lower
+PASS: Presentation overlay clear of GripperServoCaseSeam_Lower
+PASS: Presentation overlay clear of GripperServoEndCase_Upper
+PASS: Presentation overlay clear of GripperServoCaseSeam_Upper
+PASS: Presentation overlay clear of GripperLowerGearCarrier_Visual
+PASS: Presentation overlay clear of GripperLowerCarrierArm_L
+PASS: Presentation overlay clear of GripperLowerCarrierArm_R
+PASS: Presentation overlay clear of GripperM4UpperPlate_Visual
+PASS: Presentation overlay clear of GripperM4UpperWasher_L
+PASS: Presentation overlay clear of GripperM4UpperBolt_L
+PASS: Presentation overlay clear of GripperM4UpperWasher_R
+PASS: Presentation overlay clear of GripperM4UpperBolt_R
+PASS: Presentation overlay clear of GripperM4BridgeSpine_Visual
+PASS: Presentation overlay clear of GripperM4BridgeShoulder_L
+PASS: Presentation overlay clear of GripperM4BridgeWasher_L
+PASS: Presentation overlay clear of GripperM4BridgeBolt_L
+PASS: Presentation overlay clear of GripperM4BridgeShoulder_R
+PASS: Presentation overlay clear of GripperM4BridgeWasher_R
+PASS: Presentation overlay clear of GripperM4BridgeBolt_R
+PASS: Presentation overlay clear of GripperM4BridgeRecess_Visual
+PASS: Presentation overlay clear of M3OutputFlangeBolt_00
+PASS: Presentation overlay clear of M3OutputFlangeBolt_01
+PASS: Presentation overlay clear of M3OutputFlangeBolt_02
+PASS: Presentation overlay clear of M3OutputFlangeBolt_03
+PASS: Presentation overlay clear of WristRollOutputHub_Visual
+PASS: Presentation overlay clear of WristPitchOutputHub_Visual
+PASS: Presentation overlay clear of Body
+PASS: Presentation overlay clear of CaseSeam_Lower
+PASS: Presentation overlay clear of CaseSeam_Upper
+PASS: Presentation overlay clear of EndCase_Lower
+PASS: Presentation overlay clear of MountingEar_Lower
+PASS: Presentation overlay clear of EarBolt_Lower_L
+PASS: Presentation overlay clear of EarBolt_Lower_R
+PASS: Presentation overlay clear of EndCase_Upper
+PASS: Presentation overlay clear of MountingEar_Upper
+PASS: Presentation overlay clear of EarBolt_Upper_L
+PASS: Presentation overlay clear of EarBolt_Upper_R
+PASS: Presentation overlay clear of OutputBoss
+PASS: Presentation overlay clear of CableExit
+PASS: Presentation overlay clear of M3ServoSidePlate_Lower
+PASS: Presentation overlay clear of M3ServoPlateBolt_Lower_A
+PASS: Presentation overlay clear of M3ServoPlateBolt_Lower_B
+PASS: Presentation overlay clear of M3ServoSidePlate_Upper
+PASS: Presentation overlay clear of M3ServoPlateBolt_Upper_A
+PASS: Presentation overlay clear of M3ServoPlateBolt_Upper_B
+PASS: Presentation overlay clear of M3BracketBase_Visual
+PASS: Presentation overlay clear of M2ToM3LBracketReturn_Left
+PASS: Presentation overlay clear of M2ToM3LBracketBolt_Left
+PASS: Presentation overlay clear of M3BracketConnector_Visual
+PASS: Presentation overlay clear of M2ToM3LBracketReturn_Right
+PASS: Presentation overlay clear of M2ToM3LBracketBolt_Right
+PASS: Presentation overlay clear of M2ServoRoof_Visual
+PASS: Presentation overlay clear of M2ServoRoofRound_Visual
+PASS: Presentation overlay clear of M2ServoRoofBolt_00
+PASS: Presentation overlay clear of M2ServoRoofBolt_01
+PASS: Presentation overlay clear of M3MountingEarBolt_Left
+PASS: Presentation overlay clear of M3MountingEarBolt_Right
+PASS: Presentation overlay clear of WristJointCollar_Visual
+PASS: Presentation overlay clear of Body
+PASS: Presentation overlay clear of CaseSeam_Lower
+PASS: Presentation overlay clear of CaseSeam_Upper
+PASS: Presentation overlay clear of EndCase_Lower
+PASS: Presentation overlay clear of MountingEar_Lower
+PASS: Presentation overlay clear of EarBolt_Lower_L
+PASS: Presentation overlay clear of EarBolt_Lower_R
+PASS: Presentation overlay clear of EndCase_Upper
+PASS: Presentation overlay clear of MountingEar_Upper
+PASS: Presentation overlay clear of EarBolt_Upper_L
+PASS: Presentation overlay clear of EarBolt_Upper_R
+PASS: Presentation overlay clear of OutputBoss
+PASS: Presentation overlay clear of OutputShaft
+PASS: Presentation overlay clear of OutputHorn
+PASS: Presentation overlay clear of CableExit
+PASS: Presentation overlay clear of WristPitchBracketBase_Visual
+PASS: Presentation overlay clear of WristPitchBracketPlate_Left
+PASS: Presentation overlay clear of WristPitchPivotBolt_Left
+PASS: Presentation overlay clear of WristPitchBearingSeat_Left
+PASS: Presentation overlay clear of WristPitchBearingCollar_Left
+PASS: Presentation overlay clear of WristPitchOutputBolt_Left_A
+PASS: Presentation overlay clear of WristPitchOutputBolt_Left_B
+PASS: Presentation overlay clear of WristPitchFrameBolt_Left_Lower
+PASS: Presentation overlay clear of WristPitchFrameBolt_Left_Upper
+PASS: Presentation overlay clear of WristPitchBracketPlate_Right
+PASS: Presentation overlay clear of WristPitchPivotBolt_Right
+PASS: Presentation overlay clear of WristPitchBearingSeat_Right
+PASS: Presentation overlay clear of WristPitchBearingCollar_Right
+PASS: Presentation overlay clear of WristPitchOutputBolt_Right_A
+PASS: Presentation overlay clear of WristPitchOutputBolt_Right_B
+PASS: Presentation overlay clear of WristPitchFrameBolt_Right_Lower
+PASS: Presentation overlay clear of WristPitchFrameBolt_Right_Upper
+PASS: Presentation overlay clear of ElbowRollRotatingPlate
+PASS: Presentation overlay clear of ElbowPitchServoBody
+PASS: Presentation overlay clear of ServoMountEar_L
+PASS: Presentation overlay clear of ServoMountEar_R
+PASS: Presentation overlay clear of M1ServoSupportFoot_Visual
+PASS: Presentation overlay clear of M1ServoSupportRail_L
+PASS: Presentation overlay clear of M1ServoSupportRail_R
+PASS: Presentation overlay clear of ElbowPitchServoEndCase_Front
+PASS: Presentation overlay clear of ElbowPitchServoEndCase_Rear
+PASS: Presentation overlay clear of TwoTop
+PASS: Presentation overlay clear of TwoUpperRight
+PASS: Presentation overlay clear of TwoMiddle
+PASS: Presentation overlay clear of TwoLowerLeft
+PASS: Presentation overlay clear of TwoBottom
+PASS: Presentation overlay clear of ZeroTop
+PASS: Presentation overlay clear of ZeroBottom
+PASS: Presentation overlay clear of ZeroLeft
+PASS: Presentation overlay clear of ZeroRight
+PASS: Presentation overlay clear of M0ServoOutputShaft
+PASS: Presentation overlay clear of M0ServoOutputHub
+PASS: Presentation overlay clear of PlatformBolt_00
+PASS: Presentation overlay clear of PlatformBolt_01
+PASS: Presentation overlay clear of PlatformBolt_02
+PASS: Presentation overlay clear of PlatformBolt_03
+PASS: Presentation overlay clear of PlatformBolt_04
+PASS: Presentation overlay clear of PlatformBolt_05
+PASS: Presentation overlay G51 visual renderers checked
+CAPTURE 1920x1080_05_presentation_live 1920x1080
+PASS: Presentation return restores open / size / camera preference
+PASS: clickable HIDE CONTROLS
+PASS: actual pointer hit HIDE CONTROLS
+PASS: Presentation retains closed Dock state
+PASS: camera position / rotation / FOV unchanged
+PASS: layout / Presentation preserve commands, epoch and stream owner
+PASS: UI cycle physical UART disconnected / TX=0
+PASS: ESC returns to Studio without opening initial setup
+PASS: clickable Background menu toggle
+PASS: actual pointer hit Background menu toggle
+PASS: Factory availability remains honest
+NOT TESTED Factory visual: existing compatible Factory prefab unavailable
+PASS: clickable SIMULATION GRID
+PASS: actual pointer hit SIMULATION GRID
+PASS: existing Studio / Grid selection retained
+PASS: actual resolution 1280x720_
+PASS: thin Toolbar / 57.6px at 1920
+PASS: 28 percent dock inside screen
+PASS: dock video real texture displayed
+PASS: dock video source aspect preserved
+PASS: dock video RawImage fills exact video area / no added bars
+PASS: dock video full stereo UV / no crop
+PASS: dock video inside screen
+PASS: open Dock clear of ForearmShaft_Visual
+PASS: open Dock clear of MetalServoOutputHub
+PASS: open Dock clear of PitchOutputBracketBridge
+PASS: open Dock clear of PitchOutputBracketPlate_Left
+PASS: open Dock clear of PitchOutputPivotBolt_Left
+PASS: open Dock clear of PitchOutputBracketPlate_Right
+PASS: open Dock clear of PitchOutputPivotBolt_Right
+PASS: open Dock clear of ForearmShaftLowerFlange
+PASS: open Dock clear of WristToGripperBridge_Visual
+PASS: open Dock clear of GripperMountPlate_Visual
+PASS: open Dock clear of M3OutputSpindle_Visual
+PASS: open Dock clear of M3OutputFlange_Visual
+PASS: open Dock clear of M3OutputCoupler_Visual
+PASS: open Dock clear of GripperServoBody
+PASS: open Dock clear of GearBackPlate
+PASS: open Dock clear of DriveHub
+PASS: open Dock clear of GearDisc_L
+PASS: open Dock clear of GearTooth_L_0
+PASS: open Dock clear of GearTooth_L_1
+PASS: open Dock clear of GearTooth_L_2
+PASS: open Dock clear of GearTooth_L_3
+PASS: open Dock clear of GearTooth_L_4
+PASS: open Dock clear of GearTooth_L_5
+PASS: open Dock clear of GearTooth_L_6
+PASS: open Dock clear of GearTooth_L_7
+PASS: open Dock clear of GearTooth_L_8
+PASS: open Dock clear of GearTooth_L_9
+PASS: open Dock clear of GearTooth_L_10
+PASS: open Dock clear of GearTooth_L_11
+PASS: open Dock clear of GearTooth_L_12
+PASS: open Dock clear of GearTooth_L_13
+PASS: open Dock clear of GearCenterBolt_L
+PASS: open Dock clear of DrivePinBolt_L
+PASS: open Dock clear of PhotoJointBolt_04
+PASS: open Dock clear of PhotoGearCenterWasher_L
+PASS: open Dock clear of PhotoGearCenterScrew_L
+PASS: open Dock clear of PhotoGearRecess_L_00
+PASS: open Dock clear of PhotoGearRecess_L_01
+PASS: open Dock clear of PhotoGearRecess_L_02
+PASS: open Dock clear of GearDisc_R
+PASS: open Dock clear of GearTooth_R_0
+PASS: open Dock clear of GearTooth_R_1
+PASS: open Dock clear of GearTooth_R_2
+PASS: open Dock clear of GearTooth_R_3
+PASS: open Dock clear of GearTooth_R_4
+PASS: open Dock clear of GearTooth_R_5
+PASS: open Dock clear of GearTooth_R_6
+PASS: open Dock clear of GearTooth_R_7
+PASS: open Dock clear of GearTooth_R_8
+PASS: open Dock clear of GearTooth_R_9
+PASS: open Dock clear of GearTooth_R_10
+PASS: open Dock clear of GearTooth_R_11
+PASS: open Dock clear of GearTooth_R_12
+PASS: open Dock clear of GearTooth_R_13
+PASS: open Dock clear of GearCenterBolt_R
+PASS: open Dock clear of DrivePinBolt_R
+PASS: open Dock clear of PhotoJointBolt_05
+PASS: open Dock clear of PhotoGearCenterWasher_R
+PASS: open Dock clear of PhotoGearCenterScrew_R
+PASS: open Dock clear of PhotoGearRecess_R_00
+PASS: open Dock clear of PhotoGearRecess_R_01
+PASS: open Dock clear of PhotoGearRecess_R_02
+PASS: open Dock clear of JawLower_L
+PASS: open Dock clear of JawStem_L
+PASS: open Dock clear of JawHook_L
+PASS: open Dock clear of FingerPad_L
+PASS: open Dock clear of JawLinkBolt_L
+PASS: open Dock clear of PhotoJointBolt_02
+PASS: open Dock clear of BaseBolt_L
+PASS: open Dock clear of PhotoJointBolt_00
+PASS: open Dock clear of PhotoFingerEndBolt_L
+PASS: open Dock clear of PhotoJawHookTip_L
+PASS: open Dock clear of PhotoJawRoundEnd_L_00
+PASS: open Dock clear of PhotoJawRoundEnd_L_01
+PASS: open Dock clear of PhotoJawRoundEnd_L_02
+PASS: open Dock clear of PhotoJawRoundEnd_L_03
+PASS: open Dock clear of PhotoJawGripTooth_L_00
+PASS: open Dock clear of PhotoJawGripTooth_L_01
+PASS: open Dock clear of PhotoJawGripTooth_L_02
+PASS: open Dock clear of JawLower_R
+PASS: open Dock clear of JawStem_R
+PASS: open Dock clear of JawHook_R
+PASS: open Dock clear of FingerPad_R
+PASS: open Dock clear of JawLinkBolt_R
+PASS: open Dock clear of PhotoJointBolt_03
+PASS: open Dock clear of BaseBolt_R
+PASS: open Dock clear of PhotoJointBolt_01
+PASS: open Dock clear of PhotoFingerEndBolt_R
+PASS: open Dock clear of PhotoJawHookTip_R
+PASS: open Dock clear of PhotoJawRoundEnd_R_00
+PASS: open Dock clear of PhotoJawRoundEnd_R_01
+PASS: open Dock clear of PhotoJawRoundEnd_R_02
+PASS: open Dock clear of PhotoJawRoundEnd_R_03
+PASS: open Dock clear of PhotoJawGripTooth_R_00
+PASS: open Dock clear of PhotoJawGripTooth_R_01
+PASS: open Dock clear of PhotoJawGripTooth_R_02
+PASS: open Dock clear of TopLink_L
+PASS: open Dock clear of TopLink_R
+PASS: open Dock clear of GripperServoFrontCover_Visual
+PASS: open Dock clear of GripperServoCoverBolt_00
+PASS: open Dock clear of GripperServoCoverBolt_01
+PASS: open Dock clear of GripperServoCoverBolt_02
+PASS: open Dock clear of GripperServoCoverBolt_03
+PASS: open Dock clear of GripperServoMountEar_L
+PASS: open Dock clear of GripperLinkageSidePlate_L
+PASS: open Dock clear of GripperSidePlateBolt_L
+PASS: open Dock clear of GripperServoMountEar_R
+PASS: open Dock clear of GripperLinkageSidePlate_R
+PASS: open Dock clear of GripperSidePlateBolt_R
+PASS: open Dock clear of GripperServoOutputBoss_Visual
+PASS: open Dock clear of GripperServoOutputShaft_Visual
+PASS: open Dock clear of GripperGearCarrier_Visual
+PASS: open Dock clear of GripperCarrierArm_L
+PASS: open Dock clear of GripperCarrierArm_R
+PASS: open Dock clear of GripperServoEndCase_Lower
+PASS: open Dock clear of GripperServoCaseSeam_Lower
+PASS: open Dock clear of GripperServoEndCase_Upper
+PASS: open Dock clear of GripperServoCaseSeam_Upper
+PASS: open Dock clear of GripperLowerGearCarrier_Visual
+PASS: open Dock clear of GripperLowerCarrierArm_L
+PASS: open Dock clear of GripperLowerCarrierArm_R
+PASS: open Dock clear of GripperM4UpperPlate_Visual
+PASS: open Dock clear of GripperM4UpperWasher_L
+PASS: open Dock clear of GripperM4UpperBolt_L
+PASS: open Dock clear of GripperM4UpperWasher_R
+PASS: open Dock clear of GripperM4UpperBolt_R
+PASS: open Dock clear of GripperM4BridgeSpine_Visual
+PASS: open Dock clear of GripperM4BridgeShoulder_L
+PASS: open Dock clear of GripperM4BridgeWasher_L
+PASS: open Dock clear of GripperM4BridgeBolt_L
+PASS: open Dock clear of GripperM4BridgeShoulder_R
+PASS: open Dock clear of GripperM4BridgeWasher_R
+PASS: open Dock clear of GripperM4BridgeBolt_R
+PASS: open Dock clear of GripperM4BridgeRecess_Visual
+PASS: open Dock clear of M3OutputFlangeBolt_00
+PASS: open Dock clear of M3OutputFlangeBolt_01
+PASS: open Dock clear of M3OutputFlangeBolt_02
+PASS: open Dock clear of M3OutputFlangeBolt_03
+PASS: open Dock clear of WristRollOutputHub_Visual
+PASS: open Dock clear of WristPitchOutputHub_Visual
+PASS: open Dock clear of Body
+PASS: open Dock clear of CaseSeam_Lower
+PASS: open Dock clear of CaseSeam_Upper
+PASS: open Dock clear of EndCase_Lower
+PASS: open Dock clear of MountingEar_Lower
+PASS: open Dock clear of EarBolt_Lower_L
+PASS: open Dock clear of EarBolt_Lower_R
+PASS: open Dock clear of EndCase_Upper
+PASS: open Dock clear of MountingEar_Upper
+PASS: open Dock clear of EarBolt_Upper_L
+PASS: open Dock clear of EarBolt_Upper_R
+PASS: open Dock clear of OutputBoss
+PASS: open Dock clear of CableExit
+PASS: open Dock clear of M3ServoSidePlate_Lower
+PASS: open Dock clear of M3ServoPlateBolt_Lower_A
+PASS: open Dock clear of M3ServoPlateBolt_Lower_B
+PASS: open Dock clear of M3ServoSidePlate_Upper
+PASS: open Dock clear of M3ServoPlateBolt_Upper_A
+PASS: open Dock clear of M3ServoPlateBolt_Upper_B
+PASS: open Dock clear of M3BracketBase_Visual
+PASS: open Dock clear of M2ToM3LBracketReturn_Left
+PASS: open Dock clear of M2ToM3LBracketBolt_Left
+PASS: open Dock clear of M3BracketConnector_Visual
+PASS: open Dock clear of M2ToM3LBracketReturn_Right
+PASS: open Dock clear of M2ToM3LBracketBolt_Right
+PASS: open Dock clear of M2ServoRoof_Visual
+PASS: open Dock clear of M2ServoRoofRound_Visual
+PASS: open Dock clear of M2ServoRoofBolt_00
+PASS: open Dock clear of M2ServoRoofBolt_01
+PASS: open Dock clear of M3MountingEarBolt_Left
+PASS: open Dock clear of M3MountingEarBolt_Right
+PASS: open Dock clear of WristJointCollar_Visual
+PASS: open Dock clear of Body
+PASS: open Dock clear of CaseSeam_Lower
+PASS: open Dock clear of CaseSeam_Upper
+PASS: open Dock clear of EndCase_Lower
+PASS: open Dock clear of MountingEar_Lower
+PASS: open Dock clear of EarBolt_Lower_L
+PASS: open Dock clear of EarBolt_Lower_R
+PASS: open Dock clear of EndCase_Upper
+PASS: open Dock clear of MountingEar_Upper
+PASS: open Dock clear of EarBolt_Upper_L
+PASS: open Dock clear of EarBolt_Upper_R
+PASS: open Dock clear of OutputBoss
+PASS: open Dock clear of OutputShaft
+PASS: open Dock clear of OutputHorn
+PASS: open Dock clear of CableExit
+PASS: open Dock clear of WristPitchBracketBase_Visual
+PASS: open Dock clear of WristPitchBracketPlate_Left
+PASS: open Dock clear of WristPitchPivotBolt_Left
+PASS: open Dock clear of WristPitchBearingSeat_Left
+PASS: open Dock clear of WristPitchBearingCollar_Left
+PASS: open Dock clear of WristPitchOutputBolt_Left_A
+PASS: open Dock clear of WristPitchOutputBolt_Left_B
+PASS: open Dock clear of WristPitchFrameBolt_Left_Lower
+PASS: open Dock clear of WristPitchFrameBolt_Left_Upper
+PASS: open Dock clear of WristPitchBracketPlate_Right
+PASS: open Dock clear of WristPitchPivotBolt_Right
+PASS: open Dock clear of WristPitchBearingSeat_Right
+PASS: open Dock clear of WristPitchBearingCollar_Right
+PASS: open Dock clear of WristPitchOutputBolt_Right_A
+PASS: open Dock clear of WristPitchOutputBolt_Right_B
+PASS: open Dock clear of WristPitchFrameBolt_Right_Lower
+PASS: open Dock clear of WristPitchFrameBolt_Right_Upper
+PASS: open Dock clear of ElbowRollRotatingPlate
+PASS: open Dock clear of ElbowPitchServoBody
+PASS: open Dock clear of ServoMountEar_L
+PASS: open Dock clear of ServoMountEar_R
+PASS: open Dock clear of M1ServoSupportFoot_Visual
+PASS: open Dock clear of M1ServoSupportRail_L
+PASS: open Dock clear of M1ServoSupportRail_R
+PASS: open Dock clear of ElbowPitchServoEndCase_Front
+PASS: open Dock clear of ElbowPitchServoEndCase_Rear
+PASS: open Dock clear of TwoTop
+PASS: open Dock clear of TwoUpperRight
+PASS: open Dock clear of TwoMiddle
+PASS: open Dock clear of TwoLowerLeft
+PASS: open Dock clear of TwoBottom
+PASS: open Dock clear of ZeroTop
+PASS: open Dock clear of ZeroBottom
+PASS: open Dock clear of ZeroLeft
+PASS: open Dock clear of ZeroRight
+PASS: open Dock clear of M0ServoOutputShaft
+PASS: open Dock clear of M0ServoOutputHub
+PASS: open Dock clear of PlatformBolt_00
+PASS: open Dock clear of PlatformBolt_01
+PASS: open Dock clear of PlatformBolt_02
+PASS: open Dock clear of PlatformBolt_03
+PASS: open Dock clear of PlatformBolt_04
+PASS: open Dock clear of PlatformBolt_05
+PASS: open Dock G51 visual renderers checked
+CAPTURE 1280x720_01_panel_open 1280x720
+PASS: no duplicate UART tabs in basic Dock
+PASS: existing detail workspace Ports
+PASS: detail Ports vertical scrolling only / no horizontal clipping workaround
+PASS: detail Ports horizontal bounds UART / Hardware panel
+PASS: detail Ports horizontal bounds Ports title
+PASS: detail Ports horizontal bounds Refresh COM ports
+PASS: detail Ports horizontal bounds Refresh COM ports label
+PASS: detail Ports horizontal bounds COM scan status
+PASS: detail Ports horizontal bounds Right connection area
+PASS: detail Ports horizontal bounds Right UART heading
+PASS: detail Ports horizontal bounds Right connection status
+PASS: detail Ports horizontal bounds Right COM caption
+PASS: detail Ports horizontal bounds Right baud caption
+PASS: detail Ports horizontal bounds Right COM
+PASS: detail Ports horizontal bounds Right COM value
+PASS: detail Ports horizontal bounds Right COM arrow
+PASS: detail Ports horizontal bounds Right baud
+PASS: detail Ports horizontal bounds Right baud value
+PASS: detail Ports horizontal bounds Right baud arrow
+PASS: detail Ports horizontal bounds Right Connect
+PASS: detail Ports horizontal bounds Right Connect label
+PASS: detail Ports horizontal bounds Right Disconnect
+PASS: detail Ports horizontal bounds Right Disconnect label
+PASS: detail Ports horizontal bounds Right connection summary
+PASS: detail Ports horizontal bounds Right connection guidance
+PASS: detail Ports horizontal bounds Left connection area
+PASS: detail Ports horizontal bounds Left UART heading
+PASS: detail Ports horizontal bounds Left connection status
+PASS: detail Ports horizontal bounds Left COM caption
+PASS: detail Ports horizontal bounds Left baud caption
+PASS: detail Ports horizontal bounds Left COM
+PASS: detail Ports horizontal bounds Left COM value
+PASS: detail Ports horizontal bounds Left COM arrow
+PASS: detail Ports horizontal bounds Left baud
+PASS: detail Ports horizontal bounds Left baud value
+PASS: detail Ports horizontal bounds Left baud arrow
+PASS: detail Ports horizontal bounds Left Connect
+PASS: detail Ports horizontal bounds Left Connect label
+PASS: detail Ports horizontal bounds Left Disconnect
+PASS: detail Ports horizontal bounds Left Disconnect label
+PASS: detail Ports horizontal bounds Left connection summary
+PASS: detail Ports horizontal bounds Left connection guidance
+PASS: detail Ports horizontal bounds Advanced communication diagnostics
+PASS: detail Ports horizontal bounds Advanced communication diagnostics label
+PASS: detail selection physical UART disconnected / TX=0
+CAPTURE 1280x720_02_details_Ports_top 1280x720
+PASS: last detail button accessible after vertical scroll: Advanced communication diagnostics
+CAPTURE 1280x720_02_details_Ports_bottom 1280x720
+PASS: existing detail workspace Control
+PASS: detail Control vertical scrolling only / no horizontal clipping workaround
+PASS: detail Control horizontal bounds UART / Hardware panel
+PASS: detail Control horizontal bounds Real board control title
+PASS: detail Control horizontal bounds Control target heading
+PASS: detail Control horizontal bounds Control target 0
+PASS: detail Control horizontal bounds Control target 0 label
+PASS: detail Control horizontal bounds Control target 1
+PASS: detail Control horizontal bounds Control target 1 label
+PASS: detail Control horizontal bounds Control target 2
+PASS: detail Control horizontal bounds Control target 2 label
+PASS: detail Control horizontal bounds Control selection
+PASS: detail Control horizontal bounds Control hardware warning
+PASS: detail Control horizontal bounds Board control E
+PASS: detail Control horizontal bounds Board control E label
+PASS: detail Control horizontal bounds Board control A
+PASS: detail Control horizontal bounds Board control A label
+PASS: detail Control horizontal bounds Board control S
+PASS: detail Control horizontal bounds Board control S label
+PASS: detail Control horizontal bounds Board control X
+PASS: detail Control horizontal bounds Board control X label
+PASS: detail Control horizontal bounds Board control O
+PASS: detail Control horizontal bounds Board control O label
+PASS: detail Control horizontal bounds Board control H
+PASS: detail Control horizontal bounds Board control H label
+PASS: detail Control horizontal bounds Control PWM heading
+PASS: detail Control horizontal bounds Control follow heading
+PASS: detail Control horizontal bounds Control gripper heading
+PASS: detail Control horizontal bounds Control camera overlay heading
+PASS: detail Control horizontal bounds Camera overlay toggle
+PASS: detail Control horizontal bounds Camera overlay toggle label
+PASS: detail Control horizontal bounds Camera overlay reported state
+PASS: detail Control horizontal bounds Control stop limitations
+PASS: detail Control horizontal bounds Control state heading
+PASS: detail Control horizontal bounds Right Control summary
+PASS: detail Control horizontal bounds Left Control summary
+PASS: detail Control horizontal bounds Control physical unknown
+PASS: detail Control horizontal bounds Control next guidance
+PASS: detail Control horizontal bounds Advanced board control
+PASS: detail Control horizontal bounds Advanced board control label
+PASS: detail selection physical UART disconnected / TX=0
+CAPTURE 1280x720_02_details_Control_top 1280x720
+PASS: last detail button accessible after vertical scroll: Advanced board control
+PASS: existing detail workspace Settings
+PASS: detail Settings vertical scrolling only / no horizontal clipping workaround
+PASS: detail Settings horizontal bounds UART / Hardware panel
+PASS: detail Settings horizontal bounds Board UART contract
+PASS: detail Settings horizontal bounds Configuration side
+PASS: detail Settings horizontal bounds Configuration RIGHT
+PASS: detail Settings horizontal bounds Configuration RIGHT label
+PASS: detail Settings horizontal bounds Configuration LEFT
+PASS: detail Settings horizontal bounds Configuration LEFT label
+PASS: detail Settings horizontal bounds CFG tab
+PASS: detail Settings horizontal bounds CFG tab label
+PASS: detail Settings horizontal bounds Filter tab
+PASS: detail Settings horizontal bounds Filter tab label
+PASS: detail Settings horizontal bounds RGBY13 tab
+PASS: detail Settings horizontal bounds RGBY13 tab label
+PASS: detail Settings horizontal bounds Settings read t
+PASS: detail Settings horizontal bounds Settings read t label
+PASS: detail Settings horizontal bounds Settings SHOW
+PASS: detail Settings horizontal bounds Settings SHOW label
+PASS: detail Settings horizontal bounds Settings SAVE
+PASS: detail Settings horizontal bounds Settings SAVE label
+PASS: detail Settings horizontal bounds Settings LOAD
+PASS: detail Settings horizontal bounds Settings LOAD label
+PASS: detail Settings horizontal bounds CFG conditions
+PASS: detail Settings horizontal bounds CFG reported settings
+PASS: detail Settings horizontal bounds Configuration transaction
+PASS: detail Settings horizontal bounds Configuration persistence notice
+PASS: detail selection physical UART disconnected / TX=0
+CAPTURE 1280x720_02_details_Settings_top 1280x720
+PASS: last detail button accessible after vertical scroll: Settings read t
+PASS: existing detail workspace Records
+PASS: detail Records vertical scrolling only / no horizontal clipping workaround
+PASS: detail Records horizontal bounds UART / Hardware panel
+PASS: detail Records horizontal bounds Board UART contract
+PASS: detail Records horizontal bounds Recording RIGHT
+PASS: detail Records horizontal bounds Recording RIGHT label
+PASS: detail Records horizontal bounds Recording LEFT
+PASS: detail Records horizontal bounds Recording LEFT label
+PASS: detail Records horizontal bounds Recording state
+PASS: detail Records horizontal bounds Recording budget
+PASS: detail Records horizontal bounds Start recording
+PASS: detail Records horizontal bounds Start recording label
+PASS: detail Records horizontal bounds Cancel preparation
+PASS: detail Records horizontal bounds Cancel preparation label
+PASS: detail Records horizontal bounds Finish recording
+PASS: detail Records horizontal bounds Finish recording label
+PASS: detail Records horizontal bounds Enter recording menu
+PASS: detail Records horizontal bounds Enter recording menu label
+PASS: detail Records horizontal bounds Stop playback
+PASS: detail Records horizontal bounds Stop playback label
+PASS: detail Records horizontal bounds Refresh SD list
+PASS: detail Records horizontal bounds Refresh SD list label
+PASS: detail Records horizontal bounds SD record name
+PASS: detail Records horizontal bounds SD record name value
+PASS: detail Records horizontal bounds SD record name placeholder
+PASS: detail Records horizontal bounds Save SD recording
+PASS: detail Records horizontal bounds Save SD recording label
+PASS: detail Records horizontal bounds SD catalog IDs
+PASS: detail Records horizontal bounds Selected SD entry
+PASS: detail Records horizontal bounds Dropdown arrow
+PASS: detail Records horizontal bounds Play SD record
+PASS: detail Records horizontal bounds Play SD record label
+PASS: detail Records horizontal bounds Request SD deletion
+PASS: detail Records horizontal bounds Request SD deletion label
+PASS: detail Records horizontal bounds Confirm SD deletion
+PASS: detail Records horizontal bounds Confirm SD deletion label
+PASS: detail Records horizontal bounds box
+PASS: detail Records horizontal bounds mark
+PASS: detail Records horizontal bounds acknowledgement
+PASS: detail Records horizontal bounds Cancel recording workflow
+PASS: detail Records horizontal bounds Cancel recording workflow label
+PASS: detail Records horizontal bounds Return to follow
+PASS: detail Records horizontal bounds Return to follow label
+PASS: detail Records horizontal bounds Recording feedback
+PASS: detail Records horizontal bounds Recording wire note
+PASS: detail selection physical UART disconnected / TX=0
+CAPTURE 1280x720_02_details_Records_top 1280x720
+PASS: last detail button accessible after vertical scroll: Cancel recording workflow
+PASS: existing detail workspace Capture
+PASS: detail Capture vertical scrolling only / no horizontal clipping workaround
+PASS: detail Capture horizontal bounds UART / Hardware panel
+PASS: detail Capture horizontal bounds Board UART contract
+PASS: detail Capture horizontal bounds Video capture controls
+PASS: detail Capture horizontal bounds Video title
+PASS: detail Capture horizontal bounds Video boundary
+PASS: detail Capture horizontal bounds Refresh video devices
+PASS: detail Capture horizontal bounds Refresh video devices label
+PASS: detail Capture horizontal bounds Previous video device
+PASS: detail Capture horizontal bounds Previous video device label
+PASS: detail Capture horizontal bounds Next video device
+PASS: detail Capture horizontal bounds Next video device label
+PASS: detail Capture horizontal bounds Selected video device
+PASS: detail Capture horizontal bounds Capture size labels
+PASS: detail Capture horizontal bounds Capture width
+PASS: detail Capture horizontal bounds Capture width value
+PASS: detail Capture horizontal bounds Capture height
+PASS: detail Capture horizontal bounds Capture height value
+PASS: detail Capture horizontal bounds Capture FPS
+PASS: detail Capture horizontal bounds Capture FPS value
+PASS: detail Capture horizontal bounds Horizontal video mirror
+PASS: detail Capture horizontal bounds Horizontal video mirror label
+PASS: detail Capture horizontal bounds Start video capture
+PASS: detail Capture horizontal bounds Start video capture label
+PASS: detail Capture horizontal bounds Stop video capture
+PASS: detail Capture horizontal bounds Stop video capture label
+PASS: detail Capture horizontal bounds Video capture state
+PASS: detail Capture horizontal bounds Video preview viewport
+PASS: detail Capture horizontal bounds Live device video
+PASS: detail Capture horizontal bounds Capture timing scope
+PASS: detail selection physical UART disconnected / TX=0
+CAPTURE 1280x720_02_details_Capture_top 1280x720
+PASS: last detail button accessible after vertical scroll: Start video capture
+PASS: clickable Details tab Source
+PASS: actual pointer hit Details tab Source
+PASS: existing extra workspace accessible Source
+PASS: extra workspace physical UART disconnected / TX=0
+CAPTURE 1280x720_02_details_Source 1280x720
+PASS: clickable Details tab Tool
+PASS: actual pointer hit Details tab Tool
+PASS: existing extra workspace accessible Tool
+PASS: extra workspace physical UART disconnected / TX=0
+CAPTURE 1280x720_02_details_Tool 1280x720
+PASS: clickable Details tab Status
+PASS: actual pointer hit Details tab Status
+PASS: existing extra workspace accessible Status
+PASS: extra workspace physical UART disconnected / TX=0
+CAPTURE 1280x720_02_details_Status 1280x720
+PASS: clickable Close detailed controls
+PASS: actual pointer hit Close detailed controls
+PASS: details close restores compact Dock
+PASS: basic button visible without clipping Control target 0
+PASS: basic button visible without clipping Control target 1
+PASS: basic button visible without clipping Control target 2
+PASS: basic button visible without clipping Board control E
+PASS: basic button visible without clipping Board control A
+PASS: basic button visible without clipping Board control S
+PASS: basic button visible without clipping Board control X
+PASS: basic button visible without clipping Board control O
+PASS: basic button visible without clipping Board control H
+PASS: clickable HIDE CONTROLS
+PASS: actual pointer hit HIDE CONTROLS
+PASS: closed Dock has edge expand control
+PASS: clickable Camera size menu toggle
+PASS: actual pointer hit Camera size menu toggle
+PASS: clickable Camera size 1
+PASS: actual pointer hit Camera size 1
+PASS: Size 1 original width 240
+PASS: Size 1 real texture displayed
+PASS: Size 1 source aspect preserved
+PASS: Size 1 RawImage fills exact video area / no added bars
+PASS: Size 1 full stereo UV / no crop
+PASS: Size 1 inside screen
+PASS: clickable Camera size menu toggle
+PASS: actual pointer hit Camera size menu toggle
+PASS: clickable Camera size 2
+PASS: actual pointer hit Camera size 2
+PASS: Size 2 original width 300
+PASS: Size 2 real texture displayed
+PASS: Size 2 source aspect preserved
+PASS: Size 2 RawImage fills exact video area / no added bars
+PASS: Size 2 full stereo UV / no crop
+PASS: Size 2 inside screen
+PASS: clickable Camera size menu toggle
+PASS: actual pointer hit Camera size menu toggle
+PASS: clickable Camera size 3
+PASS: actual pointer hit Camera size 3
+PASS: Size 3 original width 620
+PASS: Size 3 real texture displayed
+PASS: Size 3 source aspect preserved
+PASS: Size 3 RawImage fills exact video area / no added bars
+PASS: Size 3 full stereo UV / no crop
+PASS: Size 3 inside screen
+CAPTURE 1280x720_03_closed_size3 1280x720
+PASS: clickable Camera size menu toggle
+PASS: actual pointer hit Camera size menu toggle
+PASS: clickable Camera size 4
+PASS: actual pointer hit Camera size 4
+PASS: Size 4 original width 480
+PASS: Size 4 real texture displayed
+PASS: Size 4 source aspect preserved
+PASS: Size 4 RawImage fills exact video area / no added bars
+PASS: Size 4 full stereo UV / no crop
+PASS: Size 4 inside screen
+CAPTURE 1280x720_03_closed_size4 1280x720
+CAPTURE 1280x720_04_panel_closed 1280x720
+PASS: clickable Expand right dock
+PASS: actual pointer hit Expand right dock
+PASS: open restores size and original capture owner
+PASS: clickable PRESENTATION
+PASS: actual pointer hit PRESENTATION
+PASS: Presentation hides controls and retains live camera overlay
+PASS: Presentation real texture displayed
+PASS: Presentation source aspect preserved
+PASS: Presentation RawImage fills exact video area / no added bars
+PASS: Presentation full stereo UV / no crop
+PASS: Presentation inside screen
+PASS: Presentation overlay clear of ForearmShaft_Visual
+PASS: Presentation overlay clear of MetalServoOutputHub
+PASS: Presentation overlay clear of PitchOutputBracketBridge
+PASS: Presentation overlay clear of PitchOutputBracketPlate_Left
+PASS: Presentation overlay clear of PitchOutputPivotBolt_Left
+PASS: Presentation overlay clear of PitchOutputBracketPlate_Right
+PASS: Presentation overlay clear of PitchOutputPivotBolt_Right
+PASS: Presentation overlay clear of ForearmShaftLowerFlange
+PASS: Presentation overlay clear of WristToGripperBridge_Visual
+PASS: Presentation overlay clear of GripperMountPlate_Visual
+PASS: Presentation overlay clear of M3OutputSpindle_Visual
+PASS: Presentation overlay clear of M3OutputFlange_Visual
+PASS: Presentation overlay clear of M3OutputCoupler_Visual
+PASS: Presentation overlay clear of GripperServoBody
+PASS: Presentation overlay clear of GearBackPlate
+PASS: Presentation overlay clear of DriveHub
+PASS: Presentation overlay clear of GearDisc_L
+PASS: Presentation overlay clear of GearTooth_L_0
+PASS: Presentation overlay clear of GearTooth_L_1
+PASS: Presentation overlay clear of GearTooth_L_2
+PASS: Presentation overlay clear of GearTooth_L_3
+PASS: Presentation overlay clear of GearTooth_L_4
+PASS: Presentation overlay clear of GearTooth_L_5
+PASS: Presentation overlay clear of GearTooth_L_6
+PASS: Presentation overlay clear of GearTooth_L_7
+PASS: Presentation overlay clear of GearTooth_L_8
+PASS: Presentation overlay clear of GearTooth_L_9
+PASS: Presentation overlay clear of GearTooth_L_10
+PASS: Presentation overlay clear of GearTooth_L_11
+PASS: Presentation overlay clear of GearTooth_L_12
+PASS: Presentation overlay clear of GearTooth_L_13
+PASS: Presentation overlay clear of GearCenterBolt_L
+PASS: Presentation overlay clear of DrivePinBolt_L
+PASS: Presentation overlay clear of PhotoJointBolt_04
+PASS: Presentation overlay clear of PhotoGearCenterWasher_L
+PASS: Presentation overlay clear of PhotoGearCenterScrew_L
+PASS: Presentation overlay clear of PhotoGearRecess_L_00
+PASS: Presentation overlay clear of PhotoGearRecess_L_01
+PASS: Presentation overlay clear of PhotoGearRecess_L_02
+PASS: Presentation overlay clear of GearDisc_R
+PASS: Presentation overlay clear of GearTooth_R_0
+PASS: Presentation overlay clear of GearTooth_R_1
+PASS: Presentation overlay clear of GearTooth_R_2
+PASS: Presentation overlay clear of GearTooth_R_3
+PASS: Presentation overlay clear of GearTooth_R_4
+PASS: Presentation overlay clear of GearTooth_R_5
+PASS: Presentation overlay clear of GearTooth_R_6
+PASS: Presentation overlay clear of GearTooth_R_7
+PASS: Presentation overlay clear of GearTooth_R_8
+PASS: Presentation overlay clear of GearTooth_R_9
+PASS: Presentation overlay clear of GearTooth_R_10
+PASS: Presentation overlay clear of GearTooth_R_11
+PASS: Presentation overlay clear of GearTooth_R_12
+PASS: Presentation overlay clear of GearTooth_R_13
+PASS: Presentation overlay clear of GearCenterBolt_R
+PASS: Presentation overlay clear of DrivePinBolt_R
+PASS: Presentation overlay clear of PhotoJointBolt_05
+PASS: Presentation overlay clear of PhotoGearCenterWasher_R
+PASS: Presentation overlay clear of PhotoGearCenterScrew_R
+PASS: Presentation overlay clear of PhotoGearRecess_R_00
+PASS: Presentation overlay clear of PhotoGearRecess_R_01
+PASS: Presentation overlay clear of PhotoGearRecess_R_02
+PASS: Presentation overlay clear of JawLower_L
+PASS: Presentation overlay clear of JawStem_L
+PASS: Presentation overlay clear of JawHook_L
+PASS: Presentation overlay clear of FingerPad_L
+PASS: Presentation overlay clear of JawLinkBolt_L
+PASS: Presentation overlay clear of PhotoJointBolt_02
+PASS: Presentation overlay clear of BaseBolt_L
+PASS: Presentation overlay clear of PhotoJointBolt_00
+PASS: Presentation overlay clear of PhotoFingerEndBolt_L
+PASS: Presentation overlay clear of PhotoJawHookTip_L
+PASS: Presentation overlay clear of PhotoJawRoundEnd_L_00
+PASS: Presentation overlay clear of PhotoJawRoundEnd_L_01
+PASS: Presentation overlay clear of PhotoJawRoundEnd_L_02
+PASS: Presentation overlay clear of PhotoJawRoundEnd_L_03
+PASS: Presentation overlay clear of PhotoJawGripTooth_L_00
+PASS: Presentation overlay clear of PhotoJawGripTooth_L_01
+PASS: Presentation overlay clear of PhotoJawGripTooth_L_02
+PASS: Presentation overlay clear of JawLower_R
+PASS: Presentation overlay clear of JawStem_R
+PASS: Presentation overlay clear of JawHook_R
+PASS: Presentation overlay clear of FingerPad_R
+PASS: Presentation overlay clear of JawLinkBolt_R
+PASS: Presentation overlay clear of PhotoJointBolt_03
+PASS: Presentation overlay clear of BaseBolt_R
+PASS: Presentation overlay clear of PhotoJointBolt_01
+PASS: Presentation overlay clear of PhotoFingerEndBolt_R
+PASS: Presentation overlay clear of PhotoJawHookTip_R
+PASS: Presentation overlay clear of PhotoJawRoundEnd_R_00
+PASS: Presentation overlay clear of PhotoJawRoundEnd_R_01
+PASS: Presentation overlay clear of PhotoJawRoundEnd_R_02
+PASS: Presentation overlay clear of PhotoJawRoundEnd_R_03
+PASS: Presentation overlay clear of PhotoJawGripTooth_R_00
+PASS: Presentation overlay clear of PhotoJawGripTooth_R_01
+PASS: Presentation overlay clear of PhotoJawGripTooth_R_02
+PASS: Presentation overlay clear of TopLink_L
+PASS: Presentation overlay clear of TopLink_R
+PASS: Presentation overlay clear of GripperServoFrontCover_Visual
+PASS: Presentation overlay clear of GripperServoCoverBolt_00
+PASS: Presentation overlay clear of GripperServoCoverBolt_01
+PASS: Presentation overlay clear of GripperServoCoverBolt_02
+PASS: Presentation overlay clear of GripperServoCoverBolt_03
+PASS: Presentation overlay clear of GripperServoMountEar_L
+PASS: Presentation overlay clear of GripperLinkageSidePlate_L
+PASS: Presentation overlay clear of GripperSidePlateBolt_L
+PASS: Presentation overlay clear of GripperServoMountEar_R
+PASS: Presentation overlay clear of GripperLinkageSidePlate_R
+PASS: Presentation overlay clear of GripperSidePlateBolt_R
+PASS: Presentation overlay clear of GripperServoOutputBoss_Visual
+PASS: Presentation overlay clear of GripperServoOutputShaft_Visual
+PASS: Presentation overlay clear of GripperGearCarrier_Visual
+PASS: Presentation overlay clear of GripperCarrierArm_L
+PASS: Presentation overlay clear of GripperCarrierArm_R
+PASS: Presentation overlay clear of GripperServoEndCase_Lower
+PASS: Presentation overlay clear of GripperServoCaseSeam_Lower
+PASS: Presentation overlay clear of GripperServoEndCase_Upper
+PASS: Presentation overlay clear of GripperServoCaseSeam_Upper
+PASS: Presentation overlay clear of GripperLowerGearCarrier_Visual
+PASS: Presentation overlay clear of GripperLowerCarrierArm_L
+PASS: Presentation overlay clear of GripperLowerCarrierArm_R
+PASS: Presentation overlay clear of GripperM4UpperPlate_Visual
+PASS: Presentation overlay clear of GripperM4UpperWasher_L
+PASS: Presentation overlay clear of GripperM4UpperBolt_L
+PASS: Presentation overlay clear of GripperM4UpperWasher_R
+PASS: Presentation overlay clear of GripperM4UpperBolt_R
+PASS: Presentation overlay clear of GripperM4BridgeSpine_Visual
+PASS: Presentation overlay clear of GripperM4BridgeShoulder_L
+PASS: Presentation overlay clear of GripperM4BridgeWasher_L
+PASS: Presentation overlay clear of GripperM4BridgeBolt_L
+PASS: Presentation overlay clear of GripperM4BridgeShoulder_R
+PASS: Presentation overlay clear of GripperM4BridgeWasher_R
+PASS: Presentation overlay clear of GripperM4BridgeBolt_R
+PASS: Presentation overlay clear of GripperM4BridgeRecess_Visual
+PASS: Presentation overlay clear of M3OutputFlangeBolt_00
+PASS: Presentation overlay clear of M3OutputFlangeBolt_01
+PASS: Presentation overlay clear of M3OutputFlangeBolt_02
+PASS: Presentation overlay clear of M3OutputFlangeBolt_03
+PASS: Presentation overlay clear of WristRollOutputHub_Visual
+PASS: Presentation overlay clear of WristPitchOutputHub_Visual
+PASS: Presentation overlay clear of Body
+PASS: Presentation overlay clear of CaseSeam_Lower
+PASS: Presentation overlay clear of CaseSeam_Upper
+PASS: Presentation overlay clear of EndCase_Lower
+PASS: Presentation overlay clear of MountingEar_Lower
+PASS: Presentation overlay clear of EarBolt_Lower_L
+PASS: Presentation overlay clear of EarBolt_Lower_R
+PASS: Presentation overlay clear of EndCase_Upper
+PASS: Presentation overlay clear of MountingEar_Upper
+PASS: Presentation overlay clear of EarBolt_Upper_L
+PASS: Presentation overlay clear of EarBolt_Upper_R
+PASS: Presentation overlay clear of OutputBoss
+PASS: Presentation overlay clear of CableExit
+PASS: Presentation overlay clear of M3ServoSidePlate_Lower
+PASS: Presentation overlay clear of M3ServoPlateBolt_Lower_A
+PASS: Presentation overlay clear of M3ServoPlateBolt_Lower_B
+PASS: Presentation overlay clear of M3ServoSidePlate_Upper
+PASS: Presentation overlay clear of M3ServoPlateBolt_Upper_A
+PASS: Presentation overlay clear of M3ServoPlateBolt_Upper_B
+PASS: Presentation overlay clear of M3BracketBase_Visual
+PASS: Presentation overlay clear of M2ToM3LBracketReturn_Left
+PASS: Presentation overlay clear of M2ToM3LBracketBolt_Left
+PASS: Presentation overlay clear of M3BracketConnector_Visual
+PASS: Presentation overlay clear of M2ToM3LBracketReturn_Right
+PASS: Presentation overlay clear of M2ToM3LBracketBolt_Right
+PASS: Presentation overlay clear of M2ServoRoof_Visual
+PASS: Presentation overlay clear of M2ServoRoofRound_Visual
+PASS: Presentation overlay clear of M2ServoRoofBolt_00
+PASS: Presentation overlay clear of M2ServoRoofBolt_01
+PASS: Presentation overlay clear of M3MountingEarBolt_Left
+PASS: Presentation overlay clear of M3MountingEarBolt_Right
+PASS: Presentation overlay clear of WristJointCollar_Visual
+PASS: Presentation overlay clear of Body
+PASS: Presentation overlay clear of CaseSeam_Lower
+PASS: Presentation overlay clear of CaseSeam_Upper
+PASS: Presentation overlay clear of EndCase_Lower
+PASS: Presentation overlay clear of MountingEar_Lower
+PASS: Presentation overlay clear of EarBolt_Lower_L
+PASS: Presentation overlay clear of EarBolt_Lower_R
+PASS: Presentation overlay clear of EndCase_Upper
+PASS: Presentation overlay clear of MountingEar_Upper
+PASS: Presentation overlay clear of EarBolt_Upper_L
+PASS: Presentation overlay clear of EarBolt_Upper_R
+PASS: Presentation overlay clear of OutputBoss
+PASS: Presentation overlay clear of OutputShaft
+PASS: Presentation overlay clear of OutputHorn
+PASS: Presentation overlay clear of CableExit
+PASS: Presentation overlay clear of WristPitchBracketBase_Visual
+PASS: Presentation overlay clear of WristPitchBracketPlate_Left
+PASS: Presentation overlay clear of WristPitchPivotBolt_Left
+PASS: Presentation overlay clear of WristPitchBearingSeat_Left
+PASS: Presentation overlay clear of WristPitchBearingCollar_Left
+PASS: Presentation overlay clear of WristPitchOutputBolt_Left_A
+PASS: Presentation overlay clear of WristPitchOutputBolt_Left_B
+PASS: Presentation overlay clear of WristPitchFrameBolt_Left_Lower
+PASS: Presentation overlay clear of WristPitchFrameBolt_Left_Upper
+PASS: Presentation overlay clear of WristPitchBracketPlate_Right
+PASS: Presentation overlay clear of WristPitchPivotBolt_Right
+PASS: Presentation overlay clear of WristPitchBearingSeat_Right
+PASS: Presentation overlay clear of WristPitchBearingCollar_Right
+PASS: Presentation overlay clear of WristPitchOutputBolt_Right_A
+PASS: Presentation overlay clear of WristPitchOutputBolt_Right_B
+PASS: Presentation overlay clear of WristPitchFrameBolt_Right_Lower
+PASS: Presentation overlay clear of WristPitchFrameBolt_Right_Upper
+PASS: Presentation overlay clear of ElbowRollRotatingPlate
+PASS: Presentation overlay clear of ElbowPitchServoBody
+PASS: Presentation overlay clear of ServoMountEar_L
+PASS: Presentation overlay clear of ServoMountEar_R
+PASS: Presentation overlay clear of M1ServoSupportFoot_Visual
+PASS: Presentation overlay clear of M1ServoSupportRail_L
+PASS: Presentation overlay clear of M1ServoSupportRail_R
+PASS: Presentation overlay clear of ElbowPitchServoEndCase_Front
+PASS: Presentation overlay clear of ElbowPitchServoEndCase_Rear
+PASS: Presentation overlay clear of TwoTop
+PASS: Presentation overlay clear of TwoUpperRight
+PASS: Presentation overlay clear of TwoMiddle
+PASS: Presentation overlay clear of TwoLowerLeft
+PASS: Presentation overlay clear of TwoBottom
+PASS: Presentation overlay clear of ZeroTop
+PASS: Presentation overlay clear of ZeroBottom
+PASS: Presentation overlay clear of ZeroLeft
+PASS: Presentation overlay clear of ZeroRight
+PASS: Presentation overlay clear of M0ServoOutputShaft
+PASS: Presentation overlay clear of M0ServoOutputHub
+PASS: Presentation overlay clear of PlatformBolt_00
+PASS: Presentation overlay clear of PlatformBolt_01
+PASS: Presentation overlay clear of PlatformBolt_02
+PASS: Presentation overlay clear of PlatformBolt_03
+PASS: Presentation overlay clear of PlatformBolt_04
+PASS: Presentation overlay clear of PlatformBolt_05
+PASS: Presentation overlay G51 visual renderers checked
+CAPTURE 1280x720_05_presentation_live 1280x720
+PASS: Presentation return restores open / size / camera preference
+PASS: clickable HIDE CONTROLS
+PASS: actual pointer hit HIDE CONTROLS
+PASS: Presentation retains closed Dock state
+PASS: camera position / rotation / FOV unchanged
+PASS: layout / Presentation preserve commands, epoch and stream owner
+PASS: UI cycle physical UART disconnected / TX=0
+PASS: ESC returns to Studio without opening initial setup
+PASS: clickable Background menu toggle
+PASS: actual pointer hit Background menu toggle
+PASS: Factory availability remains honest
+NOT TESTED Factory visual: existing compatible Factory prefab unavailable
+PASS: clickable SIMULATION GRID
+PASS: actual pointer hit SIMULATION GRID
+PASS: existing Studio / Grid selection retained
+PASS: fixture receives a valid frame
+PASS: short frame jitter does not flicker preview
+PASS: stale hides camera after grace / no device restart
+CAPTURE 1920x1080_fixture_06_presentation_no_frames 1920x1080
+PASS: same-stream recovery automatically displays camera
+CAPTURE 1920x1080_fixture_07_camera_recovered 1920x1080
+PASS: black frame / no person remains a valid stream
+CAPTURE 1920x1080_fixture_08_black_frame_receiving 1920x1080
+PASS: device unavailable hides preview without destroying stream
+PASS: device / frame recovery retains owner
+PASS: clickable Preview toggle
+PASS: actual pointer hit Preview toggle
+PASS: Camera OFF collapses unused height
+CAPTURE 1920x1080_fixture_10_camera_off_compact_dock 1920x1080
+PASS: Camera OFF hides receiving stream without stopping it
+CAPTURE 1920x1080_fixture_09_presentation_camera_off 1920x1080
+PASS: clickable Preview toggle
+PASS: actual pointer hit Preview toggle
+PASS: short frame jitter does not flicker preview
+PASS: stale hides camera after grace / no device restart
+CAPTURE 1280x720_fixture_06_presentation_no_frames 1280x720
+PASS: same-stream recovery automatically displays camera
+CAPTURE 1280x720_fixture_07_camera_recovered 1280x720
+PASS: black frame / no person remains a valid stream
+CAPTURE 1280x720_fixture_08_black_frame_receiving 1280x720
+PASS: device unavailable hides preview without destroying stream
+PASS: device / frame recovery retains owner
+PASS: clickable Preview toggle
+PASS: actual pointer hit Preview toggle
+PASS: Camera OFF collapses unused height
+CAPTURE 1280x720_fixture_10_camera_off_compact_dock 1280x720
+PASS: Camera OFF hides receiving stream without stopping it
+CAPTURE 1280x720_fixture_09_presentation_camera_off 1280x720
+PASS: clickable Preview toggle
+PASS: actual pointer hit Preview toggle
+PASS: clickable MENU
+PASS: actual pointer hit MENU
+PASS: clickable START
+PASS: actual pointer hit START
+PASS: G51 existing virtual joint Transform changes through original controller
+PASS: virtual joint fixture physical UART disconnected / TX=0
+PASS: clickable MENU
+PASS: actual pointer hit MENU
+PASS: original setup reopens without redesigned Dock
+PASS: clickable START
+PASS: actual pointer hit START
+PASS: START accepted Robot 0 Input 0
+PASS: selected Input arrives at Control Studio 0
+PASS: selected existing Robot arrives at Control Studio 0
+PASS: existing selected model active
+CAPTURE setup_robot0_input0 1280x720
+PASS: setup combination physical UART disconnected / TX=0
+PASS: existing Servo details accessible
+CAPTURE setup_robot0_servo_details 1280x720
+PASS: clickable MENU
+PASS: actual pointer hit MENU
+PASS: original setup reopens without redesigned Dock
+PASS: clickable START
+PASS: actual pointer hit START
+PASS: START accepted Robot 0 Input 1
+PASS: selected Input arrives at Control Studio 1
+PASS: selected existing Robot arrives at Control Studio 0
+PASS: existing selected model active
+CAPTURE setup_robot0_input1 1280x720
+PASS: setup combination physical UART disconnected / TX=0
+PASS: existing CSV source controls accessible
+CAPTURE setup_robot0_csv_details 1280x720
+PASS: clickable MENU
+PASS: actual pointer hit MENU
+PASS: original setup reopens without redesigned Dock
+PASS: clickable START
+PASS: actual pointer hit START
+PASS: START accepted Robot 0 Input 2
+PASS: selected Input arrives at Control Studio 2
+PASS: selected existing Robot arrives at Control Studio 0
+PASS: existing selected model active
+CAPTURE setup_robot0_input2 1280x720
+PASS: setup combination physical UART disconnected / TX=0
+PASS: clickable MENU
+PASS: actual pointer hit MENU
+PASS: original setup reopens without redesigned Dock
+PASS: clickable START
+PASS: actual pointer hit START
+PASS: START accepted Robot 1 Input 0
+PASS: selected Input arrives at Control Studio 0
+PASS: selected existing Robot arrives at Control Studio 1
+PASS: existing selected model active
+CAPTURE setup_robot1_input0 1280x720
+PASS: setup combination physical UART disconnected / TX=0
+PASS: existing Servo details accessible
+CAPTURE setup_robot1_servo_details 1280x720
+PASS: clickable MENU
+PASS: actual pointer hit MENU
+PASS: original setup reopens without redesigned Dock
+PASS: clickable START
+PASS: actual pointer hit START
+PASS: START accepted Robot 1 Input 1
+PASS: selected Input arrives at Control Studio 1
+PASS: selected existing Robot arrives at Control Studio 1
+PASS: existing selected model active
+CAPTURE setup_robot1_input1 1280x720
+PASS: setup combination physical UART disconnected / TX=0
+PASS: existing CSV source controls accessible
+CAPTURE setup_robot1_csv_details 1280x720
+PASS: clickable MENU
+PASS: actual pointer hit MENU
+PASS: original setup reopens without redesigned Dock
+PASS: clickable START
+PASS: actual pointer hit START
+PASS: START accepted Robot 1 Input 2
+PASS: selected Input arrives at Control Studio 2
+PASS: selected existing Robot arrives at Control Studio 1
+PASS: existing selected model active
+CAPTURE setup_robot1_input2 1280x720
+PASS: setup combination physical UART disconnected / TX=0
+RESULT=PASS
