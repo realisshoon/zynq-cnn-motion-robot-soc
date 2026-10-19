@@ -1,0 +1,6 @@
+PASS: Python sender fixture → UDP → 6 RAW joints / 4 links / low confidence / matching preview
+PASS: old/duplicate/malformed rejected
+PASS: no detection clears geometry; no HOLD
+PASS: timeout disconnect + clear
+PASS: sender restart accepts frame 0
+PASS: retired session rejected / receiver disable-enable port cleanup

@@ -1,0 +1,547 @@
+{
+  "version": "CNN-v4.0",
+  "geometry_status": "IMPLEMENTATION_BASELINE_NOT_CHECKPOINT_ATTESTED",
+  "joints": [
+    {
+      "joint": 0,
+      "grid_row": 7,
+      "grid_col": 8,
+      "offset_y": 22,
+      "offset_x": 240,
+      "x": 697,
+      "y": 285,
+      "score_raw": 42,
+      "valid": true,
+      "word": 705811129
+    },
+    {
+      "joint": 1,
+      "grid_row": 7,
+      "grid_col": 10,
+      "offset_y": -55,
+      "offset_x": -379,
+      "x": 710,
+      "y": 267,
+      "score_raw": 31,
+      "valid": true,
+      "word": 521188038
+    },
+    {
+      "joint": 2,
+      "grid_row": 7,
+      "grid_col": 8,
+      "offset_y": -72,
+      "offset_x": 179,
+      "x": 682,
+      "y": 263,
+      "score_raw": 44,
+      "valid": true,
+      "word": 739275434
+    },
+    {
+      "joint": 3,
+      "grid_row": 6,
+      "grid_col": 10,
+      "offset_y": 328,
+      "offset_x": -261,
+      "x": 738,
+      "y": 277,
+      "score_raw": -13,
+      "valid": true,
+      "word": 4077998818
+    },
+    {
+      "joint": 4,
+      "grid_row": 7,
+      "grid_col": 8,
+      "offset_y": -51,
+      "offset_x": 71,
+      "x": 657,
+      "y": 268,
+      "score_raw": 9,
+      "valid": true,
+      "word": 152093329
+    },
+    {
+      "joint": 5,
+      "grid_row": 8,
+      "grid_col": 10,
+      "offset_y": 85,
+      "offset_x": -24,
+      "x": 794,
+      "y": 380,
+      "score_raw": 65,
+      "valid": true,
+      "word": 1092076314
+    },
+    {
+      "joint": 6,
+      "grid_row": 8,
+      "grid_col": 7,
+      "offset_y": 30,
+      "offset_x": 156,
+      "x": 597,
+      "y": 367,
+      "score_raw": 59,
+      "valid": true,
+      "word": 991359573
+    },
+    {
+      "joint": 7,
+      "grid_row": 9,
+      "grid_col": 11,
+      "offset_y": -83,
+      "offset_x": 92,
+      "x": 902,
+      "y": 420,
+      "score_raw": 27,
+      "valid": true,
+      "word": 454706054
+    },
+    {
+      "joint": 8,
+      "grid_row": 9,
+      "grid_col": 6,
+      "offset_y": 16,
+      "offset_x": -5,
+      "x": 479,
+      "y": 444,
+      "score_raw": 68,
+      "valid": true,
+      "word": 1142669791
+    },
+    {
+      "joint": 9,
+      "grid_row": 9,
+      "grid_col": 5,
+      "offset_y": 82,
+      "offset_x": -132,
+      "x": 369,
+      "y": 459,
+      "score_raw": 4,
+      "valid": true,
+      "word": 68989297
+    },
+    {
+      "joint": 10,
+      "grid_row": 9,
+      "grid_col": 5,
+      "offset_y": 105,
+      "offset_x": -153,
+      "x": 364,
+      "y": 465,
+      "score_raw": 34,
+      "valid": true,
+      "word": 572330348
+    },
+    {
+      "joint": 11,
+      "grid_row": 12,
+      "grid_col": 9,
+      "offset_y": -133,
+      "offset_x": 235,
+      "x": 776,
+      "y": 649,
+      "score_raw": 57,
+      "valid": true,
+      "word": 958960392
+    },
+    {
+      "joint": 12,
+      "grid_row": 12,
+      "grid_col": 8,
+      "offset_y": -131,
+      "offset_x": -100,
+      "x": 616,
+      "y": 649,
+      "score_raw": 96,
+      "valid": true,
+      "word": 1613271656
+    },
+    {
+      "joint": 13,
+      "grid_row": 14,
+      "grid_col": 9,
+      "offset_y": -13,
+      "offset_x": 188,
+      "x": 0,
+      "y": 0,
+      "score_raw": -9,
+      "valid": false,
+      "word": 4143972352
+    },
+    {
+      "joint": 14,
+      "grid_row": 14,
+      "grid_col": 8,
+      "offset_y": 9,
+      "offset_x": 22,
+      "x": 0,
+      "y": 0,
+      "score_raw": 14,
+      "valid": false,
+      "word": 234881024
+    },
+    {
+      "joint": 15,
+      "grid_row": 14,
+      "grid_col": 9,
+      "offset_y": 232,
+      "offset_x": 59,
+      "x": 0,
+      "y": 0,
+      "score_raw": -63,
+      "valid": false,
+      "word": 3238002688
+    },
+    {
+      "joint": 16,
+      "grid_row": 15,
+      "grid_col": 8,
+      "offset_y": 42,
+      "offset_x": -37,
+      "x": 0,
+      "y": 0,
+      "score_raw": -54,
+      "valid": false,
+      "word": 3388997632
+    }
+  ],
+  "markers": [
+    {
+      "found": false,
+      "count": 0,
+      "x": 0,
+      "y": 0,
+      "word": 0
+    },
+    {
+      "found": false,
+      "count": 0,
+      "x": 0,
+      "y": 0,
+      "word": 0
+    }
+  ],
+  "layers": [
+    {
+      "name": "features.conv0.conv",
+      "shape": [
+        128,
+        128,
+        24
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "f96af1a0427c64e74d03409c452f6a5e766e54500e9b9354ad846be3c9f11038"
+    },
+    {
+      "name": "features.conv1.depthwise",
+      "shape": [
+        128,
+        128,
+        24
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "89168040fbac6e9c8eca344d971c588f221a549f2f07c9f3f47f928be0c21ee4"
+    },
+    {
+      "name": "features.conv1.pointwise",
+      "shape": [
+        128,
+        128,
+        48
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "1c554221535795a444b90fa4851d873ddad82030046269e51cd83239ff16d559"
+    },
+    {
+      "name": "features.conv2.depthwise",
+      "shape": [
+        64,
+        64,
+        48
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "811646fe00f302c8c74a24141cba8c14fe0e93ce0eb8954730c8eabf5529332a"
+    },
+    {
+      "name": "features.conv2.pointwise",
+      "shape": [
+        64,
+        64,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "eb8881ce61c1367b2f102b4364050b6fe1cfa140dca929bae5624ea63539822a"
+    },
+    {
+      "name": "features.conv3.depthwise",
+      "shape": [
+        64,
+        64,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "0a24eade2ea4764c64822c5f642c92fcefe5b5f7d7964659bba1ccf7b430d366"
+    },
+    {
+      "name": "features.conv3.pointwise",
+      "shape": [
+        64,
+        64,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "17ca06382b61e1628484aba9ce8338e16ea5f60decd3feb6a724e9e8a2eedebb"
+    },
+    {
+      "name": "features.conv4.depthwise",
+      "shape": [
+        32,
+        32,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "681be67ed5a8f760c1cd7ef7e61ab9dc3b3b54652a74b5803a035ed7eac98cb6"
+    },
+    {
+      "name": "features.conv4.pointwise",
+      "shape": [
+        32,
+        32,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "504876cb0480030bd6f6105d5902cefa8adf4748695bcac208f876bf7c666358"
+    },
+    {
+      "name": "features.conv5.depthwise",
+      "shape": [
+        32,
+        32,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "f77cc2ade308a07bd6c451cf0e352512da1d0b0df38b06ee825be38ae13d3830"
+    },
+    {
+      "name": "features.conv5.pointwise",
+      "shape": [
+        32,
+        32,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "3927dbd955ae2858a582b8221dad106e23723ca9d2f80aa07a1da569bf60b3a3"
+    },
+    {
+      "name": "features.conv6.depthwise",
+      "shape": [
+        16,
+        16,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "91268b6988cadda6b1e27048e1d67d2115b2bca3dbadde7dfd0fb33fc6b93bae"
+    },
+    {
+      "name": "features.conv6.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "82444b300428e57c47b695e75fca62325d54312c9bc4a87418323db525960a13"
+    },
+    {
+      "name": "features.conv7.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "81f1879ecae42f125bf0a5fe4f1c4ba00e06d8e6d75768e60babb18332c9e7c1"
+    },
+    {
+      "name": "features.conv7.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "0a5a0d1abc330439ca4413bef4de65a358ab2101103a92cb03774cd5fa3e17a9"
+    },
+    {
+      "name": "features.conv8.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "be2c588ed8d4ac36b76a2dc9aab5dda5e8bb616aff1f7f3095c9369d4af566eb"
+    },
+    {
+      "name": "features.conv8.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "072dc89c2801ae0966681321e09672f1cd482f921bf66a5404f5a125ae85e66f"
+    },
+    {
+      "name": "features.conv9.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "30bbafa5d60148eeb0fab167163210446024998fbed8fbd5db7e0d2830326694"
+    },
+    {
+      "name": "features.conv9.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "8dd796742d801fb6925a6ea000878a665bb614d5469778f694c0d46b72bd0b48"
+    },
+    {
+      "name": "features.conv10.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "66e6b3f6355fa9e124c568848160712ba61cc91c4937a18a5da6560589b19a5c"
+    },
+    {
+      "name": "features.conv10.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "bd09eec250578327b972a386826d936319635291a15ec3f76905d04c9146b1d4"
+    },
+    {
+      "name": "features.conv11.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "02b3f68ceeca4e633dcf6c77f1c36f0967e7918afcf93dc983fb063df68f374c"
+    },
+    {
+      "name": "features.conv11.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "d96b29ca96aefa7ebd44cc85502098db86513248aa5562eff13becd6b3eba836"
+    },
+    {
+      "name": "features.conv12.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "89ef63016734186c24939bb7e728b97e349df2d4677b3a2de68a609fe578daa4"
+    },
+    {
+      "name": "features.conv12.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "9e6ce4e2118b3e693716f7eb6cab0efc1a8e81d321343392dc36dabdf7720fbe"
+    },
+    {
+      "name": "features.conv13.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "b753114a7b5d3f175549d13bf1a79861c92402846fae46f63c34e17314d1bfa9"
+    },
+    {
+      "name": "features.conv13.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "da86e66ebfabe8e6340bbcd715e06497669d27f9ee305b0fb3dfbb4c4b551e52"
+    },
+    {
+      "name": "heatmap",
+      "shape": [
+        16,
+        16,
+        17
+      ],
+      "min": -128,
+      "max": 96,
+      "sha256": "221fb90732998463548ed8dc6e35b1fb37ebc0283f56b4a603c2069bdf212e45"
+    },
+    {
+      "name": "offset",
+      "shape": [
+        16,
+        16,
+        34
+      ],
+      "min": -1097,
+      "max": 673,
+      "sha256": "0bb0aa88967f80fef60eac9cf058a06695ccbefdb685eb6e0c936a915ed4e84d"
+    }
+  ]
+}

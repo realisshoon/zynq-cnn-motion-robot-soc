@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "frames": 20,
+  "pose_detected_frames": 20,
+  "elapsed_sec": 2.3850736001040787,
+  "processing_fps": 8.38548546222106,
+  "capture_read_to_udp_mean_ms": 53.20402383804321,
+  "capture_read_to_udp_max_ms": 115.22507667541504,
+  "note": "장치 read 반환 이후 시간. 실제 동작/카메라 내부 버퍼/Unity 화면 지연은 사용자 확인 필요."
+}

@@ -1,0 +1,25 @@
+# Dual Robot 검증
+
+- PASS: 두 팔 내부 component reference 독립 / 양수 scale
+- PASS: UDP receiver component 정확히 1개
+- PASS: RobotArm_L G51 v2 visual 보존
+- PASS: RobotArm_L G51 v3 bolt visual 8개 보존 (Scene 조명 제외)
+- PASS: RobotArm_R G51 v2 visual 보존
+- PASS: RobotArm_R G51 v3 bolt visual 8개 보존 (Scene 조명 제외)
+- PASS: 기존 Manual command API 적용
+- PASS: Shoulder 90→140
+- PASS: Elbow 90→40
+- PASS: Elbow 40→90
+- PASS: G51 linkage gripper 0→1
+- PASS: invalid command HOLD
+- PASS: 실제 Play Update로 전체 8단계 진행
+- PASS: Left grab/carry → Right handoff/carry
+- PASS: handoff world position 보존
+- PASS: Reset ownership / ball 위치 복원
+- PASS: UDP 127.0.0.1:5005 실제 수신 → 오른팔 Base 적용
+- PASS: 오른팔 UDP 입력 중 왼팔 transform 독립
+- PASS: invalid HOLD / duplicate stale / malformed 회귀
+- PASS: burst 최신 frame 1200 적용
+- PASS: mode 전환 receiver thread Join
+- PASS: mode 전환 후 port 재bind
+- PASS: Play 종료 후 UDP 5005 재bind 가능

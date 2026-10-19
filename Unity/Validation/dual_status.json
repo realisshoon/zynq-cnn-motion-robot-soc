@@ -1,0 +1,34 @@
+{
+    "phase": 5,
+    "utcMs": 1789988340987,
+    "playing": true,
+    "listening": true,
+    "stage": "Idle",
+    "owner": "None",
+    "frame": 1354,
+    "applied": 1183,
+    "received": 1354,
+    "stale": 0,
+    "command": {
+        "frame_id": 1354,
+        "base_deg": 42.50959014892578,
+        "shoulder_deg": 110.97808074951172,
+        "elbow_deg": 170.0,
+        "wrist_pitch_deg": 151.70822143554688,
+        "wrist_roll_deg": 136.06045532226563,
+        "gripper_norm": 1.0,
+        "valid": true
+    },
+    "leftGrab": {
+        "x": -0.26145535707473757,
+        "y": 0.5642529726028442,
+        "z": 0.05164162069559097
+    },
+    "rightGrab": {
+        "x": 0.21100983023643495,
+        "y": 0.051720030605793,
+        "z": -0.1758505254983902
+    },
+    "baseAngle": -47.49041748046875,
+    "error": ""
+}

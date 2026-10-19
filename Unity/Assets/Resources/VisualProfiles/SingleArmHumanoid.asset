@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 21af25324ccb482592a85dd468b70c64, type: 3}
+  m_Name: SingleArmHumanoid
+  m_EditorClassIdentifier: Assembly-CSharp::HumanMotion.ControlStudio.RobotVisualProfileDefinition
+  id: 1
+  displayName: Humanoid Single Arm
+  prefab: {fileID: 4097945939143826082, guid: b547132968afef244ad8ff907b27e5d2, type: 3}
+  rightArmLive: 1
+  leftArmPreview: 0

@@ -1,0 +1,24 @@
+# Simple starter materials for Unity import
+newmtl ServoBody
+Kd 0.08 0.08 0.08
+Ka 0.01 0.01 0.01
+Ks 0.25 0.25 0.25
+Ns 48
+
+newmtl Metal
+Kd 0.62 0.62 0.62
+Ka 0.05 0.05 0.05
+Ks 0.75 0.75 0.75
+Ns 96
+
+newmtl WireExit
+Kd 0.18 0.18 0.18
+Ka 0.02 0.02 0.02
+Ks 0.15 0.15 0.15
+Ns 20
+
+newmtl CableConnector
+Kd 0.12 0.12 0.12
+Ka 0.02 0.02 0.02
+Ks 0.18 0.18 0.18
+Ns 24

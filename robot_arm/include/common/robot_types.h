@@ -1,0 +1,101 @@
+#ifndef COMMON_ROBOT_TYPES_H
+#define COMMON_ROBOT_TYPES_H
+
+#include <stdint.h>
+
+/* A point measured in camera pixel coordinates. */
+typedef struct {
+    float x;
+    float y;
+    uint8_t valid;
+} Point2D;
+
+/* A point expressed in three-dimensional coordinates. */
+typedef struct {
+    float x;
+    float y;
+    float z;
+    uint8_t valid;
+} Point3D;
+
+/* Optional same-camera gripper observation. source: 0=use ordinary pose
+ * landmarks, 1=left camera, 2=right camera. Never mix cameras within a triplet. */
+typedef struct {
+    Point2D wrist, finger1, finger2;
+    uint8_t source;
+    float reference_span_px; /* elbow-to-wrist length in the selected camera */
+} HumanGripper2D;
+
+/* Pose detector output consumed by the human target angle module. */
+typedef struct {
+    Point2D finger1; /* thumb tip */
+    Point2D finger2; /* index fingertip */
+    Point2D elbow;
+    Point2D wrist;
+    Point2D shoulder_l;
+    Point2D shoulder_r;
+
+    uint32_t frame_id;
+    uint8_t valid;
+    HumanGripper2D gripper_2d;
+} HumanPose2D;
+
+typedef struct {
+    Point3D finger1, finger2;
+    Point3D elbow, wrist;
+    Point3D shoulder_l, shoulder_r;
+    uint32_t frame_id;
+    uint8_t valid;
+} HumanPose3D;
+
+/* Legacy six-axis human target. Existing Agent2/integration still consumes
+ * this type; do not reinterpret HumanForearmTarget as this structure. */
+typedef struct {
+    float base_deg;
+
+    float shoulder_deg;
+    float elbow_deg;
+    float wrist_pitch_deg;
+    float wrist_roll_deg;
+
+    float gripper_norm;
+
+    uint8_t valid;
+} HumanJointTarget;
+
+/* Five-axis HUMAN angles: Agent1 -> Agent2 (not robot servo commands).
+ * elbow_roll: Body +Y azimuth, zero +Z, positive toward +X, [-180,180).
+ * elbow_pitch: elevation above Body XZ, +Body Y positive, [-90,90].
+ * Neither field is the legacy anatomical elbow inner angle.
+ * wrist_pitch: positive about projected thumb-to-index (Finger1->Finger2) axis, [-180,180).
+ * wrist_roll: RH about Elbow->Wrist relative to Body/forearm reference,
+ * [-180,180). See docs/agent1_forearm.md for zero and singularities.
+ * gripper: continuous 0=CLOSE through 1=OPEN.
+ * frame_id retains the last fresh major measurement's ID during HOLD.
+ * valid covers major geometry only. wrist_valid records whether a wrist angle
+ * has ever been reconstructed for this target; hand_fresh marks a current
+ * frame observation. A valid major target may have wrist_valid=0.
+ * gripper_valid records whether a 2D gripper observation has been accepted;
+ * it remains valid during a dropout so the last gripper target can be held.
+ * A fresh 2D gripper observation may update while wrist angles are held. */
+typedef struct {
+    float elbow_roll_deg, elbow_pitch_deg;
+    float wrist_pitch_deg, wrist_roll_deg, gripper_norm;
+    uint32_t frame_id;
+    uint8_t valid, elbow_roll_observable, hand_fresh, wrist_valid;
+    uint8_t gripper_valid;
+} HumanForearmTarget;
+
+/* Active five-axis calibrated robot command: Agent2 -> Agent3.
+ * Geometry/mapping contract: forearm_safety_check.h, forearm_motion_control.h. */
+typedef struct {
+    float elbow_roll_deg;   /* M0 */
+    float elbow_pitch_deg;  /* M1 */
+    float wrist_pitch_deg;  /* M2 */
+    float wrist_roll_deg;   /* M3 */
+    float gripper_norm;     /* M4, 0=CLOSE, 1=OPEN */
+
+    uint8_t valid;
+} ForearmJointCommand;
+
+#endif /* COMMON_ROBOT_TYPES_H */

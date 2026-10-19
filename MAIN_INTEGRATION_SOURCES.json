@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "stage": "STEP_2",
+  "description": "main 기준 통합 후보의 원본 SHA, 경로, Git 객체 비교 결과와 미해결 호환성 문제를 기록한다. 기능 변경과 실행 검증은 수행하지 않았다.",
+  "repository": "https://github.com/realisshoon/zynq-cnn-motion-robot-soc",
+  "integration_branch": "release/main-consolidation-20261019",
+  "base": {
+    "branch": "main",
+    "commit": "40d838b52f9df550a9e2dbbd3f8d8b0e0101173c"
+  },
+  "remote_refs_rechecked": true,
+  "source_directories": [
+    {
+      "source_branch": "dev/cnn",
+      "source_commit": "8f3bbb9afbe476be09bbd979952190e9c6272c87",
+      "source_path": "CNN/rtl",
+      "integration_path": "CNN/rtl",
+      "source_tree": "3d2face26c4bd1ae9ed4ce1297f4cead272fe1a1",
+      "source_tracked_files": 16,
+      "initial_import_tree": "3d2face26c4bd1ae9ed4ce1297f4cead272fe1a1",
+      "integrated_tree": "3d2face26c4bd1ae9ed4ce1297f4cead272fe1a1",
+      "comparison_tree_excluding_approved_additions": "3d2face26c4bd1ae9ed4ce1297f4cead272fe1a1",
+      "approved_additions": [],
+      "result": "EXACT_TREE_MATCH"
+    },
+    {
+      "source_branch": "dev/cnn",
+      "source_commit": "8f3bbb9afbe476be09bbd979952190e9c6272c87",
+      "source_path": "CNN/tb",
+      "integration_path": "CNN/tb",
+      "source_tree": "e7d3f9fea8c691bcc0ac72e61e731dcb241b8ecd",
+      "source_tracked_files": 15,
+      "initial_import_tree": "e7d3f9fea8c691bcc0ac72e61e731dcb241b8ecd",
+      "integrated_tree": "e7d3f9fea8c691bcc0ac72e61e731dcb241b8ecd",
+      "comparison_tree_excluding_approved_additions": "e7d3f9fea8c691bcc0ac72e61e731dcb241b8ecd",
+      "approved_additions": [],
+      "result": "EXACT_TREE_MATCH"
+    },
+    {
+      "source_branch": "dev/cnn",
+      "source_commit": "8f3bbb9afbe476be09bbd979952190e9c6272c87",
+      "source_path": "CNN/docs",
+      "integration_path": "CNN/docs",
+      "source_tree": "39f64095cbec0a1a983057e687a36f087c72bc9d",
+      "source_tracked_files": 25,
+      "initial_import_tree": "39f64095cbec0a1a983057e687a36f087c72bc9d",
+      "integrated_tree": "39f64095cbec0a1a983057e687a36f087c72bc9d",
+      "comparison_tree_excluding_approved_additions": "39f64095cbec0a1a983057e687a36f087c72bc9d",
+      "approved_additions": [],
+      "result": "EXACT_TREE_MATCH"
+    },
+    {
+      "source_branch": "dev/cnn",
+      "source_commit": "8f3bbb9afbe476be09bbd979952190e9c6272c87",
+      "source_path": "CNN/golden_py_model",
+      "integration_path": "CNN/golden_py_model",
+      "source_tree": "f531b2be24e2722309e56d4dd333f5c3160cfc71",
+      "source_tracked_files": 749,
+      "initial_import_tree": "f531b2be24e2722309e56d4dd333f5c3160cfc71",
+      "integrated_tree": "bfe521bd2bafa6dc163aafa5a1ccada5ddc0173b",
+      "comparison_tree_excluding_approved_additions": "f531b2be24e2722309e56d4dd333f5c3160cfc71",
+      "approved_additions": [
+        "CNN/golden_py_model/requirements.txt"
+      ],
+      "result": "EXACT_SOURCE_WITH_APPROVED_ADDITION"
+    },
+    {
+      "source_branch": "val/cnn/integration",
+      "source_commit": "eb62194967a8764e6725d609bf247158ecaa7471",
+      "source_path": "CNN/uvm",
+      "integration_path": "CNN/uvm",
+      "source_tree": "183f103acf1423b43627758e1ad2555ee15cdbc1",
+      "source_tracked_files": 130,
+      "initial_import_tree": "183f103acf1423b43627758e1ad2555ee15cdbc1",
+      "integrated_tree": "183f103acf1423b43627758e1ad2555ee15cdbc1",
+      "comparison_tree_excluding_approved_additions": "183f103acf1423b43627758e1ad2555ee15cdbc1",
+      "approved_additions": [],
+      "result": "EXACT_TREE_MATCH"
+    },
+    {
+      "source_branch": "dev/integration",
+      "source_commit": "43895a84857e19b3e53a8c5ebdc54e35a4847b9e",
+      "source_path": "robot_arm",
+      "integration_path": "robot_arm",
+      "source_tree": "3d3f428daf754560ac38d9151aa702bec88dd888",
+      "source_tracked_files": 178,
+      "initial_import_tree": "3d3f428daf754560ac38d9151aa702bec88dd888",
+      "integrated_tree": "3d3f428daf754560ac38d9151aa702bec88dd888",
+      "comparison_tree_excluding_approved_additions": "3d3f428daf754560ac38d9151aa702bec88dd888",
+      "approved_additions": [],
+      "result": "EXACT_TREE_MATCH"
+    },
+    {
+      "source_branch": "dev/unity",
+      "source_commit": "86e08eccf32c13164d2b69ff0b591d01b9429527",
+      "source_path": "Unity",
+      "integration_path": "Unity",
+      "source_tree": "a66ee9f1efd46842711095cb00becac1c0dc59c2",
+      "source_tracked_files": 829,
+      "initial_import_tree": "a66ee9f1efd46842711095cb00becac1c0dc59c2",
+      "integrated_tree": "a66ee9f1efd46842711095cb00becac1c0dc59c2",
+      "comparison_tree_excluding_approved_additions": "a66ee9f1efd46842711095cb00becac1c0dc59c2",
+      "approved_additions": [],
+      "result": "EXACT_TREE_MATCH"
+    }
+  ],
+  "additional_dependency_files": [
+    {
+      "path": "CNN/golden_py_model/requirements.txt",
+      "source_branch": "val/cnn/integration",
+      "source_commit": "eb62194967a8764e6725d609bf247158ecaa7471",
+      "source_blob": "be24c841ab30622fbff0f6172f7dd3cd941f5215",
+      "integrated_blob": "be24c841ab30622fbff0f6172f7dd3cd941f5215",
+      "purpose": "UVM에서 추가한 NumPy 의존성. 원본 Golden subtree 비교에서 이 파일만 예외로 허용한다."
+    },
+    {
+      "path": "README_CNN_UVM_BASE.md",
+      "source_branch": "val/cnn/integration",
+      "source_commit": "eb62194967a8764e6725d609bf247158ecaa7471",
+      "source_blob": "f2889a5f2eaad1c97ffa4da2e2760f4ec9034a01",
+      "integrated_blob": "f2889a5f2eaad1c97ffa4da2e2760f4ec9034a01",
+      "purpose": "UVM 공통 환경과 VCS filelist 사용 설명의 원본을 보존한다."
+    }
+  ],
+  "preserved_base_files": [
+    {
+      "path": ".coderabbit.yaml",
+      "blob": "7295994453e03fbfd82bf89e8397cf77b9ce2b6e"
+    },
+    {
+      "path": "README.md",
+      "blob": "0da8735d4dd4f1cbadec9ff23755d7a1e7be8516"
+    }
+  ],
+  "inventory": {
+    "source_files": 1942,
+    "additional_dependency_files": 2,
+    "source_and_dependency_files": 1944,
+    "source_and_dependency_bytes": 1104487484,
+    "base_files": 2,
+    "provenance_files": 1,
+    "expected_total_tracked_files": 1947
+  },
+  "verification": {
+    "raw_import_tree": "54707f2cab78bec47fe6f848360add5789130d56",
+    "source_and_dependencies_tree_before_this_manifest": "a37aef7fd1fced11c11e63c4b21e012ffa75e59a",
+    "seven_initial_source_trees": "PASS",
+    "final_source_blobs_and_modes": "PASS",
+    "worktree_raw_blob_bytes": "PASS",
+    "dependency_blobs": "PASS",
+    "unexpected_paths": [],
+    "missing_source_files": [],
+    "path_collisions": [],
+    "lfs_pointer_files": [],
+    "lfs_note": "선택한 원본 경로에 LFS 포인터가 없으며 일반 Git blob 전체를 보존했다.",
+    "original_worktree_head_index_untracked_stash_and_existing_local_branches": "PASS",
+    "functional_validation": "NOT_RUN"
+  },
+  "blockers": [
+    {
+      "id": "RTL_FIRMWARE_IDS",
+      "status": "BLOCKED",
+      "description": "RTL VERSION/FEATURES/PACK_ID=0x00040003/0x0000000D/0xC9854BB2, Firmware 요구값=0x00040004/0x0000001D/0x77D4E3BB. 원본을 수정하지 않았다."
+    },
+    {
+      "id": "RGBY_REGISTER_MAP",
+      "status": "BLOCKED",
+      "description": "Firmware의 Yellow 0x104/0x108/0x10C 레지스터와 4비트 color-enable이 선택한 RTL과 다르다."
+    },
+    {
+      "id": "XSA_BOOT_PROVENANCE",
+      "status": "UNVERIFIED",
+      "description": "선택한 RTL, 현재 XSA, 과거 BOOT 및 현재 Firmware 소스 사이의 동일성은 확인되지 않았다."
+    },
+    {
+      "id": "UNITY_NATIVE_REBUILD",
+      "status": "BLOCKED",
+      "description": "포함된 Native 재빌드 스크립트는 과거 Robot 경로와 revision에 의존한다. 기존 DLL은 원본 그대로 보존한다."
+    },
+    {
+      "id": "UVM_RUNNERS_AND_VECTORS",
+      "status": "BLOCKED",
+      "description": "DMA 실행 스크립트, 일부 Directed TB 입력 벡터 및 UVM 생성 입력이 원본 Git에 없다. 임의로 생성하거나 expected/timeout/assertion을 변경하지 않았다."
+    },
+    {
+      "id": "GOLDEN_ARCHIVE_HASH",
+      "status": "BLOCKED",
+      "description": "원본 weights_export.zip SHA256은 manifest의 weights_sha256과 다르다. weights_v4.bin 크기와 packed_sha256은 일치한다."
+    }
+  ],
+  "step3_follow_up": [
+    "CNN RTL 필수 모듈과 Directed TB 입력 벡터 생성 경로 검증",
+    "Python packed Golden, 원본 archive 해시 차이 및 UVM 입력 생성 의존성 확인",
+    "UVM Common/Golden/Control/DMA-Stream compile 및 regression. 불가능한 항목은 BLOCKED 또는 NOT_RUN으로 기록",
+    "Vitis RIGHT/LEFT 빌드 및 XSA/BSP/BOOT 출처 검증",
+    "RTL/Firmware register map과 UART TK/A1/A2/P3 연동 검증",
+    "Unity Import/Windows x64 Build 및 Native DLL 재현성 검증",
+    "루트 README와 ignore 정리, 기존 추적 캐시·로그 및 개인 경로 검토"
+  ],
+  "scope": {
+    "functional_changes": false,
+    "readme_or_ignore_cleanup": false,
+    "source_artifact_cleanup": false,
+    "hardware_programming": false,
+    "robot_actuation": false,
+    "push": false,
+    "pull_request": false,
+    "main_merge": false
+  }
+}

@@ -1,0 +1,2 @@
+mediapipe==1.0.1
+opencv-contrib-python>=4.8,<5

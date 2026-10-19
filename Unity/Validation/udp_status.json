@@ -1,0 +1,45 @@
+{
+    "utc_ms": 1790411378778,
+    "playing": false,
+    "listening": false,
+    "lastStopJoined": false,
+    "cleanupObserved": false,
+    "mode": 1,
+    "port": 5005,
+    "received": 0,
+    "malformed": 0,
+    "stale": 0,
+    "invalid": 0,
+    "applied": 0,
+    "lastReceivedFrameId": 0,
+    "lastAppliedFrameId": 0,
+    "command": {
+        "frame_id": 0,
+        "base_deg": 0.0,
+        "shoulder_deg": 0.0,
+        "elbow_deg": 0.0,
+        "wrist_pitch_deg": 0.0,
+        "wrist_roll_deg": 0.0,
+        "gripper_norm": 0.0,
+        "valid": false
+    },
+    "localAngles": [
+        0.0,
+        10.0,
+        350.0,
+        30.000003814697267,
+        90.0
+    ],
+    "elbowWorldX": 0.0,
+    "left": {
+        "x": -0.28999999165534975,
+        "y": 0.07500000298023224,
+        "z": 0.0
+    },
+    "right": {
+        "x": 0.28999999165534975,
+        "y": 0.07500000298023224,
+        "z": 0.0
+    },
+    "error": ""
+}

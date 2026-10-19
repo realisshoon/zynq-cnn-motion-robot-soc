@@ -1,0 +1,42 @@
+[
+  {
+    "Path": "D:\\working\\final_project\\Unity\\HumanMotionDigitalTwin\\Assets\\Scripts\\MediaPipeDebug\\CsvVideoPoseSource.cs",
+    "Unchanged": true
+  },
+  {
+    "Path": "D:\\working\\final_project\\Unity\\HumanMotionDigitalTwin\\Assets\\Scripts\\MediaPipeDebug\\HumanArmDebugController.cs",
+    "Unchanged": true
+  },
+  {
+    "Path": "D:\\working\\final_project\\Unity\\HumanMotionDigitalTwin\\Assets\\Scripts\\MediaPipeDebug\\MediaPipeReplayView.cs",
+    "Unchanged": true
+  },
+  {
+    "Path": "D:\\working\\final_project\\Unity\\HumanMotionDigitalTwin\\Assets\\Scripts\\MediaPipeDebug\\PoseCsvTable.cs",
+    "Unchanged": true
+  },
+  {
+    "Path": "D:\\working\\final_project\\Unity\\HumanMotionDigitalTwin\\Assets\\Scripts\\MediaPipeDebug\\PoseFrame.cs",
+    "Unchanged": true
+  },
+  {
+    "Path": "D:\\working\\final_project\\Unity\\HumanMotionDigitalTwin\\Assets\\Scenes\\Demo_01_HumanoidArm.unity",
+    "Unchanged": true
+  },
+  {
+    "Path": "D:\\working\\final_project\\Unity\\HumanMotionDigitalTwin\\Assets\\Scenes\\Demo_02_Forearm5Axis.unity",
+    "Unchanged": true
+  },
+  {
+    "Path": "D:\\working\\final_project\\Unity\\HumanMotionDigitalTwin\\Assets\\Scenes\\Demo_03_LivePose.unity",
+    "Unchanged": true
+  },
+  {
+    "Path": "D:\\working\\final_project\\Unity\\HumanMotionDigitalTwin\\Assets\\Scenes\\Demo_04_MediaPipeHumanArmDebug.unity",
+    "Unchanged": true
+  },
+  {
+    "Path": "D:\\working\\final_project\\Unity\\HumanMotionDigitalTwin\\Assets\\Editor\\MediaPipeHumanArmValidation.cs",
+    "Unchanged": true
+  }
+]

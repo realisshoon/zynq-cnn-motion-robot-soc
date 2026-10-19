@@ -1,0 +1,3 @@
+begin line+cond+fsm+tgl+branch
++tree tb_top_golden.dut
+end

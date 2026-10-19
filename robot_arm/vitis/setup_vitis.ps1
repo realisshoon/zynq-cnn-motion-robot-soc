@@ -1,0 +1,183 @@
+﻿<#
+  robot_arm Vitis 작업환경 재현 스크립트 (Vitis 2020.2, Windows)
+  (자세한 설명: robot_arm/README.md 의 'Vitis 작업환경' 절)
+
+  하는 일 (새 워크스페이스에서 처음부터):
+    1) XSA로 플랫폼(standalone, ps7_cortexa9_0)을 만들고 BSP를 빌드한다.
+    2) 빈 앱 프로젝트를 만들고 저장소의 robot_arm/src 를 "링크"(복사 아님)로 붙인다.
+    3) include 경로, 컴파일 심볼, 링크 라이브러리(-lm)를 설정한다.
+    4) 반대 역할 입력 파일을 제외하고 앱 DDR을 CNN 프레임 버퍼 아래로 제한한다.
+    5) 앱을 빌드한다.
+
+  주의
+    - StereoRole Left/Right를 반드시 선택한다. 두 역할 모두 로봇 PWM은 부팅 OFF다.
+      각 보드가 자기 로봇을 제어한다(Left=로봇1 JC, Right=로봇0 JB).
+      앱 심볼은 Xilinx PWM 드라이버와 역할 하나뿐이며 telemetry를 항상 포함한다.
+    - 워크스페이스 경로는 짧아야 한다(80자 이하, 예: D:\vws). Windows 경로 길이 제한(260자) 때문이다.
+    - 이 스크립트를 돌리는 동안 Vitis IDE는 이 워크스페이스를 열지 않은 상태여야 한다.
+    - xsct 임시폴더(.Xil)와 로그는 "<워크스페이스>_setup_logs" 폴더에 만들어져서 저장소를 더럽히지 않는다.
+    - 링크 안의 파일을 Vitis에서 편집/삭제하면 저장소 원본이 바뀐다. 편집은 다른 편집기에서 한다.
+
+  사용 예 (기본 XSA는 final_uart0.xsa):
+    powershell -ExecutionPolicy Bypass -File robot_arm\vitis\setup_vitis.ps1 -Workspace D:\vws -StereoRole Right
+#>
+param(
+    [Parameter(Mandatory = $true)][string]$Workspace,
+    [string]$Xsa,                        # 기본값: xsa\final_uart0.xsa
+    [string]$RepoRoot,                   # 기본값: 이 스크립트의 상위 폴더(robot_arm)
+    [string]$VitisBin = "C:\Xilinx\Vitis\2020.2\bin",
+    [string]$PlatformName = "cnn_camera_gimbal",
+    [string]$AppName = "robot_testbench",
+    [Parameter(Mandatory = $true)][ValidateSet("Left", "Right")][string]$StereoRole
+)
+
+$ErrorActionPreference = "Stop"
+
+# Windows PowerShell 5.1 에서는 param 기본값 안의 $PSScriptRoot 가 비어 있어서 본문에서 계산한다.
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (-not $Xsa) {
+    $Xsa = Join-Path $scriptDir "xsa\final_uart0.xsa"
+}
+if (-not $RepoRoot) { $RepoRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path }
+function ToTcl([string]$p) { return ($p -replace '\\', '/') }
+
+# ---- 사전 점검 ----
+$xsct = Join-Path $VitisBin "xsct.bat"
+if (-not (Test-Path $xsct)) { throw "xsct.bat 을 찾을 수 없습니다: $xsct (Vitis 2020.2 경로를 -VitisBin 으로 지정)" }
+if (-not (Test-Path $Xsa)) { throw "XSA 파일이 없습니다: $Xsa" }
+foreach ($d in @("src", "include", "config")) {
+    if (-not (Test-Path (Join-Path $RepoRoot $d))) { throw "저장소 폴더가 없습니다: $(Join-Path $RepoRoot $d)" }
+}
+if (Test-Path (Join-Path $Workspace ".metadata")) { throw "이미 워크스페이스가 있습니다: $Workspace (새 폴더를 지정하세요)" }
+
+# Windows 경로 길이 제한(260자): 플랫폼(BSP) 안쪽 경로가 워크스페이스 아래로 약 170자까지 깊어진다.
+# 그래서 워크스페이스 경로는 짧아야 한다(권장 예: D:\vws). 긴 경로에서는 BSP 생성이
+# "파일 이름이나 확장명이 너무 깁니다"(boost::filesystem::create_directory)로 실패한다.
+$maxWorkspaceLen = 80
+$fullWs = [IO.Path]::GetFullPath($Workspace)
+if ($fullWs.Length -gt $maxWorkspaceLen) {
+    throw "워크스페이스 경로가 너무 깁니다($($fullWs.Length)자 > ${maxWorkspaceLen}자): $fullWs`n짧은 경로(예: D:\vws)를 지정하세요."
+}
+
+New-Item -ItemType Directory -Force $Workspace | Out-Null
+$Workspace = (Resolve-Path $Workspace).Path
+$Xsa = (Resolve-Path $Xsa).Path
+$logs = "{0}_setup_logs" -f $Workspace                # xsct 실행 위치 겸 로그 폴더(저장소 밖)
+New-Item -ItemType Directory -Force $logs | Out-Null
+
+function Run-Xsct([string]$tclText, [string]$name) {
+    $tcl = Join-Path $logs "$name.tcl"
+    Set-Content -Path $tcl -Value $tclText -Encoding ascii
+    $out = Join-Path $logs "$name.out"; $err = Join-Path $logs "$name.err"
+    $p = Start-Process -FilePath $xsct -ArgumentList "`"$tcl`"" -WorkingDirectory $logs -WindowStyle Hidden -PassThru `
+         -RedirectStandardOutput $out -RedirectStandardError $err
+    $null = $p.Handle    # Windows PowerShell 5.1: 핸들을 미리 잡아 두지 않으면 종료 후 ExitCode 가 비어 나온다
+    if (-not $p.WaitForExit(900000)) { $p.Kill(); throw "xsct 시간 초과($name)" }
+    $p.WaitForExit()     # 출력 리다이렉트가 끝날 때까지 대기
+    $code = $p.ExitCode
+    $errText = if (Test-Path $err) { Get-Content $err -Raw } else { "" }
+    if (($null -ne $code -and $code -ne 0) -or $errText -match "(?m)^(error|ERROR)") { Write-Host $errText; throw "xsct 실패($name, 종료코드 $code). 로그: $logs" }
+    Write-Host "  [OK] $name"
+}
+
+$ws = ToTcl $Workspace; $repo = ToTcl $RepoRoot; $xsaT = ToTcl $Xsa
+$roleSymbols = "app config -name $AppName -add define-compiler-symbols ROBOT_STEREO_$($StereoRole.ToUpperInvariant())"
+
+# ---- 1단계: 플랫폼 + 앱 + 링크 + 설정 ----
+function Get-FirmwareSources {
+    foreach ($directory in @('src', 'include', 'config')) {
+        Get-ChildItem -LiteralPath (Join-Path $RepoRoot $directory) -Recurse -File |
+            Where-Object { $_.Extension -in @('.c', '.h') } | Sort-Object FullName |
+            ForEach-Object {
+                [pscustomobject]@{
+                    path = $_.FullName.Substring($RepoRoot.Length + 1).Replace('\', '/')
+                    sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+                }
+            }
+    }
+}
+$sourceBefore = @(Get-FirmwareSources)
+$xsaHash = (Get-FileHash -LiteralPath $Xsa -Algorithm SHA256).Hash
+Write-Host "1/3 플랫폼 생성(BSP 빌드 포함, 몇 분 걸림), 앱 생성, 링크, 설정"
+$phase1 = @"
+setws $ws
+platform create -name $PlatformName -hw $xsaT -proc ps7_cortexa9_0 -os standalone
+domain active standalone_domain
+bsp config stdin ps7_uart_1
+bsp config stdout ps7_uart_1
+bsp setlib -name xilffs
+bsp write
+platform generate
+app create -name $AppName -platform $PlatformName -domain standalone_domain -template {Empty Application}
+importsources -name $AppName -path $repo/src -soft-link
+app config -name $AppName -add include-path $repo/include
+app config -name $AppName -add include-path $repo/config
+app config -name $AppName -add include-path $repo/src/app/cnn
+app config -name $AppName -add define-compiler-symbols SERVO_PWM_DRIVER_USE_XILINX
+$roleSymbols
+app config -name $AppName -add libraries m
+puts "include-path: [app config -name $AppName include-path]"
+puts "symbols: [app config -name $AppName define-compiler-symbols]"
+puts "libraries: [app config -name $AppName libraries]"
+"@
+Run-Xsct $phase1 "phase1_platform_app"
+
+# ---- 2단계: 역할별 입력 파일 선택 ----
+Write-Host "2/3 빌드 제외 파일 등록"
+$cp = Join-Path (Join-Path $Workspace $AppName) ".cproject"
+$txt = [IO.File]::ReadAllText($cp)
+if (([regex]::Matches($txt, 'excluding="_ide"')).Count -ne 2) { throw ".cproject 형식이 예상과 다릅니다(excluding=""_ide"" 2개 필요)" }
+$otherInput = if ($StereoRole -eq 'Left') { 'right_input.c' } else { 'left_input.c' }
+$txt = $txt.Replace('excluding="_ide"', ('excluding="_ide|src/app/board/' + $otherInput + '"'))
+[IO.File]::WriteAllText($cp, $txt, (New-Object Text.UTF8Encoding($false)))
+Write-Host "  [OK] .cproject 제외 항목 추가"
+
+# PS DDR base가 0x00100000이므로 CNN 프레임 버퍼(DDR_BASE + 0x0A000000)의 실제 절대
+# 주소는 0x0A100000이고, 가중치/작업 버퍼는 0x10000000 이상에 고정된다(Agent4 리뷰
+# 2026-09-27에서 이 주석의 이전 값 "0x0A000000"이 틀렸다고 지적함 -- 아래 링커 영역
+# 0x100000+0x9F00000은 0x0A000000에서 끝나므로 frame buffer(0x0A100000)까지 0x100000
+# bytes(1 MiB) 여유가 있어 실제로는 안 겹친다). 앱 이미지/스택/힙이 그 영역으로 자라면 링크
+# 단계에서 실패하게 한다.
+$ld = Join-Path (Join-Path (Join-Path $Workspace $AppName) "src") "lscript.ld"
+$ldText = [IO.File]::ReadAllText($ld)
+$oldRegion = 'ps7_ddr_0 : ORIGIN = 0x100000, LENGTH = 0x3FF00000'
+$newRegion = 'ps7_ddr_0 : ORIGIN = 0x100000, LENGTH = 0x09F00000'
+if (-not $ldText.Contains($oldRegion)) { throw "lscript.ld DDR 영역이 예상과 다릅니다: $ld" }
+$ldText = $ldText.Replace($oldRegion, $newRegion)
+[IO.File]::WriteAllText($ld, $ldText, (New-Object Text.UTF8Encoding($false)))
+Write-Host "  [OK] 앱 DDR 상한 0x0A000000 설정 (frame buffer 0x0A100000과 1 MiB 여유)"
+
+# ---- 3단계: 앱 빌드 ----
+Write-Host "3/3 앱 빌드"
+Run-Xsct "setws $ws`napp build -name $AppName`n" "phase3_build"
+
+$dbg = Join-Path (Join-Path $Workspace $AppName) "Debug"
+$elf = Join-Path $dbg "$AppName.elf"
+if (Test-Path $elf) {
+    $sourceAfter = @(Get-FirmwareSources)
+    if (($sourceBefore | ConvertTo-Json -Compress) -ne ($sourceAfter | ConvertTo-Json -Compress) -or
+        $xsaHash -ne (Get-FileHash -LiteralPath $Xsa -Algorithm SHA256).Hash) {
+        throw '빌드 중 소스/XSA가 바뀌었습니다. 이 ELF를 배포하지 말고 다시 빌드하세요.'
+    }
+    $manifest = [ordered]@{
+        schema = 1
+        built_utc = [DateTime]::UtcNow.ToString('o')
+        role = $StereoRole.ToUpperInvariant()
+        toolchain = 'Vitis 2020.2 ARM Cortex-A9 standalone'
+        symbols = @('SERVO_PWM_DRIVER_USE_XILINX', ('ROBOT_STEREO_' + $StereoRole.ToUpperInvariant()))
+        xsa = [ordered]@{ path = $Xsa; sha256 = $xsaHash }
+        elf = [ordered]@{ path = $elf; sha256 = (Get-FileHash -LiteralPath $elf -Algorithm SHA256).Hash }
+        linker = [ordered]@{ path = $ld; sha256 = (Get-FileHash -LiteralPath $ld -Algorithm SHA256).Hash }
+        script_sha256 = (Get-FileHash -LiteralPath $MyInvocation.MyCommand.Path -Algorithm SHA256).Hash
+        sources = $sourceAfter
+        installed_to_sd = $false
+    }
+    $manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $dbg 'build_manifest.json') -Encoding utf8
+    Write-Host ("완료: {0}  ({1:N0} bytes)" -f $elf, (Get-Item $elf).Length)
+    Write-Host 'build_manifest.json에 소스/XSA/링커/ELF SHA256을 기록했습니다. SD 설치·실물 검증은 별도입니다.'
+} else {
+    Write-Host "ELF 가 만들어지지 않았습니다. 링크 에러를 확인하세요:"
+    Write-Host "  cd $dbg ; make all   (Vitis 의 gnuwin/toolchain 이 PATH 에 있는 셸에서)"
+    Write-Host "  (CNN 소스, xilffs BSP, 제외 파일 설정을 함께 확인하세요)"
+    exit 1
+}

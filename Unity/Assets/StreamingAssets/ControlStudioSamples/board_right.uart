@@ -1,0 +1,4 @@
+EV,0,BOOT,921600
+[UART] stop_escape=1 protocol=ESC_X_S frame_timeout_ms=250 role=2
+[REC_STATE] schema=1 side=r ui=IDLE mode=LIVE pwm=1 ram_samples=0 entries=0 selected=0 playing=0 delete=0 unsaved=0
+TK,1,20,100,100.0,70.0,100.0,90.0,0.05,1611,1277,1611,1500,2450,0.0,1,0

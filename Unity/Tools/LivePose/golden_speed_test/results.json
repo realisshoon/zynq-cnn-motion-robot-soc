@@ -1,0 +1,547 @@
+{
+  "version": "CNN-v4.0",
+  "geometry_status": "IMPLEMENTATION_BASELINE_NOT_CHECKPOINT_ATTESTED",
+  "joints": [
+    {
+      "joint": 0,
+      "grid_row": 10,
+      "grid_col": 6,
+      "offset_y": 65,
+      "offset_x": 42,
+      "x": 490,
+      "y": 535,
+      "score_raw": 127,
+      "valid": true,
+      "word": 2132898282
+    },
+    {
+      "joint": 1,
+      "grid_row": 9,
+      "grid_col": 7,
+      "offset_y": 157,
+      "offset_x": -117,
+      "x": 532,
+      "y": 477,
+      "score_raw": 127,
+      "valid": true,
+      "word": 2132660756
+    },
+    {
+      "joint": 2,
+      "grid_row": 9,
+      "grid_col": 6,
+      "offset_y": 200,
+      "offset_x": -165,
+      "x": 441,
+      "y": 487,
+      "score_raw": 127,
+      "valid": true,
+      "word": 2132701625
+    },
+    {
+      "joint": 3,
+      "grid_row": 9,
+      "grid_col": 8,
+      "offset_y": 98,
+      "offset_x": -112,
+      "x": 614,
+      "y": 463,
+      "score_raw": 82,
+      "valid": true,
+      "word": 1377628774
+    },
+    {
+      "joint": 4,
+      "grid_row": 10,
+      "grid_col": 5,
+      "offset_y": -66,
+      "offset_x": -48,
+      "x": 389,
+      "y": 504,
+      "score_raw": 24,
+      "valid": true,
+      "word": 404717957
+    },
+    {
+      "joint": 5,
+      "grid_row": 9,
+      "grid_col": 1,
+      "offset_y": -172,
+      "offset_x": -143,
+      "x": 46,
+      "y": 399,
+      "score_raw": 78,
+      "valid": true,
+      "word": 1310257198
+    },
+    {
+      "joint": 6,
+      "grid_row": 8,
+      "grid_col": 3,
+      "offset_y": 204,
+      "offset_x": -193,
+      "x": 194,
+      "y": 408,
+      "score_raw": 82,
+      "valid": true,
+      "word": 1377403074
+    },
+    {
+      "joint": 7,
+      "grid_row": 10,
+      "grid_col": 0,
+      "offset_y": -58,
+      "offset_x": -11,
+      "x": 0,
+      "y": 0,
+      "score_raw": 36,
+      "valid": false,
+      "word": 603979776
+    },
+    {
+      "joint": 8,
+      "grid_row": 10,
+      "grid_col": 3,
+      "offset_y": -94,
+      "offset_x": -49,
+      "x": 228,
+      "y": 498,
+      "score_raw": 51,
+      "valid": true,
+      "word": 857678052
+    },
+    {
+      "joint": 9,
+      "grid_row": 10,
+      "grid_col": 1,
+      "offset_y": 21,
+      "offset_x": -163,
+      "x": 41,
+      "y": 525,
+      "score_raw": 5,
+      "valid": true,
+      "word": 86036521
+    },
+    {
+      "joint": 10,
+      "grid_row": 10,
+      "grid_col": 1,
+      "offset_y": 11,
+      "offset_x": 231,
+      "x": 135,
+      "y": 523,
+      "score_raw": 1,
+      "valid": true,
+      "word": 18919559
+    },
+    {
+      "joint": 11,
+      "grid_row": 11,
+      "grid_col": 1,
+      "offset_y": 115,
+      "offset_x": -127,
+      "x": 50,
+      "y": 627,
+      "score_raw": 54,
+      "valid": true,
+      "word": 908537906
+    },
+    {
+      "joint": 12,
+      "grid_row": 11,
+      "grid_col": 2,
+      "offset_y": 118,
+      "offset_x": 14,
+      "x": 163,
+      "y": 628,
+      "score_raw": 49,
+      "valid": true,
+      "word": 824656035
+    },
+    {
+      "joint": 13,
+      "grid_row": 13,
+      "grid_col": 0,
+      "offset_y": 12,
+      "offset_x": 177,
+      "x": 0,
+      "y": 0,
+      "score_raw": 25,
+      "valid": false,
+      "word": 419430400
+    },
+    {
+      "joint": 14,
+      "grid_row": 13,
+      "grid_col": 1,
+      "offset_y": 106,
+      "offset_x": 150,
+      "x": 0,
+      "y": 0,
+      "score_raw": 20,
+      "valid": false,
+      "word": 335544320
+    },
+    {
+      "joint": 15,
+      "grid_row": 14,
+      "grid_col": 0,
+      "offset_y": 170,
+      "offset_x": 116,
+      "x": 0,
+      "y": 0,
+      "score_raw": -43,
+      "valid": false,
+      "word": 3573547008
+    },
+    {
+      "joint": 16,
+      "grid_row": 14,
+      "grid_col": 2,
+      "offset_y": 132,
+      "offset_x": -79,
+      "x": 0,
+      "y": 0,
+      "score_raw": -47,
+      "valid": false,
+      "word": 3506438144
+    }
+  ],
+  "markers": [
+    {
+      "found": true,
+      "count": 763,
+      "x": 90,
+      "y": 467,
+      "word": 2148440154
+    },
+    {
+      "found": false,
+      "count": 0,
+      "x": 0,
+      "y": 0,
+      "word": 0
+    }
+  ],
+  "layers": [
+    {
+      "name": "features.conv0.conv",
+      "shape": [
+        128,
+        128,
+        24
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "968313e4301bd8db0d701ada7439e85dc74cd614420c486f2325d7410216995e"
+    },
+    {
+      "name": "features.conv1.depthwise",
+      "shape": [
+        128,
+        128,
+        24
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "2cd6623c9476881117c9f28cd673f013a609cd4eeca421bbeef4e87509827cfa"
+    },
+    {
+      "name": "features.conv1.pointwise",
+      "shape": [
+        128,
+        128,
+        48
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "667cdb3204c5fbdaae05db52482b84ee5a62af8706199f3bce4892b1541e7f7a"
+    },
+    {
+      "name": "features.conv2.depthwise",
+      "shape": [
+        64,
+        64,
+        48
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "1a153852f38e19669d81334c399e8c572c2fe5aa33ddf0a2e8549a0886b92fff"
+    },
+    {
+      "name": "features.conv2.pointwise",
+      "shape": [
+        64,
+        64,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "720baea60abab457445af0e60479e6a9151ba74bd5e302d9752d9f9c6dbf9064"
+    },
+    {
+      "name": "features.conv3.depthwise",
+      "shape": [
+        64,
+        64,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "fd356c83b0fe9b0bc9e8dbd84b8f70e44a6ee6c52488a285c655cc826a5fe81b"
+    },
+    {
+      "name": "features.conv3.pointwise",
+      "shape": [
+        64,
+        64,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "f0f67c20ddc72d80486f840a3de69e04594e1135282f8d550d8adcdd4f115ee1"
+    },
+    {
+      "name": "features.conv4.depthwise",
+      "shape": [
+        32,
+        32,
+        96
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "4bdd03743bf06b2c20c70dc3d86cb3f8007710f2a9b9d27e552497c86b510dad"
+    },
+    {
+      "name": "features.conv4.pointwise",
+      "shape": [
+        32,
+        32,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "74827d7b72433f5af707bd45ee660245afb0ca99493af9181d2cce72bec73bd7"
+    },
+    {
+      "name": "features.conv5.depthwise",
+      "shape": [
+        32,
+        32,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "7785d61d8c272c3602fb028d3cc4e96b97c1c18e3aefe4fff3b51af51fa85d73"
+    },
+    {
+      "name": "features.conv5.pointwise",
+      "shape": [
+        32,
+        32,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "fd3ac03ee2200850c03e7123a88fc4414b1213292cd5e5df613621dbee5cfca4"
+    },
+    {
+      "name": "features.conv6.depthwise",
+      "shape": [
+        16,
+        16,
+        192
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "a2e628effd32a71ab5cc4089b7b4e5ed3987602fa03bc00fd2275325e2e57bdf"
+    },
+    {
+      "name": "features.conv6.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "0d1fa89094a926500725e03acbe4ab5ffaa9114f4b04a08aa97e8a2a44413a5e"
+    },
+    {
+      "name": "features.conv7.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "c65b47752ad57309a9839ae16409fb30bf5b3791167d98e1a91d847a60c6f388"
+    },
+    {
+      "name": "features.conv7.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "dcbb7d1883b041bed64c3ea80f5adaef52bbd4c037e0349f0465892aba925261"
+    },
+    {
+      "name": "features.conv8.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "0ca5a7620e46f23453e5e4e2b1460e5d572d1b2db55125f095a9eef33f48c31b"
+    },
+    {
+      "name": "features.conv8.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "0774f3c83075c0a78b001bb49aa8e3d91ad8ab47ee5ceb1d5fe04a275081cd68"
+    },
+    {
+      "name": "features.conv9.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "0b0edd52f35d54181cd6729b22b2b8f2bce8c8aeb295b521a448a92f54b57b9a"
+    },
+    {
+      "name": "features.conv9.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "ef3fe0ac5a327b92fe06bf2a6156504a765990479df1493b22c13ffe2aba6f28"
+    },
+    {
+      "name": "features.conv10.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "df1f69cc1d21717e12e3d4702cfafd8a0915621b77aecdc3e3a077ff9cf99342"
+    },
+    {
+      "name": "features.conv10.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "cf989a7578a0dca7200d23eb2ce34bab603fbb4c679779a767d01efc2f5bcdae"
+    },
+    {
+      "name": "features.conv11.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "129bc3a3729f8b62bb4bcda3da13c2c9c2c4440e15da066a504d883400ab857d"
+    },
+    {
+      "name": "features.conv11.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "c7738871a44338a32fa6574c129a8ed58be72233a1c53e11bcfce65da87ff163"
+    },
+    {
+      "name": "features.conv12.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "1f7ec6f9abe838ef85b4631ebee7b003f00a34d0571ee6b84196aa6666586e54"
+    },
+    {
+      "name": "features.conv12.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "cccaa853b3b90dc3a522cedb35b1846c57a22979a02bf060e0ed4af3e8d2dceb"
+    },
+    {
+      "name": "features.conv13.depthwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "d2df4d71fa8c6a909dfb268977b4f0b77e81cfb2557ae2d3920fd34528c339b5"
+    },
+    {
+      "name": "features.conv13.pointwise",
+      "shape": [
+        16,
+        16,
+        384
+      ],
+      "min": 0,
+      "max": 127,
+      "sha256": "fa27093d04db8327d182f42764b93396d2408b8947b60473a4888c253089a4dc"
+    },
+    {
+      "name": "heatmap",
+      "shape": [
+        16,
+        16,
+        17
+      ],
+      "min": -128,
+      "max": 127,
+      "sha256": "94383af00d346c364c77586f472ea075db2a4d15711fd634bfdde207e32de8eb"
+    },
+    {
+      "name": "offset",
+      "shape": [
+        16,
+        16,
+        34
+      ],
+      "min": -1445,
+      "max": 941,
+      "sha256": "0e580e2bba31f4c6faea5acd9ad5790774cf4e61c7814a092588d5a4e1fafa5d"
+    }
+  ]
+}
